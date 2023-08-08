@@ -8,7 +8,7 @@ namespace simsycl::sycl {
 
 class event {
  public:
-  event();
+  event() = default;
 
   /* -- common interface members -- */
 

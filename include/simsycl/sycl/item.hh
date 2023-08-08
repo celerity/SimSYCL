@@ -58,7 +58,7 @@ class item {
 
   private:
     template <int D, bool W>
-    friend sycl::item<D, W> make_item(
+    friend sycl::item<D, W> simsycl::detail::make_item(
         const sycl::id<D> &the_id, const sycl::range<D> &range, const sycl::id<D> &offset);
 
     id<Dimensions> m_id;

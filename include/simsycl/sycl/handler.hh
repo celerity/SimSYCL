@@ -1,15 +1,51 @@
 #pragma once
 
 #include "enums.hh"
+#include "event.hh"
 #include "forward.hh"
+#include "id.hh"
+#include "item.hh"
 #include "range.hh"
 
+#include <cstring>
 #include <memory>
 #include <vector>
 
 namespace simsycl::detail {
 
 sycl::handler make_handler();
+
+template <typename Func, typename... Params>
+void sequential_for(const sycl::range<1> &range, const sycl::id<1> &offset, Func &&func, Params &&...args) {
+    sycl::id<1> id;
+    for(id[0] = offset[0]; id[0] < offset[0] + range[0]; ++id[0]) { //
+        func(make_item(id, range, offset), std::forward<Params>(args)...);
+    }
+}
+
+template <typename Func, typename... Params>
+void sequential_for(const sycl::range<2> &range, const sycl::id<2> &offset, Func &&func, Params &&...args) {
+    sycl::id<2> id;
+    for(id[0] = offset[0]; id[0] < offset[0] + range[0]; ++id[0]) {
+        for(id[1] = offset[1]; id[1] < offset[1] + range[1]; ++id[1]) { //
+            func(make_item(id, range, offset), std::forward<Params>(args)...);
+        }
+    }
+}
+
+template <typename Func, typename... Params>
+void sequential_for(const sycl::range<3> &range, const sycl::id<3> &offset, Func &&func, Params &&...args) {
+    sycl::id<3> id;
+    for(id[0] = offset[0]; id[0] < offset[0] + range[0]; ++id[0]) {
+        for(id[1] = offset[1]; id[1] < offset[1] + range[1]; ++id[1]) {
+            for(id[2] = offset[2]; id[2] < offset[2] + range[2]; ++id[2]) { //
+                func(make_item(id, range, offset), std::forward<Params>(args)...);
+            }
+        }
+    }
+}
+
+class unnamed_kernel;
 
 } // namespace simsycl::detail
 
@@ -24,9 +60,9 @@ class handler {
         access::placeholder IsPlaceholder>
     void require(accessor<DataT, Dimensions, AccessMode, AccessTarget, IsPlaceholder> acc);
 
-    void depends_on(event dep_event);
+    void depends_on(event dep_event) {}
 
-    void depends_on(const std::vector<event> &dep_events);
+    void depends_on(const std::vector<event> &dep_events) {}
 
     //----- Backend interoperability interface
 
@@ -38,29 +74,35 @@ class handler {
 
     //------ Kernel dispatch API
 
-    // Note: In all kernel dispatch functions, the template parameter "typename KernelName" is optional.
-
-    template <typename KernelName, typename KernelType>
-    void single_task(const KernelType &kernel_func);
-
-    // Parameter pack acts as-if: Reductions&&... reductions, const KernelType &kernel_func
-    template <typename KernelName, int Dimensions, typename... Rest>
-    void parallel_for(range<Dimensions> num_work_items, Rest &&...rest) {
-        // TODO
+    template <typename KernelName = detail::unnamed_kernel, typename KernelType>
+    void single_task(const KernelType &kernel_func) {
+        kernel_func();
     }
 
-    template <typename KernelName, typename KernelType, int Dimensions>
+    template <typename KernelName = detail::unnamed_kernel, int Dimensions, typename... Rest,
+        std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
+    void parallel_for(range<Dimensions> num_work_items, Rest &&...rest) {
+        dispatch_parallel_for(num_work_items, std::forward_as_tuple(std::forward<Rest>(rest)...),
+            std::make_index_sequence<sizeof...(Rest) - 1>(), std::index_sequence<sizeof...(Rest) - 1>());
+    }
+
+    template <typename KernelName = detail::unnamed_kernel, typename KernelType, int Dimensions>
     [[deprecated("Deprecated in SYCL 2020")]] void parallel_for(
-        range<Dimensions> num_work_items, id<Dimensions> work_item_offset, const KernelType &kernel_func);
+        range<Dimensions> num_work_items, id<Dimensions> work_item_offset, KernelType &&kernel_func) {
+        detail::sequential_for(num_work_items, work_item_offset, kernel_func);
+    }
 
-    // Parameter pack acts as-if: Reductions&&... reductions, const KernelType &kernel_func
-    template <typename KernelName, int Dimensions, typename... Rest>
-    void parallel_for(nd_range<Dimensions> execution_range, Rest &&...rest);
+    template <typename KernelName = detail::unnamed_kernel, int Dimensions, typename... Rest,
+        std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
+    void parallel_for(nd_range<Dimensions> execution_range, Rest &&...rest) {
+        dispatch_parallel_for(execution_range, std::forward_as_tuple(std::forward<Rest>(rest)...),
+            std::make_index_sequence<sizeof...(Rest) - 1>(), std::index_sequence<sizeof...(Rest) - 1>());
+    }
 
-    template <typename KernelName, typename WorkgroupFunctionType, int Dimensions>
+    template <typename KernelName = detail::unnamed_kernel, typename WorkgroupFunctionType, int Dimensions>
     void parallel_for_work_group(range<Dimensions> num_work_groups, const WorkgroupFunctionType &kernel_func);
 
-    template <typename KernelName, typename WorkgroupFunctionType, int Dimensions>
+    template <typename KernelName = detail::unnamed_kernel, typename WorkgroupFunctionType, int Dimensions>
     void parallel_for_work_group(
         range<Dimensions> num_work_groups, range<Dimensions> work_group_size, const WorkgroupFunctionType &kernel_func);
 
@@ -74,19 +116,23 @@ class handler {
 
     //------ USM functions
 
-    void memcpy(void *dest, const void *src, size_t num_bytes);
+    void memcpy(void *dest, const void *src, size_t num_bytes) { ::memcpy(dest, src, num_bytes); }
 
     template <typename T>
-    void copy(const T *src, T *dest, size_t count);
+    void copy(const T *src, T *dest, size_t count) {
+        std::copy_n(src, count, dest);
+    }
 
-    void memset(void *ptr, int value, size_t num_bytes);
+    void memset(void *ptr, int value, size_t num_bytes) { ::memset(ptr, value, num_bytes); }
 
     template <typename T>
-    void fill(void *ptr, const T &pattern, size_t count);
+    void fill(void *ptr, const T &pattern, size_t count) {
+        std::fill_n(ptr, count, pattern);
+    }
 
-    void prefetch(void *ptr, size_t num_bytes);
+    void prefetch(void *ptr, size_t num_bytes) {}
 
-    void mem_advise(void *ptr, size_t num_bytes, int advice);
+    void mem_advise(void *ptr, size_t num_bytes, int advice) {}
 
     //------ Explicit memory operation APIs
     //
@@ -129,7 +175,17 @@ class handler {
     friend handler simsycl::detail::make_handler();
 
     handler() = default;
+
+    template <typename Range, typename ParamTuple, size_t... ReductionIndices, size_t KernelIndex>
+    void dispatch_parallel_for(const Range &range, ParamTuple &&params,
+        std::index_sequence<ReductionIndices...> /* reduction_indices */,
+        std::index_sequence<KernelIndex> /* kernel_index */) {
+        const id<Range::dimensions> offset{};
+        const auto &kernel_func = std::get<KernelIndex>(params);
+        detail::sequential_for(range, offset, kernel_func, std::get<ReductionIndices>(params)...);
+    }
 };
+
 } // namespace simsycl::sycl
 
 namespace simsycl::detail {

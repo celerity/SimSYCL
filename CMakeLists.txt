@@ -37,3 +37,6 @@ add_library(simsycl
 target_include_directories(simsycl PUBLIC include)
 set_target_properties(simsycl PROPERTIES CXX_STANDARD 17)
 set_target_properties(simsycl PROPERTIES CXX_STANDARD_REQUIRED ON)
+
+add_executable(test src/test/main.cc)
+target_link_libraries(test simsycl)

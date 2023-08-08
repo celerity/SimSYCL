@@ -29,8 +29,12 @@ struct is_property_of<property::queue::in_order, queue> : std::true_type {};
 namespace simsycl::sycl {
 
 class queue : public detail::property_interface<queue, property::queue::enable_profiling, property::queue::in_order> {
+  private:
+    using property_interface
+        = detail::property_interface<queue, property::queue::enable_profiling, property::queue::in_order>;
+
   public:
-    explicit queue(const property_list &prop_list = {});
+    explicit queue(const property_list &prop_list = {}) : property_interface(prop_list) {}
 
     explicit queue(const async_handler &async_handler, const property_list &prop_list = {});
 
