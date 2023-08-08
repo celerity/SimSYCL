@@ -2,20 +2,35 @@
 
 #include "forward.hh"
 
-namespace simsycl::detail {
-sycl::event make_event();
-}
+#include <vector>
 
 namespace simsycl::sycl {
 
 class event {
-  private:
-    event() = default;
-    friend event detail::make_event();
+ public:
+  event();
+
+  /* -- common interface members -- */
+
+  backend get_backend() const noexcept;
+
+  std::vector<event> get_wait_list();
+
+  void wait();
+
+  static void wait(const std::vector<event>& event_list);
+
+  void wait_and_throw();
+
+  static void wait_and_throw(const std::vector<event>& event_list);
+
+  template <typename Param> typename Param::return_type get_info() const;
+
+  template <typename Param>
+  typename Param::return_type get_backend_info() const;
+
+  template <typename Param>
+  typename Param::return_type get_profiling_info() const;
 };
 
-} // namespace simsycl::sycl
-
-namespace simsycl::detail {
-sycl::event make_event() { return {}; }
-} // namespace simsycl::detail
+} // namespace sycl

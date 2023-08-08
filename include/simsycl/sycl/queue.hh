@@ -5,9 +5,30 @@
 #include "handler.hh"
 #include "property.hh"
 
+namespace simsycl::sycl::property::queue {
+
+class enable_profiling {};
+class in_order {};
+
+} // namespace simsycl::sycl::property::queue
+
 namespace simsycl::sycl {
 
-class queue {
+template <>
+struct is_property<property::queue::enable_profiling> : std::true_type {};
+template <>
+struct is_property_of<property::queue::enable_profiling, queue> : std::true_type {};
+
+template <>
+struct is_property<property::queue::in_order> : std::true_type {};
+template <>
+struct is_property_of<property::queue::in_order, queue> : std::true_type {};
+
+} // namespace simsycl::sycl
+
+namespace simsycl::sycl {
+
+class queue : public detail::property_interface<queue, property::queue::enable_profiling, property::queue::in_order> {
   public:
     explicit queue(const property_list &prop_list = {});
 
@@ -39,8 +60,6 @@ class queue {
 
     /* -- common interface members -- */
 
-    /* -- property interface members -- */
-
     backend get_backend() const noexcept;
 
     context get_context() const;
@@ -59,7 +78,7 @@ class queue {
     event submit(T cgf) {
         auto cgh = detail::make_handler();
         cgf(cgh);
-        return detail::make_event();
+        return event();
     }
 
     template <typename T>
@@ -137,7 +156,7 @@ class queue {
     event fill(void *ptr, const T &pattern, size_t count, const std::vector<event> &dep_events);
 
     event prefetch(void *ptr, size_t num_bytes);
-    event prefetch(void *ptr, size_t num_bytes, event depEvent);
+    event prefetch(void *ptr, size_t num_bytes, event dep_event);
     event prefetch(void *ptr, size_t num_bytes, const std::vector<event> &dep_events);
 
     event mem_advise(void *ptr, size_t num_bytes, int advice);

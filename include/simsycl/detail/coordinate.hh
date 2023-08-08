@@ -16,7 +16,8 @@ class coordinate {
     coordinate() = default;
 
     template <typename... Values,
-        typename = std::enable_if_t<sizeof...(Values) + 1 == Dimensions && (... && std::is_convertible_v<Values, size_t>)>>
+        typename
+        = std::enable_if_t<sizeof...(Values) + 1 == Dimensions && (... && std::is_convertible_v<Values, size_t>)>>
     constexpr coordinate(const size_t dim_0, const Values... dim_n) : m_values{dim_0, static_cast<size_t>(dim_n)...} {}
 
     constexpr size_t get(int dimension) {
@@ -45,12 +46,12 @@ class coordinate {
 #define SIMSYCL_DETAIL_DEFINE_COORDINATE_BINARY_COPY_LHS_OPERATOR(op)                                                  \
     friend constexpr Interface operator op(const Interface &lhs, const Interface &rhs) {                               \
         Interface result;                                                                                              \
-        for(int d = 0; d < Dimensions; ++d) { result[d] = lhs.m_values[d] op rhs.m_values[d]; }                              \
+        for(int d = 0; d < Dimensions; ++d) { result[d] = lhs.m_values[d] op rhs.m_values[d]; }                        \
         return result;                                                                                                 \
     }                                                                                                                  \
     friend constexpr Interface operator op(const Interface &lhs, const size_t &rhs) {                                  \
         Interface result;                                                                                              \
-        for(int d = 0; d < Dimensions; ++d) { result[d] = lhs.m_values[d] op rhs; }                                          \
+        for(int d = 0; d < Dimensions; ++d) { result[d] = lhs.m_values[d] op rhs; }                                    \
         return result;                                                                                                 \
     }
 
@@ -75,11 +76,11 @@ class coordinate {
 
 #define SIMSYCL_DETAIL_DEFINE_COORDINATE_BINARY_INPLACE_LHS_OPERATOR(op)                                               \
     friend constexpr Interface &operator op(Interface &lhs, const Interface &rhs) {                                    \
-        for(int d = 0; d < Dimensions; ++d) { lhs.m_values[d] op rhs.m_values[d]; }                                          \
+        for(int d = 0; d < Dimensions; ++d) { lhs.m_values[d] op rhs.m_values[d]; }                                    \
         return lhs;                                                                                                    \
     }                                                                                                                  \
     friend constexpr Interface &operator op(Interface &lhs, const size_t &rhs) {                                       \
-        for(int d = 0; d < Dimensions; ++d) { lhs.m_values[d] op rhs; }                                                      \
+        for(int d = 0; d < Dimensions; ++d) { lhs.m_values[d] op rhs; }                                                \
         return lhs;                                                                                                    \
     }
 
@@ -99,7 +100,7 @@ class coordinate {
 #define SIMSYCL_DETAIL_DEFINE_COORDINATE_BINARY_COPY_RHS_OPERATOR(op)                                                  \
     friend constexpr Interface operator op(const size_t &lhs, const Interface &rhs) {                                  \
         Interface result;                                                                                              \
-        for(int d = 0; d < Dimensions; ++d) { result[d] = lhs op rhs.m_values[d]; }                                          \
+        for(int d = 0; d < Dimensions; ++d) { result[d] = lhs op rhs.m_values[d]; }                                    \
         return result;                                                                                                 \
     }
 
@@ -125,7 +126,7 @@ class coordinate {
 #define SIMSYCL_DETAIL_DEFINE_COORDINATE_UNARY_COPY_OPERATOR(op)                                                       \
     friend constexpr Interface operator op(const Interface &rhs) {                                                     \
         Interface result;                                                                                              \
-        for(int d = 0; d < Dimensions; ++d) { result[d] = op rhs[d]; }                                                       \
+        for(int d = 0; d < Dimensions; ++d) { result[d] = op rhs[d]; }                                                 \
         return result;                                                                                                 \
     }
 
@@ -136,7 +137,7 @@ class coordinate {
 
 #define SIMSYCL_DETAIL_DEFINE_COORDINATE_UNARY_PREFIX_OPERATOR(op)                                                     \
     friend constexpr Interface &operator op(Interface &rhs) {                                                          \
-        for(int d = 0; d < Dimensions; ++d) { op rhs[d]; }                                                                   \
+        for(int d = 0; d < Dimensions; ++d) { op rhs[d]; }                                                             \
         return rhs;                                                                                                    \
     }
 
@@ -148,7 +149,7 @@ class coordinate {
 #define SIMSYCL_DETAIL_DEFINE_COORDINATE_UNARY_POSTFIX_OPERATOR(op)                                                    \
     friend constexpr Interface operator op(Interface &lhs, int) {                                                      \
         Interface result = lhs;                                                                                        \
-        for(int d = 0; d < Dimensions; ++d) { lhs[d] op; }                                                                   \
+        for(int d = 0; d < Dimensions; ++d) { lhs[d] op; }                                                             \
         return result;                                                                                                 \
     }
 

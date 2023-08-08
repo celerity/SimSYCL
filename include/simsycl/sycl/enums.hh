@@ -198,6 +198,153 @@ enum class execution_capability { exec_kernel, exec_native_kernel };
 
 } // namespace simsycl::sycl::info
 
+namespace simsycl::sycl::info::context {
+
+struct platform;
+struct devices;
+struct atomic_memory_order_capabilities;
+struct atomic_fence_order_capabilities;
+struct atomic_memory_scope_capabilities;
+struct atomic_fence_scope_capabilities;
+
+} // namespace simsycl::sycl::info::context
+
+namespace simsycl::sycl::info::device {
+
+struct device_type;
+struct vendor_id;
+struct max_compute_units;
+struct max_work_item_dimensions;
+template <int Dimensions = 3>
+struct max_work_item_sizes;
+struct max_work_group_size;
+struct preferred_vector_width_char;
+struct preferred_vector_width_short;
+struct preferred_vector_width_int;
+struct preferred_vector_width_long;
+struct preferred_vector_width_float;
+struct preferred_vector_width_double;
+struct preferred_vector_width_half;
+struct native_vector_width_char;
+struct native_vector_width_short;
+struct native_vector_width_int;
+struct native_vector_width_long;
+struct native_vector_width_float;
+struct native_vector_width_double;
+struct native_vector_width_half;
+struct max_clock_frequency;
+struct address_bits;
+struct max_mem_alloc_size;
+struct [[deprecated]] image_support;
+struct max_read_image_args;
+struct max_write_image_args;
+struct image2d_max_height;
+struct image2d_max_width;
+struct image3d_max_height;
+struct image3d_max_width;
+struct image3d_max_depth;
+struct image_max_buffer_size;
+struct max_samplers;
+struct max_parameter_size;
+struct mem_base_addr_align;
+struct half_fp_config;
+struct single_fp_config;
+struct double_fp_config;
+struct global_mem_cache_type;
+struct global_mem_cache_line_size;
+struct global_mem_cache_size;
+struct global_mem_size;
+struct [[deprecated]] max_constant_buffer_size;
+struct [[deprecated]] max_constant_args;
+struct local_mem_type;
+struct local_mem_size;
+struct error_correction_support;
+struct host_unified_memory;
+struct atomic_memory_order_capabilities;
+struct atomic_fence_order_capabilities;
+struct atomic_memory_scope_capabilities;
+struct atomic_fence_scope_capabilities;
+struct profiling_timer_resolution;
+struct is_endian_little;
+struct is_available;
+struct [[deprecated]] is_compiler_available;
+struct [[deprecated]] is_linker_available;
+struct execution_capabilities;
+struct [[deprecated]] queue_profiling;
+struct [[deprecated]] built_in_kernels;
+struct built_in_kernel_ids;
+struct platform;
+struct name;
+struct vendor;
+struct driver_version;
+struct profile;
+struct version;
+struct backend_version;
+struct aspects;
+struct [[deprecated]] extensions;
+struct printf_buffer_size;
+struct preferred_interop_user_sync;
+struct parent_device;
+struct partition_max_sub_devices;
+struct partition_properties;
+struct partition_affinity_domains;
+struct partition_type_property;
+struct partition_type_affinity_domain;
+
+} // namespace simsycl::sycl::info::device
+
+namespace simsycl::sycl::info::event {
+
+struct command_execution_status;
+
+} // namespace simsycl::sycl::info::event
+
+namespace simsycl::sycl::info::event_profiling {
+
+struct command_submit;
+struct command_start;
+struct command_end;
+
+} // namespace simsycl::sycl::info::event_profiling
+
+namespace simsycl::sycl::info::kernel {
+
+struct num_args;
+struct attributes;
+
+} // namespace simsycl::sycl::info::kernel
+
+namespace simsycl::sycl::info::kernel_device_specific {
+
+struct global_work_size;
+struct work_group_size;
+struct compile_work_group_size;
+struct preferred_work_group_size_multiple;
+struct private_mem_size;
+struct max_num_sub_groups;
+struct compile_num_sub_groups;
+struct max_sub_group_size;
+struct compile_sub_group_size;
+
+} // namespace simsycl::sycl::info::kernel_device_specific
+
+namespace simsycl::sycl::info::platform {
+
+struct profile;
+struct version;
+struct name;
+struct vendor;
+struct [[deprecated]] extensions;
+
+} // namespace simsycl::sycl::info::platform
+
+namespace simsycl::sycl::info::queue {
+
+struct context;
+struct device;
+
+} // namespace simsycl::sycl::info::queue
+
 namespace simsycl::sycl::usm {
 
 enum class alloc { host, device, shared, unknown };
