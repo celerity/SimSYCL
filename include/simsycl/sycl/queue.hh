@@ -36,7 +36,8 @@ class queue : public detail::property_interface<queue, property::queue::enable_p
   public:
     explicit queue(const property_list &prop_list = {}) : property_interface(prop_list) {}
 
-    explicit queue(const async_handler &async_handler, const property_list &prop_list = {});
+    explicit queue(const async_handler &async_handler, const property_list &prop_list = {})
+        : property_interface(prop_list), m_async_handler(async_handler) {}
 
     template <typename DeviceSelector>
     explicit queue(const DeviceSelector &device_selector, const property_list &prop_list = {});
@@ -70,7 +71,7 @@ class queue : public detail::property_interface<queue, property::queue::enable_p
 
     device get_device() const;
 
-    bool is_in_order() const;
+    bool is_in_order() const { return has_property<property::queue::in_order>(); }
 
     template <typename Param>
     typename Param::return_type get_info() const;
@@ -86,86 +87,147 @@ class queue : public detail::property_interface<queue, property::queue::enable_p
     }
 
     template <typename T>
-    event submit(T cgf, const queue &secondary_queue);
+    event submit(T cgf, const queue & /* secondary_queue */) {
+        // TODO can the secondary queue be interesting for some device configurations?
+        submit(cgf);
+    }
 
     void wait() {}
-
-    void wait_and_throw();
-
-    void throw_asynchronous();
+    void wait_and_throw() {}
+    void throw_asynchronous() {}
 
     /* -- convenience shortcuts -- */
 
     template <typename KernelName, typename KernelType>
-    event single_task(const KernelType &kernel_func);
+    event single_task(const KernelType &kernel_func) {
+        kernel_func();
+        return event();
+    }
 
     template <typename KernelName, typename KernelType>
-    event single_task(event dep_event, const KernelType &kernel_func);
+    event single_task(event /* dep_event */, const KernelType &kernel_func) {
+        kernel_func();
+        return event();
+    }
 
     template <typename KernelName, typename KernelType>
-    event single_task(const std::vector<event> &dep_events, const KernelType &kernel_func);
+    event single_task(const std::vector<event> & /* dep_events */, const KernelType &kernel_func) {
+        kernel_func();
+        return event();
+    }
 
-    // Parameter pack acts as-if: Reductions&&... reductions, const KernelType
-    // &kernelFunc
-    template <typename KernelName, int Dims, typename... Rest>
-    event parallel_for(range<Dims> num_work_items, Rest &&...rest);
+    template <typename KernelName, int Dims, typename... Rest, std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
+    event parallel_for(range<Dims> num_work_items, Rest &&...rest) {
+        detail::parallel_for(num_work_items, std::forward<Rest>(rest)...);
+        return event();
+    }
 
-    // Parameter pack acts as-if: Reductions&&... reductions, const KernelType
-    // &kernelFunc
-    template <typename KernelName, int Dims, typename... Rest>
-    event parallel_for(range<Dims> num_work_items, event dep_event, Rest &&...rest);
+    template <typename KernelName, int Dims, typename... Rest, std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
+    event parallel_for(range<Dims> num_work_items, event /* dep_event */, Rest &&...rest) {
+        detail::parallel_for(num_work_items, std::forward<Rest>(rest)...);
+        return event();
+    }
 
-    // Parameter pack acts as-if: Reductions&&... reductions, const KernelType
-    // &kernelFunc
-    template <typename KernelName, int Dims, typename... Rest>
-    event parallel_for(range<Dims> num_work_items, const std::vector<event> &dep_events, Rest &&...rest);
+    template <typename KernelName, int Dims, typename... Rest, std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
+    event parallel_for(range<Dims> num_work_items, const std::vector<event> & /* dep_events */, Rest &&...rest) {
+        detail::parallel_for(num_work_items, std::forward<Rest>(rest)...);
+        return event();
+    }
 
-    // Parameter pack acts as-if: Reductions&&... reductions, const KernelType
-    // &kernelFunc
-    template <typename KernelName, int Dims, typename... Rest>
-    event parallel_for(nd_range<Dims> execution_range, Rest &&...rest);
+    template <typename KernelName, int Dims, typename... Rest, std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
+    event parallel_for(nd_range<Dims> execution_range, Rest &&...rest) {
+        detail::parallel_for(execution_range, std::forward<Rest>(rest)...);
+        return event();
+    }
 
-    // Parameter pack acts as-if: Reductions&&... reductions, const KernelType
-    // &kernelFunc
-    template <typename KernelName, int Dims, typename... Rest>
-    event parallel_for(nd_range<Dims> execution_range, event dep_event, Rest &&...rest);
+    template <typename KernelName, int Dims, typename... Rest, std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
+    event parallel_for(nd_range<Dims> execution_range, event /* dep_event */, Rest &&...rest) {
+        detail::parallel_for(execution_range, std::forward<Rest>(rest)...);
+        return event();
+    };
 
-    // Parameter pack acts as-if: Reductions&&... reductions, const KernelType
-    // &kernelFunc
-    template <typename KernelName, int Dims, typename... Rest>
-    event parallel_for(nd_range<Dims> execution_range, const std::vector<event> &dep_events, Rest &&...rest);
+    template <typename KernelName, int Dims, typename... Rest, std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
+    event parallel_for(nd_range<Dims> execution_range, const std::vector<event> & /* dep_events */, Rest &&...rest) {
+        detail::parallel_for(execution_range, std::forward<Rest>(rest)...);
+        return event();
+    }
 
     /* -- USM functions -- */
 
-    event memcpy(void *dest, const void *src, size_t num_bytes);
-    event memcpy(void *dest, const void *src, size_t num_bytes, event dep_event);
-    event memcpy(void *dest, const void *src, size_t num_bytes, const std::vector<event> &dep_events);
+    event memcpy(void *dest, const void *src, size_t num_bytes) {
+        ::memcpy(dest, src, num_bytes);
+        return event();
+    }
+
+    event memcpy(void *dest, const void *src, size_t num_bytes, event /* dep_event */) {
+        ::memcpy(dest, src, num_bytes);
+        return event();
+    }
+
+    event memcpy(void *dest, const void *src, size_t num_bytes, const std::vector<event> & /* dep_events */) {
+        ::memcpy(dest, src, num_bytes);
+        return event();
+    }
 
     template <typename T>
-    event copy(const T *src, T *dest, size_t count);
-    template <typename T>
-    event copy(const T *src, T *dest, size_t count, event dep_event);
-    template <typename T>
-    event copy(const T *src, T *dest, size_t count, const std::vector<event> &dep_events);
-
-    event memset(void *ptr, int value, size_t num_bytes);
-    event memset(void *ptr, int value, size_t num_bytes, event dep_event);
-    event memset(void *ptr, int value, size_t num_bytes, const std::vector<event> &dep_events);
+    event copy(const T *src, T *dest, size_t count) {
+        std::copy_n(src, count, dest);
+        return event();
+    }
 
     template <typename T>
-    event fill(void *ptr, const T &pattern, size_t count);
-    template <typename T>
-    event fill(void *ptr, const T &pattern, size_t count, event dep_event);
-    template <typename T>
-    event fill(void *ptr, const T &pattern, size_t count, const std::vector<event> &dep_events);
+    event copy(const T *src, T *dest, size_t count, event dep_event) {
+        std::copy_n(src, count, dest);
+        return event();
+    }
 
-    event prefetch(void *ptr, size_t num_bytes);
-    event prefetch(void *ptr, size_t num_bytes, event dep_event);
-    event prefetch(void *ptr, size_t num_bytes, const std::vector<event> &dep_events);
+    template <typename T>
+    event copy(const T *src, T *dest, size_t count, const std::vector<event> &dep_events) {
+        std::copy_n(src, count, dest);
+        return event();
+    }
 
-    event mem_advise(void *ptr, size_t num_bytes, int advice);
-    event mem_advise(void *ptr, size_t num_bytes, int advice, event dep_event);
-    event mem_advise(void *ptr, size_t num_bytes, int advice, const std::vector<event> &dep_events);
+    event memset(void *ptr, int value, size_t num_bytes) {
+        ::memset(ptr, value, num_bytes);
+        return event();
+    }
+
+    event memset(void *ptr, int value, size_t num_bytes, event /* dep_event */) {
+        ::memset(ptr, value, num_bytes);
+        return event();
+    }
+
+    event memset(void *ptr, int value, size_t num_bytes, const std::vector<event> & /* dep_events */) {
+        ::memset(ptr, value, num_bytes);
+        return event();
+    }
+
+    template <typename T>
+    event fill(void *ptr, const T &pattern, size_t count) {
+        std::fill_n(ptr, count, pattern);
+        return event();
+    }
+
+    template <typename T>
+    event fill(void *ptr, const T &pattern, size_t count, event /* dep_event */) {
+        std::fill_n(ptr, count, pattern);
+        return event();
+    };
+
+    template <typename T>
+    event fill(void *ptr, const T &pattern, size_t count, const std::vector<event> & /* dep_events */) {
+        std::fill_n(ptr, count, pattern);
+        return event();
+    };
+
+    event prefetch(void * /* ptr */, size_t /* num_bytes */) {}
+    event prefetch(void * /* ptr */, size_t /* num_bytes */, event /* dep_event */) {}
+    event prefetch(void * /* ptr */, size_t /* num_bytes */, const std::vector<event> & /* dep_events */) {}
+
+    event mem_advise(void * /* ptr */, size_t /* num_bytes */, int /* advice */);
+    event mem_advise(void * /* ptr */, size_t /* num_bytes */, int /* advice */, event /* dep_event */);
+    event mem_advise(
+        void * /* ptr */, size_t /* num_bytes */, int /* advice */, const std::vector<event> & /* dep_events */);
 
     /// Placeholder accessor shortcuts
 
@@ -197,6 +259,9 @@ class queue : public detail::property_interface<queue, property::queue::enable_p
 
     template <typename T, int Dims, access_mode Mode, target Tgt, access::placeholder IsPlaceholder>
     event fill(accessor<T, Dims, Mode, Tgt, IsPlaceholder> dest, const T &src);
+
+  private:
+    async_handler m_async_handler = [](sycl::exception_list) {};
 };
 
 } // namespace simsycl::sycl

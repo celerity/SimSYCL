@@ -16,13 +16,13 @@ class event {
 
   std::vector<event> get_wait_list();
 
-  void wait();
+  void wait() {}
 
-  static void wait(const std::vector<event>& event_list);
+  static void wait(const std::vector<event>& /* event_list */) {}
 
-  void wait_and_throw();
+  void wait_and_throw() {}
 
-  static void wait_and_throw(const std::vector<event>& event_list);
+  static void wait_and_throw(const std::vector<event>& /* event_list */) {}
 
   template <typename Param> typename Param::return_type get_info() const;
 
