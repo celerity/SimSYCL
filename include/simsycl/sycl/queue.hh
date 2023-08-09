@@ -28,16 +28,16 @@ struct is_property_of<property::queue::in_order, queue> : std::true_type {};
 
 namespace simsycl::sycl {
 
-class queue : public detail::property_interface<queue, property::queue::enable_profiling, property::queue::in_order> {
+class queue : public detail::property_interface {
   private:
-    using property_interface
-        = detail::property_interface<queue, property::queue::enable_profiling, property::queue::in_order>;
+    using property_compatibility
+        = detail::property_compatibility<queue, property::queue::enable_profiling, property::queue::in_order>;
 
   public:
-    explicit queue(const property_list &prop_list = {}) : property_interface(prop_list) {}
+    explicit queue(const property_list &prop_list = {}) : property_interface(prop_list, property_compatibility()) {}
 
     explicit queue(const async_handler &async_handler, const property_list &prop_list = {})
-        : property_interface(prop_list), m_async_handler(async_handler) {}
+        : property_interface(prop_list, property_compatibility()), m_async_handler(async_handler) {}
 
     template <typename DeviceSelector>
     explicit queue(const DeviceSelector &device_selector, const property_list &prop_list = {});
@@ -89,7 +89,7 @@ class queue : public detail::property_interface<queue, property::queue::enable_p
     template <typename T>
     event submit(T cgf, const queue & /* secondary_queue */) {
         // TODO can the secondary queue be interesting for some device configurations?
-        submit(cgf);
+        return submit(cgf);
     }
 
     void wait() {}
@@ -220,14 +220,24 @@ class queue : public detail::property_interface<queue, property::queue::enable_p
         return event();
     };
 
-    event prefetch(void * /* ptr */, size_t /* num_bytes */) {}
-    event prefetch(void * /* ptr */, size_t /* num_bytes */, event /* dep_event */) {}
-    event prefetch(void * /* ptr */, size_t /* num_bytes */, const std::vector<event> & /* dep_events */) {}
+    event prefetch(void * /* ptr */, size_t /* num_bytes */) { return event(); }
 
-    event mem_advise(void * /* ptr */, size_t /* num_bytes */, int /* advice */);
-    event mem_advise(void * /* ptr */, size_t /* num_bytes */, int /* advice */, event /* dep_event */);
+    event prefetch(void * /* ptr */, size_t /* num_bytes */, event /* dep_event */) { return event(); }
+
+    event prefetch(void * /* ptr */, size_t /* num_bytes */, const std::vector<event> & /* dep_events */) {
+        return event();
+    }
+
+    event mem_advise(void * /* ptr */, size_t /* num_bytes */, int /* advice */) { return event(); }
+
+    event mem_advise(void * /* ptr */, size_t /* num_bytes */, int /* advice */, event /* dep_event */) {
+        return event();
+    }
+
     event mem_advise(
-        void * /* ptr */, size_t /* num_bytes */, int /* advice */, const std::vector<event> & /* dep_events */);
+        void * /* ptr */, size_t /* num_bytes */, int /* advice */, const std::vector<event> & /* dep_events */) {
+        return event();
+    }
 
     /// Placeholder accessor shortcuts
 

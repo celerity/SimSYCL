@@ -67,8 +67,11 @@ struct is_property_of<property::image::context_bound, unsampled_image<Dimensions
 namespace simsycl::sycl {
 
 template <int Dimensions, typename AllocatorT>
-class sampled_image : public detail::property_interface<sampled_image<Dimensions, AllocatorT>,
-                          property::image::use_host_ptr, property::image::use_mutex, property::image::context_bound> {
+class sampled_image : public detail::property_interface {
+  private:
+    using property_compatibility = detail::property_compatibility<sampled_image<Dimensions, AllocatorT>,
+        property::image::use_host_ptr, property::image::use_mutex, property::image::context_bound>;
+
   public:
     sampled_image(const void *host_pointer, image_format format, image_sampler sampler,
         const range<Dimensions> &range_ref, const property_list &prop_list = {});
@@ -103,8 +106,11 @@ class sampled_image : public detail::property_interface<sampled_image<Dimensions
 };
 
 template <int Dimensions, typename AllocatorT>
-class unsampled_image : public detail::property_interface<unsampled_image<Dimensions, AllocatorT>,
-                            property::image::use_host_ptr, property::image::use_mutex, property::image::context_bound> {
+class unsampled_image : public detail::property_interface {
+  private:
+    using property_compatibility = detail::property_compatibility<unsampled_image<Dimensions, AllocatorT>,
+        property::image::use_host_ptr, property::image::use_mutex, property::image::context_bound>;
+
   public:
     unsampled_image(image_format format, const range<Dimensions> &range_ref, const property_list &prop_list = {});
 

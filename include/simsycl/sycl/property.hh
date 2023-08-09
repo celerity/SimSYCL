@@ -10,7 +10,6 @@
 
 namespace simsycl::detail {
 
-template <typename Derived, typename... CompatibleProperties>
 class property_interface;
 
 }
@@ -35,7 +34,6 @@ class property_list {
     property_list(Properties... props) : m_properties{props...} {}
 
   private:
-    template <typename Derived, typename... CompatibleProperties>
     friend class detail::property_interface;
 
     std::vector<std::any> m_properties;
@@ -46,13 +44,18 @@ class property_list {
 namespace simsycl::detail {
 
 template <typename Derived, typename... CompatibleProperties>
-class property_interface {
-    static_assert((sycl::is_property_v<CompatibleProperties> && ...));
+struct property_compatibility {};
 
+// TODO must be merged with reference_type
+class property_interface {
   public:
     property_interface() = default;
 
-    explicit property_interface(const sycl::property_list &prop_list) : m_properties(prop_list.m_properties) {
+    template <typename Derived, typename... CompatibleProperties>
+    explicit property_interface(const sycl::property_list &prop_list,
+        property_compatibility<Derived, CompatibleProperties...> /* compatibility */)
+        : m_properties(prop_list.m_properties) {
+        static_assert((sycl::is_property_v<CompatibleProperties> && ...));
         static_assert((sycl::is_property_of_v<CompatibleProperties, Derived> && ...));
         for(const auto &prop : prop_list.m_properties) {
             SIMSYCL_CHECK(((prop.type() == typeid(CompatibleProperties)) || ...));

@@ -6,37 +6,37 @@
 
 namespace simsycl::sycl {
 
-class context: public detail::property_interface<context /* apparently no compatible properties? */> {
- public:
-  explicit context(const property_list& prop_list = {});
+class context : public detail::property_interface {
+  private:
+    using property_compatibilty = detail::property_compatibility<context /* apparently no compatible properties? */>;
 
-  explicit context(async_handler async_handler,
-                   const property_list& prop_list = {});
+  public:
+    explicit context(const property_list &prop_list = {});
 
-  explicit context(const device& dev, const property_list& prop_list = {});
+    explicit context(async_handler async_handler, const property_list &prop_list = {});
 
-  explicit context(const device& dev, async_handler async_handler,
-                   const property_list& prop_list = {});
+    explicit context(const device &dev, const property_list &prop_list = {});
 
-  explicit context(const std::vector<device>& device_list,
-                   const property_list& prop_list = {});
+    explicit context(const device &dev, async_handler async_handler, const property_list &prop_list = {});
 
-  explicit context(const std::vector<device>& device_list,
-                   async_handler async_handler,
-                   const property_list& prop_list = {});
+    explicit context(const std::vector<device> &device_list, const property_list &prop_list = {});
 
-  /* -- common interface members -- */
+    explicit context(
+        const std::vector<device> &device_list, async_handler async_handler, const property_list &prop_list = {});
 
-  backend get_backend() const noexcept;
+    /* -- common interface members -- */
 
-  platform get_platform() const;
+    backend get_backend() const noexcept;
 
-  std::vector<device> get_devices() const;
+    platform get_platform() const;
 
-  template <typename Param> typename Param::return_type get_info() const;
+    std::vector<device> get_devices() const;
 
-  template <typename Param>
-  typename Param::return_type get_backend_info() const;
+    template <typename Param>
+    typename Param::return_type get_info() const;
+
+    template <typename Param>
+    typename Param::return_type get_backend_info() const;
 };
 
-} // namespace sycl
+} // namespace simsycl::sycl
