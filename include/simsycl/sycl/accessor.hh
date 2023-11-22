@@ -137,9 +137,11 @@ class accessor {
     template <access_mode A = AccessMode, std::enable_if_t<A != access_mode::atomic, int> = 0>
     reference operator[](id<Dimensions> index) const;
 
-    // Deprecated
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
     template <access_mode A = AccessMode, std::enable_if_t<A == access_mode::atomic, int> = 0>
-    atomic<DataT, access::address_space::global_space> operator[](id<Dimensions> index) const;
+    [[deprecated]] atomic<DataT, access::address_space::global_space> operator[](id<Dimensions> index) const;
+    #pragma GCC diagnostic pop
 
     decltype(auto) operator[](size_t index) const { return detail::subscript(*this, index); }
 
@@ -219,9 +221,11 @@ class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> {
     template <access_mode A = AccessMode, std::enable_if_t<A != access_mode::atomic && A != access_mode::read, int> = 0>
     const accessor &operator=(value_type &&other) const;
 
-    // Deprecated
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
     template <access_mode A = AccessMode, std::enable_if_t<A == access_mode::atomic, int> = 0>
-    operator atomic<DataT, access::address_space::global_space>() const;
+    [[deprecated]] operator atomic<DataT, access::address_space::global_space>() const;
+    #pragma GCC diagnostic pop
 
     std::add_pointer_t<value_type> get_pointer() const noexcept;
 
