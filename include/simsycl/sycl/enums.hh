@@ -151,6 +151,12 @@ enum class placeholder { // Deprecated
     true_t
 };
 
+enum class fence_space {
+    local_space,
+    global_space,
+    global_and_local
+};
+
 } // namespace simsycl::sycl::access
 
 namespace simsycl::sycl::info {
