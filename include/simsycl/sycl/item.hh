@@ -8,10 +8,14 @@
 
 namespace simsycl::detail {
 
-template <int Dimensions, bool WithOffset = true>
-sycl::item<Dimensions, WithOffset> make_item(
+template <int Dimensions>
+sycl::item<Dimensions, true> make_item(
     const sycl::id<Dimensions> &the_id, const sycl::range<Dimensions> &range, const sycl::id<Dimensions> &offset) {
-    return sycl::item<Dimensions, WithOffset>(the_id, range, offset);
+    return sycl::item<Dimensions, true>(the_id, range, offset);
+}
+template <int Dimensions>
+sycl::item<Dimensions, false> make_item(const sycl::id<Dimensions> &the_id, const sycl::range<Dimensions> &range) {
+    return sycl::item<Dimensions, false>(the_id, range, {});
 }
 
 } // namespace simsycl::detail
@@ -57,9 +61,10 @@ class item {
     }
 
   private:
-    template <int D, bool W>
-    friend sycl::item<D, W> simsycl::detail::make_item(
-        const sycl::id<D> &the_id, const sycl::range<D> &range, const sycl::id<D> &offset);
+    friend sycl::item<Dimensions, true> simsycl::detail::make_item<Dimensions>(
+        const sycl::id<Dimensions> &, const sycl::range<Dimensions> &, const sycl::id<Dimensions> &);
+    friend sycl::item<Dimensions, false> simsycl::detail::make_item<Dimensions>(
+        const sycl::id<Dimensions> &, const sycl::range<Dimensions> &);
 
     id<Dimensions> m_id;
     range<Dimensions> m_range;

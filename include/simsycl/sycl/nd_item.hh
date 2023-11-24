@@ -1,5 +1,7 @@
 #pragma once
 
+#include <boost/context/continuation.hpp>
+
 #include "forward.hh"
 
 #include "group.hh"
@@ -8,9 +10,45 @@
 #include "simsycl/detail/check.hh"
 #include "sub_group.hh"
 
+namespace simsycl::detail {
+
+enum class nd_item_state { init, barrier, exit };
+
+class nd_item_impl {
+  public:
+    void barrier() {
+        m_state = nd_item_state::barrier;
+        *m_continuation = m_continuation->resume();
+    }
+
+    boost::context::continuation*& continuation() {
+        return m_continuation;
+    }
+
+    nd_item_state& state() {
+        return m_state;
+    }
+    nd_item_state state() const {
+        return m_state;
+    }
+
+  private:
+    nd_item_state m_state = nd_item_state::init;
+    boost::context::continuation* m_continuation = nullptr;
+};
+
+template <int Dimensions>
+sycl::nd_item<Dimensions> make_nd_item(const sycl::item<Dimensions, false> &global_id,
+    const sycl::item<Dimensions, false> &local_id, const sycl::group<Dimensions> &group,
+    const sycl::sub_group &sub_group, nd_item_impl *impl) {
+    return sycl::nd_item<Dimensions>(global_id, local_id, group, sub_group, impl);
+}
+
+} // namespace simsycl::detail
+
 namespace simsycl::sycl {
 
-template <int Dimensions = 1>
+template <int Dimensions>
 class nd_item {
   public:
     static constexpr int dimensions = Dimensions;
@@ -33,11 +71,9 @@ class nd_item {
 
     sub_group get_sub_group() const { return m_sub_group; }
 
-    size_t get_group(int dimension) const {return m_group.get_group_id(dimension); }
+    size_t get_group(int dimension) const { return m_group.get_group_id(dimension); }
 
-    size_t get_group_linear_id() const {
-        return m_group.get_group_linear_id();
-    }
+    size_t get_group_linear_id() const { return m_group.get_group_linear_id(); }
 
     range<Dimensions> get_group_range() const { return m_group.get_group_range(); }
 
@@ -59,9 +95,7 @@ class nd_item {
         return nd_range<Dimensions>(get_global_range(), get_local_range(), get_offset());
     }
 
-    void barrier(access::fence_space access_space = access::fence_space::global_and_local) const {
-        SIMSYCL_NOT_IMPLEMENTED;
-    }
+    void barrier(access::fence_space access_space = access::fence_space::global_and_local) const { m_impl->barrier(); }
 
     template <access::mode AccessMode = access_mode::read_write>
     [[deprecated("use sycl::atomic_fence() free function instead")]] void mem_fence(
@@ -98,6 +132,16 @@ class nd_item {
     item<Dimensions, false> m_local_item;
     group<Dimensions> m_group;
     sub_group m_sub_group;
+
+    detail::nd_item_impl *m_impl;
+
+    nd_item(const item<Dimensions, false> &global_item, const item<Dimensions, false> &local_item,
+        const group<Dimensions> &group, const sub_group &sub_group, detail::nd_item_impl *impl)
+        : m_global_item(global_item), m_local_item(local_item), m_group(group), m_sub_group(sub_group), m_impl(impl) {}
+
+    friend nd_item<Dimensions> detail::make_nd_item<Dimensions>(const sycl::item<Dimensions, false> &,
+        const sycl::item<Dimensions, false> &, const sycl::group<Dimensions> &, const sycl::sub_group &,
+        detail::nd_item_impl *);
 };
 
 } // namespace simsycl::sycl
