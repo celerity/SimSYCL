@@ -5,6 +5,8 @@
 #include "forward.hh"
 #include "id.hh"
 #include "item.hh"
+#include "nd_item.hh"
+#include "nd_range.hh"
 #include "range.hh"
 
 #include <cstring>
@@ -45,13 +47,60 @@ void sequential_for(const sycl::range<3> &range, const sycl::id<3> &offset, Func
     }
 }
 
-template <typename Range, typename ParamTuple, size_t... ReductionIndices, size_t KernelIndex>
-void dispatch_for(const Range &range, ParamTuple &&params,
+
+template <typename Func, typename... Params>
+void nd_for(const sycl::nd_range<1> &range, Func &&func, Params &&...args) {
+    sycl::id<1> global_id;
+    std::vector<detail::nd_item_impl> nd_item_impls(range.get_global_range()[0]);
+    std::vector<boost::context::continuation> continuations;
+
+    // build the work items and continuations
+    for(global_id[0] = 0; global_id[0] < range.get_global_range()[0]; ++global_id[0]) {
+        auto global_item = detail::make_item(global_id, range.get_global_range());
+        auto local_item = detail::make_item(global_id % range.get_local_range()[0], range.get_local_range());
+        sycl::id<1> group_id{global_id[0] / range.get_local_range()[0]};
+        auto group
+            = detail::make_group(group_id, range.get_global_range(), range.get_group_range(), range.get_local_range());
+        auto nd_item = detail::make_nd_item<1>(
+            global_item, local_item, group, {/* TODO subgroup */}, &nd_item_impls[global_id[0]]);
+
+        continuations.push_back(boost::context::callcc(
+            [func, nd_item, global_id, &nd_item_impls, &args...](boost::context::continuation &&cont) {
+                nd_item_impls[global_id[0]].continuation() = &cont;
+                func(nd_item, std::forward<Params>(args)...);
+                nd_item_impls[global_id[0]].state() = nd_item_state::exit;
+                return std::move(cont);
+            }));
+    }
+
+    // run until all are complete (this does an extra loop)
+    bool done = false;
+    while(!done) {
+        done = true;
+        for(int i = 0; i < nd_item_impls.size(); ++i) {
+            if(nd_item_impls[i].state() != nd_item_state::exit) {
+                done = false;
+                continuations[i] = continuations[i].resume();
+            }
+        }
+    }
+}
+
+template <int Dimensions, typename ParamTuple, size_t... ReductionIndices, size_t KernelIndex>
+void dispatch_for(const sycl::range<Dimensions> &range, ParamTuple &&params,
     std::index_sequence<ReductionIndices...> /* reduction_indices */,
     std::index_sequence<KernelIndex> /* kernel_index */) {
-    const sycl::id<Range::dimensions> offset{};
+    const sycl::id<Dimensions> offset{};
     const auto &kernel_func = std::get<KernelIndex>(params);
     detail::sequential_for(range, offset, kernel_func, std::get<ReductionIndices>(params)...);
+}
+
+template <int Dimensions, typename ParamTuple, size_t... ReductionIndices, size_t KernelIndex>
+void dispatch_for(const sycl::nd_range<Dimensions> &range, ParamTuple &&params,
+    std::index_sequence<ReductionIndices...> /* reduction_indices */,
+    std::index_sequence<KernelIndex> /* kernel_index */) {
+    const auto &kernel_func = std::get<KernelIndex>(params);
+    detail::nd_for(range, kernel_func, std::get<ReductionIndices>(params)...);
 }
 
 template <int Dimensions, typename... Rest, std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
@@ -66,13 +115,15 @@ void parallel_for(
     detail::sequential_for(num_work_items, work_item_offset, kernel_func);
 }
 
-template <typename KernelName, int Dimensions, typename... Rest, std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
+class unnamed_kernel;
+
+template <typename KernelName = unnamed_kernel, int Dimensions, typename... Rest,
+    std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
 void parallel_for(sycl::nd_range<Dimensions> execution_range, Rest &&...rest) {
     detail::dispatch_for(execution_range, std::forward_as_tuple(std::forward<Rest>(rest)...),
         std::make_index_sequence<sizeof...(Rest) - 1>(), std::index_sequence<sizeof...(Rest) - 1>());
 }
 
-class unnamed_kernel;
 
 } // namespace simsycl::detail
 

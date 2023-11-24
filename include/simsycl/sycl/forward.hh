@@ -43,6 +43,9 @@ class id;
 template <int Dimensions = 1, bool WithOffset = true>
 class item;
 
+template <int Dimensions = 1>
+class nd_item;
+
 class kernel;
 
 template <bundle_state State>
@@ -56,6 +59,9 @@ class multi_ptr;
 
 template <int Dimensions = 1>
 class nd_range;
+
+template <int Dimensions = 1>
+class group;
 
 class platform;
 
