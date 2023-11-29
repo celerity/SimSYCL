@@ -1,17 +1,21 @@
 #pragma once
 
+#include <cstddef>
+#include <cstring>
+#include <memory>
+#include <vector>
+
 #include "enums.hh"
 #include "event.hh"
 #include "forward.hh"
+#include "group.hh"
 #include "id.hh"
 #include "item.hh"
 #include "nd_item.hh"
 #include "nd_range.hh"
 #include "range.hh"
 
-#include <cstring>
-#include <memory>
-#include <vector>
+#include "simsycl/detail/utils.hh"
 
 namespace simsycl::detail {
 
@@ -54,21 +58,35 @@ void nd_for(const sycl::nd_range<1> &range, Func &&func, Params &&...args) {
     std::vector<detail::nd_item_impl> nd_item_impls(range.get_global_range()[0]);
     std::vector<boost::context::continuation> continuations;
 
-    // build the work items and continuations
+    std::vector<detail::group_impl> group_impls(range.get_group_range()[0]);
+    auto sub_groups_per_group = detail::div_ceil(range.get_local_range()[0], config::max_sub_group_size);
+    std::vector<detail::sub_group_impl> sub_group_impls(range.get_group_range()[0] * sub_groups_per_group);
+
+    // build the work items, groups, subgroups and continuations
     for(global_id[0] = 0; global_id[0] < range.get_global_range()[0]; ++global_id[0]) {
         auto global_item = detail::make_item(global_id, range.get_global_range());
         auto local_item = detail::make_item(global_id % range.get_local_range()[0], range.get_local_range());
+
         sycl::id<1> group_id{global_id[0] / range.get_local_range()[0]};
-        auto group
-            = detail::make_group(group_id, range.get_global_range(), range.get_group_range(), range.get_local_range());
-        auto nd_item = detail::make_nd_item<1>(
-            global_item, local_item, group, {/* TODO subgroup */}, &nd_item_impls[global_id[0]]);
+        auto group = detail::make_group(group_id, range.get_global_range(), range.get_group_range(),
+            range.get_local_range(), &group_impls[group_id[0]]);
+
+        sycl::id<1> sub_group_local_id{local_item[0] % sub_groups_per_group};
+        sycl::range<1> sub_group_local_range{config::max_sub_group_size};
+        sycl::id<1> sub_group_group_id{local_item[0] / sub_groups_per_group};
+        sycl::range<1> sub_group_group_range{sub_groups_per_group};
+        auto sub_group = detail::make_sub_group(sub_group_local_id, sub_group_local_range, sub_group_group_id,
+            sub_group_group_range, &sub_group_impls[group_id[0] * sub_groups_per_group + sub_group_local_id[0]]);
+
+        auto nd_item = detail::make_nd_item<1>(global_item, local_item, group, sub_group, &nd_item_impls[global_id[0]]);
 
         continuations.push_back(boost::context::callcc(
             [func, nd_item, global_id, &nd_item_impls, &args...](boost::context::continuation &&cont) {
-                nd_item_impls[global_id[0]].continuation() = &cont;
+                auto &impl = nd_item_impls[global_id[0]];
+                impl.continuation() = &cont;
+                impl.state() = detail::nd_item_state::running;
                 func(nd_item, std::forward<Params>(args)...);
-                nd_item_impls[global_id[0]].state() = nd_item_state::exit;
+                impl.state() = nd_item_state::exit;
                 return std::move(cont);
             }));
     }
@@ -77,7 +95,7 @@ void nd_for(const sycl::nd_range<1> &range, Func &&func, Params &&...args) {
     bool done = false;
     while(!done) {
         done = true;
-        for(int i = 0; i < nd_item_impls.size(); ++i) {
+        for(size_t i = 0; i < nd_item_impls.size(); ++i) {
             if(nd_item_impls[i].state() != nd_item_state::exit) {
                 done = false;
                 continuations[i] = continuations[i].resume();
@@ -138,9 +156,9 @@ class handler {
         access::placeholder IsPlaceholder>
     void require(accessor<DataT, Dimensions, AccessMode, AccessTarget, IsPlaceholder> acc);
 
-    void depends_on(event dep_event) {}
+    void depends_on(event dep_event) { (void)dep_event; }
 
-    void depends_on(const std::vector<event> &dep_events) {}
+    void depends_on(const std::vector<event> &dep_events) { (void)dep_events; }
 
     //----- Backend interoperability interface
 

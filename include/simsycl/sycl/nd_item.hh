@@ -7,34 +7,30 @@
 #include "group.hh"
 #include "id.hh"
 #include "range.hh"
-#include "simsycl/detail/check.hh"
 #include "sub_group.hh"
+
+#include "simsycl/detail/check.hh"
 
 namespace simsycl::detail {
 
-enum class nd_item_state { init, barrier, exit };
+enum class nd_item_state { init, running, barrier, exit };
 
 class nd_item_impl {
   public:
     void barrier() {
         m_state = nd_item_state::barrier;
         *m_continuation = m_continuation->resume();
+        m_state = nd_item_state::running;
     }
 
-    boost::context::continuation*& continuation() {
-        return m_continuation;
-    }
+    boost::context::continuation *&continuation() { return m_continuation; }
 
-    nd_item_state& state() {
-        return m_state;
-    }
-    nd_item_state state() const {
-        return m_state;
-    }
+    nd_item_state &state() { return m_state; }
+    nd_item_state state() const { return m_state; }
 
   private:
     nd_item_state m_state = nd_item_state::init;
-    boost::context::continuation* m_continuation = nullptr;
+    boost::context::continuation *m_continuation = nullptr;
 };
 
 template <int Dimensions>
@@ -95,7 +91,10 @@ class nd_item {
         return nd_range<Dimensions>(get_global_range(), get_local_range(), get_offset());
     }
 
-    void barrier(access::fence_space access_space = access::fence_space::global_and_local) const { m_impl->barrier(); }
+    void barrier(access::fence_space access_space = access::fence_space::global_and_local) const {
+        (void)access_space;
+        m_impl->barrier();
+    }
 
     template <access::mode AccessMode = access_mode::read_write>
     [[deprecated("use sycl::atomic_fence() free function instead")]] void mem_fence(

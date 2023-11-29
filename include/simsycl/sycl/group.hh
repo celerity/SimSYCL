@@ -4,14 +4,18 @@
 
 #include "id.hh"
 #include "range.hh"
+#include "type_traits.hh"
+
 #include "simsycl/detail/check.hh"
 
 namespace simsycl::detail {
 
+struct group_impl {};
+
 template <int Dimensions>
 sycl::group<Dimensions> make_group(const sycl::id<Dimensions> &index, const sycl::range<Dimensions> &global_range,
-    const sycl::range<Dimensions> &local_range, const sycl::range<Dimensions> &group_range) {
-    return sycl::group<Dimensions>(index, global_range, local_range, group_range);
+    const sycl::range<Dimensions> &local_range, const sycl::range<Dimensions> &group_range, group_impl *impl) {
+    return sycl::group<Dimensions>(index, global_range, local_range, group_range, impl);
 }
 
 } // namespace simsycl::detail
@@ -108,14 +112,19 @@ class group {
     range<Dimensions> m_global_range;
     range<Dimensions> m_local_range;
     range<Dimensions> m_group_range;
+    detail::group_impl *m_impl;
 
     group(const id<Dimensions> &index, const range<Dimensions> &global_range, const range<Dimensions> &local_range,
-        const range<Dimensions> &group_range)
-        : m_index(index), m_global_range(global_range), m_local_range(local_range), m_group_range(group_range) {}
+        const range<Dimensions> &group_range, detail::group_impl *impl)
+        : m_index(index), m_global_range(global_range), m_local_range(local_range), m_group_range(group_range),
+          m_impl(impl) {}
 
     friend group<Dimensions> detail::make_group<Dimensions>(const sycl::id<Dimensions> &index,
         const sycl::range<Dimensions> &global_range, const sycl::range<Dimensions> &local_range,
-        const sycl::range<Dimensions> &group_range);
+        const sycl::range<Dimensions> &group_range, detail::group_impl *impl);
 };
+
+template <int Dimensions>
+struct is_group<group<Dimensions>> : std::true_type {};
 
 } // namespace simsycl::sycl
