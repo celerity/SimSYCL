@@ -63,6 +63,8 @@ class nd_range;
 template <int Dimensions = 1>
 class group;
 
+class sub_group;
+
 class platform;
 
 class queue;
@@ -83,3 +85,13 @@ template <int Dimensions = 1, typename AllocatorT = image_allocator>
 class unsampled_image;
 
 } // namespace simsycl::sycl
+
+namespace simsycl::detail {
+
+struct group_impl;
+struct sub_group_impl;
+
+sycl::sub_group make_sub_group(
+    const sycl::id<1> &, const sycl::range<1> &, const sycl::id<1> &, const sycl::range<1> &, sub_group_impl *);
+
+} // namespace simsycl::detail

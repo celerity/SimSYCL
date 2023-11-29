@@ -144,7 +144,7 @@ class queue : public detail::property_interface {
     event parallel_for(nd_range<Dims> execution_range, event /* dep_event */, Rest &&...rest) {
         detail::parallel_for(execution_range, std::forward<Rest>(rest)...);
         return event();
-    };
+    }
 
     template <typename KernelName, int Dims, typename... Rest, std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
     event parallel_for(nd_range<Dims> execution_range, const std::vector<event> & /* dep_events */, Rest &&...rest) {
@@ -212,13 +212,13 @@ class queue : public detail::property_interface {
     event fill(void *ptr, const T &pattern, size_t count, event /* dep_event */) {
         std::fill_n(ptr, count, pattern);
         return event();
-    };
+    }
 
     template <typename T>
     event fill(void *ptr, const T &pattern, size_t count, const std::vector<event> & /* dep_events */) {
         std::fill_n(ptr, count, pattern);
         return event();
-    };
+    }
 
     event prefetch(void * /* ptr */, size_t /* num_bytes */) { return event(); }
 
