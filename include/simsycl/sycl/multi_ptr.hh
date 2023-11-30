@@ -145,36 +145,37 @@ class multi_ptr {
     void prefetch(size_t num_elements) const;
 
     // Arithmetic operators
-    friend multi_ptr &operator++(multi_ptr &mp) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend multi_ptr operator++(multi_ptr &mp, int) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend multi_ptr &operator--(multi_ptr &mp) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend multi_ptr operator--(multi_ptr &mp, int) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend multi_ptr &operator+=(multi_ptr &lhs, difference_type r) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend multi_ptr &operator-=(multi_ptr &lhs, difference_type r) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend multi_ptr operator+(const multi_ptr &lhs, difference_type r) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend multi_ptr operator-(const multi_ptr &lhs, difference_type r) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend reference operator*(const multi_ptr &lhs) { SIMSYCL_NOT_IMPLEMENTED; }
+    friend multi_ptr &operator++(multi_ptr &mp) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(mp); }
+    friend multi_ptr operator++(multi_ptr &mp, int) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(mp); }
+    friend multi_ptr &operator--(multi_ptr &mp) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(mp); }
+    friend multi_ptr operator--(multi_ptr &mp, int) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(mp); }
+    friend multi_ptr &operator+=(multi_ptr &lhs, difference_type r) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, r); }
+    friend multi_ptr &operator-=(multi_ptr &lhs, difference_type r) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, r); }
+    friend multi_ptr operator+(const multi_ptr &lhs, difference_type r) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, r); }
+    friend multi_ptr operator-(const multi_ptr &lhs, difference_type r) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, r); }
+    friend reference operator*(const multi_ptr &lhs) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs); }
 
-    friend bool operator==(const multi_ptr &lhs, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend bool operator!=(const multi_ptr &lhs, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend bool operator<(const multi_ptr &lhs, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend bool operator>(const multi_ptr &lhs, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend bool operator<=(const multi_ptr &lhs, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend bool operator>=(const multi_ptr &lhs, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED; }
+    friend bool operator==(const multi_ptr &lhs, const multi_ptr &rhs) {
+        SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, rhs);
+    }
+    friend bool operator!=(const multi_ptr &lhs, const multi_ptr &rhs) {
+        SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, rhs);
+    }
+    friend bool operator<(const multi_ptr &lhs, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, rhs); }
+    friend bool operator>(const multi_ptr &lhs, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, rhs); }
+    friend bool operator<=(const multi_ptr &lhs, const multi_ptr &rhs) {
+        SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, rhs);
+    }
+    friend bool operator>=(const multi_ptr &lhs, const multi_ptr &rhs) {
+        SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, rhs);
+    }
 
-    friend bool operator==(const multi_ptr &lhs, std::nullptr_t) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend bool operator!=(const multi_ptr &lhs, std::nullptr_t) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend bool operator<(const multi_ptr &lhs, std::nullptr_t) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend bool operator>(const multi_ptr &lhs, std::nullptr_t) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend bool operator<=(const multi_ptr &lhs, std::nullptr_t) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend bool operator>=(const multi_ptr &lhs, std::nullptr_t) { SIMSYCL_NOT_IMPLEMENTED; }
-
-    friend bool operator==(std::nullptr_t, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend bool operator!=(std::nullptr_t, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend bool operator<(std::nullptr_t, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend bool operator>(std::nullptr_t, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend bool operator<=(std::nullptr_t, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend bool operator>=(std::nullptr_t, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED; }
+    friend bool operator==(const multi_ptr &lhs, std::nullptr_t) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs); }
+    friend bool operator!=(const multi_ptr &lhs, std::nullptr_t) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs); }
+    friend bool operator<(const multi_ptr &lhs, std::nullptr_t) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs); }
+    friend bool operator>(const multi_ptr &lhs, std::nullptr_t) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs); }
+    friend bool operator<=(const multi_ptr &lhs, std::nullptr_t) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs); }
+    friend bool operator>=(const multi_ptr &lhs, std::nullptr_t) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs); }
 };
 
 // specialization helper
@@ -241,26 +242,34 @@ class multi_ptr<detail::void_type<VoidType>, Space, DecorateAddress> {
     // Implicit conversion to multi_ptr<const void, Space>
     operator multi_ptr<const void, Space, DecorateAddress>() const;
 
-    friend bool operator==(const multi_ptr &lhs, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend bool operator!=(const multi_ptr &lhs, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend bool operator<(const multi_ptr &lhs, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend bool operator>(const multi_ptr &lhs, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend bool operator<=(const multi_ptr &lhs, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend bool operator>=(const multi_ptr &lhs, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED; }
+    friend bool operator==(const multi_ptr &lhs, const multi_ptr &rhs) {
+        SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, rhs);
+    }
+    friend bool operator!=(const multi_ptr &lhs, const multi_ptr &rhs) {
+        SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, rhs);
+    }
+    friend bool operator<(const multi_ptr &lhs, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, rhs); }
+    friend bool operator>(const multi_ptr &lhs, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, rhs); }
+    friend bool operator<=(const multi_ptr &lhs, const multi_ptr &rhs) {
+        SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, rhs);
+    }
+    friend bool operator>=(const multi_ptr &lhs, const multi_ptr &rhs) {
+        SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, rhs);
+    }
 
-    friend bool operator==(const multi_ptr &lhs, std::nullptr_t) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend bool operator!=(const multi_ptr &lhs, std::nullptr_t) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend bool operator<(const multi_ptr &lhs, std::nullptr_t) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend bool operator>(const multi_ptr &lhs, std::nullptr_t) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend bool operator<=(const multi_ptr &lhs, std::nullptr_t) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend bool operator>=(const multi_ptr &lhs, std::nullptr_t) { SIMSYCL_NOT_IMPLEMENTED; }
+    friend bool operator==(const multi_ptr &lhs, std::nullptr_t) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs); }
+    friend bool operator!=(const multi_ptr &lhs, std::nullptr_t) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs); }
+    friend bool operator<(const multi_ptr &lhs, std::nullptr_t) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs); }
+    friend bool operator>(const multi_ptr &lhs, std::nullptr_t) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs); }
+    friend bool operator<=(const multi_ptr &lhs, std::nullptr_t) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs); }
+    friend bool operator>=(const multi_ptr &lhs, std::nullptr_t) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs); }
 
-    friend bool operator==(std::nullptr_t, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend bool operator!=(std::nullptr_t, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend bool operator<(std::nullptr_t, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend bool operator>(std::nullptr_t, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend bool operator<=(std::nullptr_t, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED; }
-    friend bool operator>=(std::nullptr_t, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED; }
+    friend bool operator==(std::nullptr_t, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(rhs); }
+    friend bool operator!=(std::nullptr_t, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(rhs); }
+    friend bool operator<(std::nullptr_t, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(rhs); }
+    friend bool operator>(std::nullptr_t, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(rhs); }
+    friend bool operator<=(std::nullptr_t, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(rhs); }
+    friend bool operator>=(std::nullptr_t, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(rhs); }
 };
 
 template <access::address_space Space, access::decorated DecorateAddress>
