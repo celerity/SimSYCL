@@ -28,8 +28,10 @@ concept Group = is_group_v<T>;
 template <typename T>
 concept SubGroup = is_sub_group_v<T>;
 
-// TODO check what the standard actually means when it says "SYCL function object type"
 template <typename Fn, typename T>
 concept BinaryOperation = std::is_invocable_r_v<T, Fn, T, T>;
+
+template <typename Fn>
+concept SyclFunctionObject = is_function_object_v<Fn>;
 
 } // namespace simsycl::sycl

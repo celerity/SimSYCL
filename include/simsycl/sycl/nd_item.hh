@@ -88,7 +88,7 @@ class nd_item {
     }
 
     nd_range<Dimensions> get_nd_range() const {
-        return nd_range<Dimensions>(get_global_range(), get_local_range(), get_offset());
+        return nd_range<Dimensions>(get_global_range(), get_local_range(), m_global_item.get_offset());
     }
 
     void barrier(access::fence_space access_space = access::fence_space::global_and_local) const {
@@ -103,7 +103,7 @@ class nd_item {
             access::fence_space>
             access_space
         = access::fence_space::global_and_local) const {
-        SIMSYCL_NOT_IMPLEMENTED;
+        SIMSYCL_NOT_IMPLEMENTED(access_space);
     }
 
     template <typename... Events>

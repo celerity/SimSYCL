@@ -26,6 +26,7 @@ add_library(simsycl
     include/simsycl/sycl/event.hh
     include/simsycl/sycl/exception.hh
     include/simsycl/sycl/forward.hh
+    include/simsycl/sycl/function_objects.hh
     include/simsycl/sycl/group_algorithms.hh
     include/simsycl/sycl/group_functions.hh
     include/simsycl/sycl/group.hh
