@@ -15,22 +15,20 @@ namespace simsycl::detail {
 
 enum class nd_item_state { init, running, barrier, exit };
 
-class nd_item_impl {
+struct nd_item_impl {
   public:
     void barrier() {
-        m_state = nd_item_state::barrier;
-        *m_continuation = m_continuation->resume();
-        m_state = nd_item_state::running;
+        state = nd_item_state::barrier;
+        *continuation = continuation->resume();
+        state = nd_item_state::running;
     }
 
-    boost::context::continuation *&continuation() { return m_continuation; }
-
-    nd_item_state &state() { return m_state; }
-    nd_item_state state() const { return m_state; }
-
-  private:
-    nd_item_state m_state = nd_item_state::init;
-    boost::context::continuation *m_continuation = nullptr;
+    nd_item_state state = nd_item_state::init;
+    boost::context::continuation *continuation = nullptr;
+    size_t linear_id_in_group = 0;
+    size_t group_ops_reached = 0;
+    size_t linear_id_in_sub_group = 0;
+    size_t sub_group_ops_reached = 0;
 };
 
 template <int Dimensions>
@@ -91,7 +89,8 @@ class nd_item {
         return nd_range<Dimensions>(get_global_range(), get_local_range(), m_global_item.get_offset());
     }
 
-    void barrier(access::fence_space access_space = access::fence_space::global_and_local) const {
+    [[deprecated("use sycl::group_barrier() free function instead")]] void barrier(
+        access::fence_space access_space = access::fence_space::global_and_local) const {
         (void)access_space;
         m_impl->barrier();
     }

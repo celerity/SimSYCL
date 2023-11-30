@@ -64,29 +64,36 @@ void nd_for(const sycl::nd_range<1> &range, Func &&func, Params &&...args) {
 
     // build the work items, groups, subgroups and continuations
     for(global_id[0] = 0; global_id[0] < range.get_global_range()[0]; ++global_id[0]) {
+        auto *nd_item_impl_ptr = &nd_item_impls[global_id[0]];
         auto global_item = detail::make_item(global_id, range.get_global_range());
         auto local_item = detail::make_item(global_id % range.get_local_range()[0], range.get_local_range());
 
         sycl::id<1> group_id{global_id[0] / range.get_local_range()[0]};
-        auto group = detail::make_group(group_id, range.get_global_range(), range.get_group_range(),
-            range.get_local_range(), &group_impls[group_id[0]]);
+        sycl::item<1, false> group_item = detail::make_item(group_id, range.get_group_range());
+        auto *group_impl_ptr = &group_impls[group_id[0]];
+        group_impl_ptr->item_impls.push_back(nd_item_impl_ptr);
+        auto group = detail::make_group(local_item, global_item, group_item, group_impl_ptr);
+        nd_item_impl_ptr->linear_id_in_group = group_impl_ptr->item_impls.size() - 1;
 
         sycl::id<1> sub_group_local_id{local_item[0] % sub_groups_per_group};
         sycl::range<1> sub_group_local_range{config::max_sub_group_size};
         sycl::id<1> sub_group_group_id{local_item[0] / sub_groups_per_group};
         sycl::range<1> sub_group_group_range{sub_groups_per_group};
-        auto sub_group = detail::make_sub_group(sub_group_local_id, sub_group_local_range, sub_group_group_id,
-            sub_group_group_range, &sub_group_impls[group_id[0] * sub_groups_per_group + sub_group_local_id[0]]);
+        auto *sub_group_impl_ptr = &sub_group_impls[group_id[0] * sub_groups_per_group + sub_group_local_id[0]];
+        auto sub_group = detail::make_sub_group(
+            sub_group_local_id, sub_group_local_range, sub_group_group_id, sub_group_group_range, sub_group_impl_ptr);
+        sub_group_impl_ptr->item_impls.push_back(nd_item_impl_ptr);
+        nd_item_impl_ptr->linear_id_in_sub_group = sub_group_impl_ptr->item_impls.size() - 1;
 
-        auto nd_item = detail::make_nd_item<1>(global_item, local_item, group, sub_group, &nd_item_impls[global_id[0]]);
+        auto nd_item = detail::make_nd_item<1>(global_item, local_item, group, sub_group, nd_item_impl_ptr);
 
         continuations.push_back(boost::context::callcc(
             [func, nd_item, global_id, &nd_item_impls, &args...](boost::context::continuation &&cont) {
                 auto &impl = nd_item_impls[global_id[0]];
-                impl.continuation() = &cont;
-                impl.state() = detail::nd_item_state::running;
+                impl.continuation = &cont;
+                impl.state = detail::nd_item_state::running;
                 func(nd_item, std::forward<Params>(args)...);
-                impl.state() = nd_item_state::exit;
+                impl.state = nd_item_state::exit;
                 return std::move(cont);
             }));
     }
@@ -96,7 +103,7 @@ void nd_for(const sycl::nd_range<1> &range, Func &&func, Params &&...args) {
     while(!done) {
         done = true;
         for(size_t i = 0; i < nd_item_impls.size(); ++i) {
-            if(nd_item_impls[i].state() != nd_item_state::exit) {
+            if(nd_item_impls[i].state != nd_item_state::exit) {
                 done = false;
                 continuations[i] = continuations[i].resume();
             }
