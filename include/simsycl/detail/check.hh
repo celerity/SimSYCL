@@ -6,6 +6,8 @@
 
 #define SIMSYCL_NOT_IMPLEMENTED SIMSYCL_CHECK(false && "Not implemented");
 
+extern void var_use_dummy(...);
+
 #define SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(...)                                                                       \
-    (void)(__VA_ARGS__);                                                                                               \
+    if(false) var_use_dummy(__VA_ARGS__);                                                                              \
     SIMSYCL_CHECK(false && "Not implemented");

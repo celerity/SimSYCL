@@ -15,7 +15,7 @@ sycl::item<Dimensions, true> make_item(
 }
 template <int Dimensions>
 sycl::item<Dimensions, false> make_item(const sycl::id<Dimensions> &the_id, const sycl::range<Dimensions> &range) {
-    return sycl::item<Dimensions, false>(the_id, range, {});
+    return sycl::item<Dimensions, false>(the_id, range, sycl::id<Dimensions>::zero());
 }
 
 } // namespace simsycl::detail
@@ -39,18 +39,21 @@ class item {
 
     size_t get_range(int dimension) const { return m_range[dimension]; }
 
-    template <bool W = WithOffset, std::enable_if_t<W, int> = 0>
-    [[deprecated("Deprecated in SYCL 2020")]] id<Dimensions> get_offset() const {
+    [[deprecated("Deprecated in SYCL 2020")]] id<Dimensions> get_offset() const
+        requires WithOffset
+    {
         return m_offset;
     }
 
-    template <bool W = WithOffset, std::enable_if_t<!W, int> = 0>
-    operator item<Dimensions, true>() const {
+    operator item<Dimensions, true>() const
+        requires(!WithOffset)
+    {
         return item<Dimensions, true>(m_id, m_range, m_offset);
     }
 
-    template <int D = Dimensions, std::enable_if_t<D == 1, int> = 0>
-    operator size_t() const {
+    operator size_t() const
+        requires(Dimensions == 1)
+    {
         return m_id;
     }
 

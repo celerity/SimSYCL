@@ -88,10 +88,13 @@ class unsampled_image;
 
 namespace simsycl::detail {
 
+struct nd_item_impl;
 struct group_impl;
 struct sub_group_impl;
 
 sycl::sub_group make_sub_group(
     const sycl::id<1> &, const sycl::range<1> &, const sycl::id<1> &, const sycl::range<1> &, sub_group_impl *);
+
+detail::sub_group_impl &get_group_impl(sycl::sub_group &g);
 
 } // namespace simsycl::detail

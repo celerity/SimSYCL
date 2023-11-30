@@ -177,12 +177,14 @@ class queue : public detail::property_interface {
 
     template <typename T>
     event copy(const T *src, T *dest, size_t count, event dep_event) {
+        (void)(dep_event);
         std::copy_n(src, count, dest);
         return event();
     }
 
     template <typename T>
     event copy(const T *src, T *dest, size_t count, const std::vector<event> &dep_events) {
+        (void)(dep_events);
         std::copy_n(src, count, dest);
         return event();
     }
