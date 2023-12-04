@@ -122,16 +122,9 @@ struct is_sub_group<sub_group> : std::true_type {};
 
 namespace simsycl::detail {
 
-struct sub_group_impl {
-    std::vector<nd_item_impl *> item_impls;
-    std::vector<group_operation_data> operations;
-};
-
 sycl::sub_group make_sub_group(const sycl::id<1> &local_id, const sycl::range<1> &local_range,
     const sycl::id<1> &group_id, const sycl::range<1> &group_range, detail::sub_group_impl *impl) {
     return sycl::sub_group(local_id, local_range, group_id, group_range, impl);
 }
-
-detail::sub_group_impl &get_group_impl(sycl::sub_group &g) { return *g.m_impl; }
 
 } // namespace simsycl::detail

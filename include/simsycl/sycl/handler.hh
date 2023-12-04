@@ -73,7 +73,6 @@ void nd_for(const sycl::nd_range<1> &range, Func &&func, Params &&...args) {
         auto *group_impl_ptr = &group_impls[group_id[0]];
         group_impl_ptr->item_impls.push_back(nd_item_impl_ptr);
         auto group = detail::make_group(local_item, global_item, group_item, group_impl_ptr);
-        nd_item_impl_ptr->linear_id_in_group = group_impl_ptr->item_impls.size() - 1;
 
         sycl::id<1> sub_group_local_id{local_item[0] % sub_groups_per_group};
         sycl::range<1> sub_group_local_range{config::max_sub_group_size};
@@ -83,7 +82,6 @@ void nd_for(const sycl::nd_range<1> &range, Func &&func, Params &&...args) {
         auto sub_group = detail::make_sub_group(
             sub_group_local_id, sub_group_local_range, sub_group_group_id, sub_group_group_range, sub_group_impl_ptr);
         sub_group_impl_ptr->item_impls.push_back(nd_item_impl_ptr);
-        nd_item_impl_ptr->linear_id_in_sub_group = sub_group_impl_ptr->item_impls.size() - 1;
 
         auto nd_item = detail::make_nd_item<1>(global_item, local_item, group, sub_group, nd_item_impl_ptr);
 
