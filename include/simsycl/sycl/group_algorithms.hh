@@ -3,6 +3,7 @@
 #include "concepts.hh"
 #include "group.hh"
 #include "group_functions.hh"
+#include "simsycl/detail/group_operation_impl.hh"
 #include "sub_group.hh"
 
 #include "simsycl/detail/check.hh"
@@ -14,9 +15,32 @@ namespace simsycl::sycl {
 template <Group G, Pointer Ptr, typename Predicate>
     requires std::predicate<Predicate, std::remove_pointer_t<Ptr>>
 bool joint_any_of(G g, Ptr first, Ptr last, Predicate pred) {
-    // CHECK first and last must be the same for all work-items in group g
-    // CEHCK pred must be an immutable callable with the same type and state for all work-items in group g
-    SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(g, first, last, pred);
+    // approach: perform the operation sequentially on all work items, confirm that they compute the same result
+    // (this is the closest we can easily get to verifying the standard requirement that
+    //  "pred must be an immutable callable with the same state for all work-items in group g")
+
+    bool result = false;
+    for(auto start = first; !result && start != last; ++start) { result = pred(*start); }
+
+    detail::perform_group_operation(g, detail::group_operation_id::joint_any_of,
+        detail::group_operation_spec{//
+            .init =
+                [&](detail::group_operation_data &) {
+                    auto per_op_data = std::make_unique<detail::group_joint_op_data>();
+                    per_op_data->first = reinterpret_cast<std::intptr_t>(first);
+                    per_op_data->last = reinterpret_cast<std::intptr_t>(last);
+                    per_op_data->result = result;
+                    return per_op_data;
+                },
+            .reached =
+                [&](detail::group_operation_data &group_data, const detail::group_operation_data &) {
+                    auto &per_op = *static_cast<detail::group_joint_op_data *>(group_data.per_op_data.get());
+                    SIMSYCL_CHECK(per_op.first == reinterpret_cast<std::intptr_t>(first));
+                    SIMSYCL_CHECK(per_op.last == reinterpret_cast<std::intptr_t>(last));
+                    SIMSYCL_CHECK(per_op.result == result);
+                }});
+
+    return result;
 }
 
 template <Group G, typename T, typename Predicate>

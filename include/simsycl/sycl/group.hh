@@ -11,21 +11,11 @@
 
 namespace simsycl::detail {
 
-struct group_impl {
-    std::vector<nd_item_impl *> item_impls;
-    std::vector<group_operation_data> operations;
-};
-
 template <int Dimensions>
 sycl::group<Dimensions> make_group(const sycl::item<Dimensions, false> &local_item,
     const sycl::item<Dimensions, false> &global_item, const sycl::item<Dimensions, false> &group_item,
     detail::group_impl *impl) {
     return sycl::group<Dimensions>(local_item, global_item, group_item, impl);
-}
-
-template <int Dimensions>
-group_impl &get_group_impl(sycl::group<Dimensions> &g) {
-    return *g.m_impl;
 }
 
 } // namespace simsycl::detail

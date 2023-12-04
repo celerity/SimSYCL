@@ -25,9 +25,7 @@ struct nd_item_impl {
 
     nd_item_state state = nd_item_state::init;
     boost::context::continuation *continuation = nullptr;
-    size_t linear_id_in_group = 0;
     size_t group_ops_reached = 0;
-    size_t linear_id_in_sub_group = 0;
     size_t sub_group_ops_reached = 0;
 };
 
