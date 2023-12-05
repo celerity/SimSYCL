@@ -21,7 +21,7 @@ class sub_group {
 
     id_type get_local_id() const { return m_local_id; }
 
-    linear_id_type get_local_linear_id() const { return (uint32_t)(size_t)m_local_id; }
+    linear_id_type get_local_linear_id() const { return (linear_id_type)(size_t)m_local_id; }
 
     range_type get_local_range() const { return m_local_range; }
 
@@ -29,7 +29,7 @@ class sub_group {
 
     id_type get_group_id() const { return m_group_id; }
 
-    linear_id_type get_group_linear_id() const { return (uint32_t)(size_t)m_group_id; }
+    linear_id_type get_group_linear_id() const { return (linear_id_type)(size_t)m_group_id; }
 
     range_type get_group_range() const { return m_group_range; }
 
