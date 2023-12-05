@@ -46,8 +46,25 @@ bool joint_any_of(G g, Ptr first, Ptr last, Predicate pred) {
 template <Group G, typename T, typename Predicate>
     requires std::predicate<Predicate, T>
 bool any_of_group(G g, T x, Predicate pred) {
-    // CHECK pred must be an immutable callable with the same type and state for all work-items in group g
-    SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(g, x, pred);
+    return detail::perform_group_operation(g, detail::group_operation_id::any_of,
+        detail::group_operation_spec{//
+            .init =
+                [&](detail::group_operation_data &) {
+                    auto per_op_data = std::make_unique<detail::group_bool_data>();
+                    per_op_data->values.resize(g.get_local_range().size());
+                    per_op_data->values[g.get_local_linear_id()] = pred(x);
+                    return per_op_data;
+                },
+            .reached =
+                [&](detail::group_operation_data &group_data, const detail::group_operation_data &new_data) {
+                    auto &per_op = *static_cast<detail::group_bool_data *>(group_data.per_op_data.get());
+                    per_op.values[g.get_local_linear_id()] = pred(x);
+                },
+            .complete =
+                [&](detail::group_operation_data &op_data) {
+                    const auto &per_op = *static_cast<detail::group_bool_data *>(op_data.per_op_data.get());
+                    return std::any_of(per_op.values.begin(), per_op.values.end(), [](bool x) { return x; });
+                }});
 }
 
 template <Group G>
