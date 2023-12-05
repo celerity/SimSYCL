@@ -53,6 +53,9 @@ struct group_joint_op_data : group_per_operation_data {
     std::intptr_t last;
     bool result;
 };
+struct group_bool_data : group_per_operation_data {
+    std::vector<bool> values;
+};
 struct group_shift_data : group_per_operation_data {
     size_t delta;
 };
