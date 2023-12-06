@@ -126,7 +126,7 @@ class group {
         const sycl::item<Dimensions, false> &global_item, const sycl::item<Dimensions, false> &group_item,
         detail::group_impl *impl);
 
-    friend detail::group_impl &detail::get_group_impl<Dimensions>(sycl::group<Dimensions> &g);
+    friend detail::group_impl &detail::get_group_impl<Dimensions>(const sycl::group<Dimensions> &g);
 };
 
 template <int Dimensions>
