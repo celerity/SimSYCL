@@ -56,7 +56,7 @@ bool any_of_group(G g, T x, Predicate pred) {
                     return per_op_data;
                 },
             .reached =
-                [&](detail::group_operation_data &group_data, const detail::group_operation_data &new_data) {
+                [&](detail::group_operation_data &group_data, const detail::group_operation_data &) {
                     auto &per_op = *static_cast<detail::group_bool_data *>(group_data.per_op_data.get());
                     per_op.values[g.get_local_linear_id()] = pred(x);
                 },
@@ -69,7 +69,7 @@ bool any_of_group(G g, T x, Predicate pred) {
 
 template <Group G>
 bool any_of_group(G g, bool pred) {
-    SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(g, pred);
+    return any_of_group(g, pred, [](bool x) { return x; });
 }
 
 // all_of
@@ -77,21 +77,57 @@ bool any_of_group(G g, bool pred) {
 template <Group G, Pointer Ptr, typename Predicate>
     requires std::predicate<Predicate, std::remove_pointer_t<Ptr>>
 bool joint_all_of(G g, Ptr first, Ptr last, Predicate pred) {
-    // CHECK first and last must be the same for all work-items in group g
-    // CEHCK pred must be an immutable callable with the same type and state for all work-items in group g
-    SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(g, first, last, pred);
+    bool result = true;
+    for(auto start = first; result && start != last; ++start) { result = pred(*start); }
+
+    detail::perform_group_operation(g, detail::group_operation_id::joint_all_of,
+        detail::group_operation_spec{//
+            .init =
+                [&](detail::group_operation_data &) {
+                    auto per_op_data = std::make_unique<detail::group_joint_op_data>();
+                    per_op_data->first = reinterpret_cast<std::intptr_t>(first);
+                    per_op_data->last = reinterpret_cast<std::intptr_t>(last);
+                    per_op_data->result = result;
+                    return per_op_data;
+                },
+            .reached =
+                [&](detail::group_operation_data &group_data, const detail::group_operation_data &) {
+                    auto &per_op = *static_cast<detail::group_joint_op_data *>(group_data.per_op_data.get());
+                    SIMSYCL_CHECK(per_op.first == reinterpret_cast<std::intptr_t>(first));
+                    SIMSYCL_CHECK(per_op.last == reinterpret_cast<std::intptr_t>(last));
+                    SIMSYCL_CHECK(per_op.result == result);
+                }});
+
+    return result;
 }
 
 template <Group G, typename T, typename Predicate>
     requires std::predicate<Predicate, T>
 bool all_of_group(G g, T x, Predicate pred) {
-    // CHECK pred must be an immutable callable with the same type and state for all work-items in group g
-    SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(g, x, pred);
+    return detail::perform_group_operation(g, detail::group_operation_id::all_of,
+        detail::group_operation_spec{//
+            .init =
+                [&](detail::group_operation_data &) {
+                    auto per_op_data = std::make_unique<detail::group_bool_data>();
+                    per_op_data->values.resize(g.get_local_range().size());
+                    per_op_data->values[g.get_local_linear_id()] = pred(x);
+                    return per_op_data;
+                },
+            .reached =
+                [&](detail::group_operation_data &group_data, const detail::group_operation_data &) {
+                    auto &per_op = *static_cast<detail::group_bool_data *>(group_data.per_op_data.get());
+                    per_op.values[g.get_local_linear_id()] = pred(x);
+                },
+            .complete =
+                [&](detail::group_operation_data &op_data) {
+                    const auto &per_op = *static_cast<detail::group_bool_data *>(op_data.per_op_data.get());
+                    return std::all_of(per_op.values.begin(), per_op.values.end(), [](bool x) { return x; });
+                }});
 }
 
 template <Group G>
 bool all_of_group(G g, bool pred) {
-    SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(g, pred);
+    return all_of_group(g, pred, [](bool x) { return x; });
 }
 
 // none_of
@@ -99,21 +135,57 @@ bool all_of_group(G g, bool pred) {
 template <Group G, Pointer Ptr, typename Predicate>
     requires std::predicate<Predicate, std::remove_pointer_t<Ptr>>
 bool joint_none_of(G g, Ptr first, Ptr last, Predicate pred) {
-    // CHECK first and last must be the same for all work-items in group g
-    // CEHCK pred must be an immutable callable with the same type and state for all work-items in group g
-    SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(g, first, last, pred);
+    bool result = true;
+    for(auto start = first; result && start != last; ++start) { result = !pred(*start); }
+
+    detail::perform_group_operation(g, detail::group_operation_id::joint_none_of,
+        detail::group_operation_spec{//
+            .init =
+                [&](detail::group_operation_data &) {
+                    auto per_op_data = std::make_unique<detail::group_joint_op_data>();
+                    per_op_data->first = reinterpret_cast<std::intptr_t>(first);
+                    per_op_data->last = reinterpret_cast<std::intptr_t>(last);
+                    per_op_data->result = result;
+                    return per_op_data;
+                },
+            .reached =
+                [&](detail::group_operation_data &group_data, const detail::group_operation_data &) {
+                    auto &per_op = *static_cast<detail::group_joint_op_data *>(group_data.per_op_data.get());
+                    SIMSYCL_CHECK(per_op.first == reinterpret_cast<std::intptr_t>(first));
+                    SIMSYCL_CHECK(per_op.last == reinterpret_cast<std::intptr_t>(last));
+                    SIMSYCL_CHECK(per_op.result == result);
+                }});
+
+    return result;
 }
 
 template <Group G, typename T, typename Predicate>
     requires std::predicate<Predicate, T>
 bool none_of_group(G g, T x, Predicate pred) {
-    // CHECK pred must be an immutable callable with the same type and state for all work-items in group g
-    SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(g, x, pred);
+    return detail::perform_group_operation(g, detail::group_operation_id::none_of,
+        detail::group_operation_spec{//
+            .init =
+                [&](detail::group_operation_data &) {
+                    auto per_op_data = std::make_unique<detail::group_bool_data>();
+                    per_op_data->values.resize(g.get_local_range().size());
+                    per_op_data->values[g.get_local_linear_id()] = pred(x);
+                    return per_op_data;
+                },
+            .reached =
+                [&](detail::group_operation_data &group_data, const detail::group_operation_data &) {
+                    auto &per_op = *static_cast<detail::group_bool_data *>(group_data.per_op_data.get());
+                    per_op.values[g.get_local_linear_id()] = pred(x);
+                },
+            .complete =
+                [&](detail::group_operation_data &op_data) {
+                    const auto &per_op = *static_cast<detail::group_bool_data *>(op_data.per_op_data.get());
+                    return std::none_of(per_op.values.begin(), per_op.values.end(), [](bool x) { return x; });
+                }});
 }
 
 template <Group G>
 bool none_of_group(G g, bool pred) {
-    SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(g, pred);
+    return none_of_group(g, pred, [](bool x) { return x; });
 }
 
 // shift

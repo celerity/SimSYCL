@@ -109,7 +109,7 @@ class sub_group {
     friend sycl::sub_group detail::make_sub_group(const sycl::id<1> &local_id, const sycl::range<1> &local_range,
         const sycl::id<1> &group_id, const sycl::range<1> &group_range, detail::sub_group_impl *impl);
 
-    friend detail::sub_group_impl &detail::get_group_impl(sycl::sub_group &g);
+    friend detail::sub_group_impl &detail::get_group_impl(const sycl::sub_group &g);
 };
 
 template <>

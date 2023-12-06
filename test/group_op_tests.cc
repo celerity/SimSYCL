@@ -4,6 +4,14 @@
 
 using namespace simsycl;
 
+template <sycl::Group G>
+void check_group_op_sequence(const G &g, const std::vector<detail::group_operation_id> &expected_ids) {
+    CHECK(detail::get_group_impl(g).operations.size() == expected_ids.size());
+    for(size_t i = 0; i < expected_ids.size(); ++i) {
+        CHECK(detail::get_group_impl(g).operations[i].id == expected_ids[i]);
+    }
+}
+
 TEST_CASE("Group barriers behave as expected", "[group_op]") {
     enum class point { a, b, c };
     struct record {
@@ -42,8 +50,12 @@ TEST_CASE("Group barriers behave as expected", "[group_op]") {
                 sycl::group_barrier(it.get_group());
                 actual.emplace_back(point::c, it.get_global_id(0), it.get_global_range(0), it.get_group(0),
                     it.get_local_id(0), it.get_local_range(0));
+
+                check_group_op_sequence(
+                    it.get_group(), {detail::group_operation_id::barrier, detail::group_operation_id::barrier});
             });
         });
+        CHECK(actual == expected);
     }
 
     SECTION("For subgroups") {
@@ -59,23 +71,251 @@ TEST_CASE("Group barriers behave as expected", "[group_op]") {
                 sycl::group_barrier(sg);
                 actual.emplace_back(point::c, it.get_global_id(0), it.get_global_range(0), sg.get_group_linear_id(),
                     sg.get_local_linear_id(), sg.get_local_range().size());
+
+                check_group_op_sequence(
+                    it.get_sub_group(), {detail::group_operation_id::barrier, detail::group_operation_id::barrier});
             });
         });
+        CHECK(actual == expected);
     }
-
-    CHECK(actual == expected);
 }
 
 TEST_CASE("Group broadcasts behave as expected", "[group_op][broadcast]") {
     std::vector<int> expected = {42, 42, 42, 42, 46, 46, 46, 46};
     std::vector<int> actual(expected.size());
 
-    sycl::queue().submit([&actual](sycl::handler &cgh) {
-        cgh.parallel_for(sycl::nd_range<1>{8, 4}, [&actual](sycl::nd_item<1> it) {
-            actual[it.get_global_linear_id()]
-                = sycl::group_broadcast(it.get_group(), 40 + it.get_global_linear_id(), 2);
-        });
-    });
+    SECTION("For work groups") {
+        sycl::queue().submit([&actual](sycl::handler &cgh) {
+            cgh.parallel_for(sycl::nd_range<1>{8, 4}, [&actual](sycl::nd_item<1> it) {
+                actual[it.get_global_linear_id()]
+                    = sycl::group_broadcast(it.get_group(), 40 + it.get_global_linear_id(), 2);
 
-    CHECK(actual == expected);
+                check_group_op_sequence(it.get_group(), {detail::group_operation_id::broadcast});
+            });
+        });
+        CHECK(actual == expected);
+
+        // default-0-id signature variant
+        sycl::queue().submit([](sycl::handler &cgh) {
+            cgh.parallel_for(sycl::nd_range<1>{8, 4}, [](sycl::nd_item<1> it) {
+                CHECK(sycl::group_broadcast(it.get_group(), 40 + it.get_global_linear_id()) //
+                    == 40 + it.get_group_linear_id() * 4);
+                check_group_op_sequence(it.get_group(), {detail::group_operation_id::broadcast});
+            });
+        });
+    }
+
+    SECTION("For subgroups") {
+        detail::configure_temporarily cfg{detail::config::max_sub_group_size, 4u};
+        sycl::queue().submit([&actual](sycl::handler &cgh) {
+            cgh.parallel_for(sycl::nd_range<1>{8, 8}, [&actual](sycl::nd_item<1> it) {
+                actual[it.get_global_linear_id()]
+                    = sycl::group_broadcast(it.get_sub_group(), 40 + it.get_global_linear_id(), 2);
+
+                check_group_op_sequence(it.get_sub_group(), {detail::group_operation_id::broadcast});
+            });
+        });
+        CHECK(actual == expected);
+    }
+}
+
+TEST_CASE("Group joint_any_of behaves as expected", "[group_op][joint_any_of]") {
+    int inputs[4] = {1, 2, 3, 4};
+
+    SECTION("For work groups") {
+        sycl::queue().submit([&inputs](sycl::handler &cgh) {
+            cgh.parallel_for(sycl::nd_range<1>{8, 4}, [&inputs](sycl::nd_item<1> it) {
+                CHECK(sycl::joint_any_of(it.get_group(), inputs, inputs + 4, [](int i) { return i == 3; }));
+                CHECK_FALSE(sycl::joint_any_of(it.get_group(), inputs, inputs + 4, [](int i) { return i == 5; }));
+                check_group_op_sequence(it.get_group(),
+                    {detail::group_operation_id::joint_any_of, detail::group_operation_id::joint_any_of});
+            });
+        });
+    }
+
+    SECTION("For subgroups") {
+        detail::configure_temporarily cfg{detail::config::max_sub_group_size, 4u};
+        sycl::queue().submit([&inputs](sycl::handler &cgh) {
+            cgh.parallel_for(sycl::nd_range<1>{8, 8}, [&inputs](sycl::nd_item<1> it) {
+                CHECK(sycl::joint_any_of(it.get_sub_group(), inputs, inputs + 4, [](int i) { return i == 3; }));
+                CHECK_FALSE(sycl::joint_any_of(it.get_sub_group(), inputs, inputs + 4, [](int i) { return i == 5; }));
+                check_group_op_sequence(it.get_sub_group(),
+                    {detail::group_operation_id::joint_any_of, detail::group_operation_id::joint_any_of});
+            });
+        });
+    }
+}
+
+TEST_CASE("Group any_of_group behaves as expected", "[group_op][any_of_group]") {
+    int inputs[4] = {1, 2, 3, 4};
+
+    SECTION("For work groups") {
+        sycl::queue().submit([&inputs](sycl::handler &cgh) {
+            cgh.parallel_for(sycl::nd_range<1>{8, 4}, [&inputs](sycl::nd_item<1> it) {
+                auto id = it.get_local_linear_id();
+                CHECK(sycl::any_of_group(it.get_group(), inputs[id], [](int i) { return i == 3; }));
+                CHECK_FALSE(sycl::any_of_group(it.get_group(), inputs[id], [](int i) { return i == 5; }));
+                check_group_op_sequence(
+                    it.get_group(), {detail::group_operation_id::any_of, detail::group_operation_id::any_of});
+            });
+        });
+
+        // bool-only signature variant
+        sycl::queue().submit([&inputs](sycl::handler &cgh) {
+            cgh.parallel_for(sycl::nd_range<1>{8, 4}, [&inputs](sycl::nd_item<1> it) {
+                auto id = it.get_local_linear_id();
+                CHECK(sycl::any_of_group(it.get_group(), inputs[id] == 3));
+                CHECK_FALSE(sycl::any_of_group(it.get_group(), inputs[id] == 5));
+                check_group_op_sequence(
+                    it.get_group(), {detail::group_operation_id::any_of, detail::group_operation_id::any_of});
+            });
+        });
+    }
+
+    SECTION("For subgroups") {
+        detail::configure_temporarily cfg{detail::config::max_sub_group_size, 4u};
+        sycl::queue().submit([&inputs](sycl::handler &cgh) {
+            cgh.parallel_for(sycl::nd_range<1>{8, 8}, [&inputs](sycl::nd_item<1> it) {
+                auto id = it.get_sub_group().get_local_linear_id();
+                CHECK(sycl::any_of_group(it.get_sub_group(), inputs[id], [](int i) { return i == 3; }));
+                CHECK_FALSE(sycl::any_of_group(it.get_sub_group(), inputs[id], [](int i) { return i == 5; }));
+                check_group_op_sequence(
+                    it.get_sub_group(), {detail::group_operation_id::any_of, detail::group_operation_id::any_of});
+            });
+        });
+    }
+}
+
+TEST_CASE("Group joint_all_of behaves as expected", "[group_op][joint_all_of]") {
+    int inputs[4] = {1, 2, 3, 4};
+
+    SECTION("For work groups") {
+        sycl::queue().submit([&inputs](sycl::handler &cgh) {
+            cgh.parallel_for(sycl::nd_range<1>{8, 4}, [&inputs](sycl::nd_item<1> it) {
+                CHECK(sycl::joint_all_of(it.get_group(), inputs, inputs + 4, [](int i) { return i <= 4; }));
+                CHECK_FALSE(sycl::joint_all_of(it.get_group(), inputs, inputs + 4, [](int i) { return i < 4; }));
+                check_group_op_sequence(it.get_group(),
+                    {detail::group_operation_id::joint_all_of, detail::group_operation_id::joint_all_of});
+            });
+        });
+    }
+
+    SECTION("For subgroups") {
+        detail::configure_temporarily cfg{detail::config::max_sub_group_size, 4u};
+        sycl::queue().submit([&inputs](sycl::handler &cgh) {
+            cgh.parallel_for(sycl::nd_range<1>{8, 8}, [&inputs](sycl::nd_item<1> it) {
+                CHECK(sycl::joint_all_of(it.get_sub_group(), inputs, inputs + 4, [](int i) { return i <= 4; }));
+                CHECK_FALSE(sycl::joint_all_of(it.get_sub_group(), inputs, inputs + 4, [](int i) { return i < 4; }));
+                check_group_op_sequence(it.get_sub_group(),
+                    {detail::group_operation_id::joint_all_of, detail::group_operation_id::joint_all_of});
+            });
+        });
+    }
+}
+
+TEST_CASE("Group all_of_group behaves as expected", "[group_op][all_of_group]") {
+    int inputs[4] = {1, 2, 3, 4};
+
+    SECTION("For work groups") {
+        sycl::queue().submit([&inputs](sycl::handler &cgh) {
+            cgh.parallel_for(sycl::nd_range<1>{8, 4}, [&inputs](sycl::nd_item<1> it) {
+                auto id = it.get_local_linear_id();
+                CHECK(sycl::all_of_group(it.get_group(), inputs[id], [](int i) { return i <= 4; }));
+                CHECK_FALSE(sycl::all_of_group(it.get_group(), inputs[id], [](int i) { return i < 4; }));
+                check_group_op_sequence(
+                    it.get_group(), {detail::group_operation_id::all_of, detail::group_operation_id::all_of});
+            });
+        });
+
+        // bool-only signature variant
+        sycl::queue().submit([&inputs](sycl::handler &cgh) {
+            cgh.parallel_for(sycl::nd_range<1>{8, 4}, [&inputs](sycl::nd_item<1> it) {
+                auto id = it.get_local_linear_id();
+                CHECK(sycl::all_of_group(it.get_group(), inputs[id] <= 4));
+                CHECK_FALSE(sycl::all_of_group(it.get_group(), inputs[id] < 4));
+                check_group_op_sequence(
+                    it.get_group(), {detail::group_operation_id::all_of, detail::group_operation_id::all_of});
+            });
+        });
+    }
+
+    SECTION("For subgroups") {
+        detail::configure_temporarily cfg{detail::config::max_sub_group_size, 4u};
+        sycl::queue().submit([&inputs](sycl::handler &cgh) {
+            cgh.parallel_for(sycl::nd_range<1>{8, 8}, [&inputs](sycl::nd_item<1> it) {
+                auto id = it.get_sub_group().get_local_linear_id();
+                CHECK(sycl::all_of_group(it.get_sub_group(), inputs[id], [](int i) { return i <= 4; }));
+                CHECK_FALSE(sycl::all_of_group(it.get_sub_group(), inputs[id], [](int i) { return i < 4; }));
+                check_group_op_sequence(
+                    it.get_sub_group(), {detail::group_operation_id::all_of, detail::group_operation_id::all_of});
+            });
+        });
+    }
+}
+
+TEST_CASE("Group joint_none_of behaves as expected", "[group_op][joint_none_of]") {
+    int inputs[4] = {1, 2, 3, 4};
+
+    SECTION("For work groups") {
+        sycl::queue().submit([&inputs](sycl::handler &cgh) {
+            cgh.parallel_for(sycl::nd_range<1>{8, 4}, [&inputs](sycl::nd_item<1> it) {
+                CHECK(sycl::joint_none_of(it.get_group(), inputs, inputs + 4, [](int i) { return i > 4; }));
+                CHECK_FALSE(sycl::joint_none_of(it.get_group(), inputs, inputs + 4, [](int i) { return i == 3; }));
+                check_group_op_sequence(it.get_group(),
+                    {detail::group_operation_id::joint_none_of, detail::group_operation_id::joint_none_of});
+            });
+        });
+    }
+
+    SECTION("For subgroups") {
+        detail::configure_temporarily cfg{detail::config::max_sub_group_size, 4u};
+        sycl::queue().submit([&inputs](sycl::handler &cgh) {
+            cgh.parallel_for(sycl::nd_range<1>{8, 8}, [&inputs](sycl::nd_item<1> it) {
+                CHECK(sycl::joint_none_of(it.get_sub_group(), inputs, inputs + 4, [](int i) { return i > 4; }));
+                CHECK_FALSE(sycl::joint_none_of(it.get_sub_group(), inputs, inputs + 4, [](int i) { return i == 3; }));
+                check_group_op_sequence(it.get_sub_group(),
+                    {detail::group_operation_id::joint_none_of, detail::group_operation_id::joint_none_of});
+            });
+        });
+    }
+}
+
+TEST_CASE("Group none_of_group behaves as expected", "[group_op][none_of_group]") {
+    int inputs[4] = {1, 2, 3, 4};
+
+    SECTION("For work groups") {
+        sycl::queue().submit([&inputs](sycl::handler &cgh) {
+            cgh.parallel_for(sycl::nd_range<1>{8, 4}, [&inputs](sycl::nd_item<1> it) {
+                auto id = it.get_local_linear_id();
+                CHECK(sycl::none_of_group(it.get_group(), inputs[id], [](int i) { return i > 4; }));
+                CHECK_FALSE(sycl::none_of_group(it.get_group(), inputs[id], [](int i) { return i == 3; }));
+                check_group_op_sequence(
+                    it.get_group(), {detail::group_operation_id::none_of, detail::group_operation_id::none_of});
+            });
+        });
+
+        // bool-only signature variant
+        sycl::queue().submit([&inputs](sycl::handler &cgh) {
+            cgh.parallel_for(sycl::nd_range<1>{8, 4}, [&inputs](sycl::nd_item<1> it) {
+                auto id = it.get_local_linear_id();
+                CHECK(sycl::none_of_group(it.get_group(), inputs[id] > 4));
+                CHECK_FALSE(sycl::none_of_group(it.get_group(), inputs[id] == 3));
+                check_group_op_sequence(
+                    it.get_group(), {detail::group_operation_id::none_of, detail::group_operation_id::none_of});
+            });
+        });
+    }
+
+    SECTION("For subgroups") {
+        detail::configure_temporarily cfg{detail::config::max_sub_group_size, 4u};
+        sycl::queue().submit([&inputs](sycl::handler &cgh) {
+            cgh.parallel_for(sycl::nd_range<1>{8, 8}, [&inputs](sycl::nd_item<1> it) {
+                auto id = it.get_sub_group().get_local_linear_id();
+                CHECK(sycl::none_of_group(it.get_sub_group(), inputs[id], [](int i) { return i > 4; }));
+                CHECK_FALSE(sycl::none_of_group(it.get_sub_group(), inputs[id], [](int i) { return i == 3; }));
+                check_group_op_sequence(
+                    it.get_sub_group(), {detail::group_operation_id::none_of, detail::group_operation_id::none_of});
+            });
+        });
+    }
 }

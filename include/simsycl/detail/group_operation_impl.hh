@@ -83,7 +83,7 @@ struct group_impl {
     std::vector<group_operation_data> operations;
 };
 template <int Dimensions>
-group_impl &get_group_impl(sycl::group<Dimensions> &g) {
+group_impl &get_group_impl(const sycl::group<Dimensions> &g) {
     return *g.m_impl;
 }
 
@@ -91,7 +91,7 @@ struct sub_group_impl {
     std::vector<nd_item_impl *> item_impls;
     std::vector<group_operation_data> operations;
 };
-detail::sub_group_impl &get_group_impl(sycl::sub_group &g) { return *g.m_impl; }
+detail::sub_group_impl &get_group_impl(const sycl::sub_group &g) { return *g.m_impl; }
 
 // group operation function template
 

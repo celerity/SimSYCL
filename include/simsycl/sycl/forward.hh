@@ -95,9 +95,9 @@ struct sub_group_impl;
 sycl::sub_group make_sub_group(
     const sycl::id<1> &, const sycl::range<1> &, const sycl::id<1> &, const sycl::range<1> &, sub_group_impl *);
 
-sub_group_impl &get_group_impl(sycl::sub_group &g);
+sub_group_impl &get_group_impl(const sycl::sub_group &g);
 template <int Dimensions>
-group_impl &get_group_impl(sycl::group<Dimensions> &g);
+group_impl &get_group_impl(const sycl::group<Dimensions> &g);
 
 
 } // namespace simsycl::detail
