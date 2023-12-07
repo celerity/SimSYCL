@@ -25,7 +25,7 @@ bool joint_any_of(G g, Ptr first, Ptr last, Predicate pred) {
     detail::perform_group_operation(g, detail::group_operation_id::joint_any_of,
         detail::group_operation_spec{//
             .init =
-                [&](detail::group_operation_data &) {
+                [&]() {
                     auto per_op_data = std::make_unique<detail::group_joint_op_data>();
                     per_op_data->first = reinterpret_cast<std::intptr_t>(first);
                     per_op_data->last = reinterpret_cast<std::intptr_t>(last);
@@ -33,8 +33,7 @@ bool joint_any_of(G g, Ptr first, Ptr last, Predicate pred) {
                     return per_op_data;
                 },
             .reached =
-                [&](detail::group_operation_data &group_data, const detail::group_operation_data &) {
-                    auto &per_op = *static_cast<detail::group_joint_op_data *>(group_data.per_op_data.get());
+                [&](detail::group_joint_op_data &per_op) {
                     SIMSYCL_CHECK(per_op.first == reinterpret_cast<std::intptr_t>(first));
                     SIMSYCL_CHECK(per_op.last == reinterpret_cast<std::intptr_t>(last));
                     SIMSYCL_CHECK(per_op.result == result);
@@ -49,20 +48,15 @@ bool any_of_group(G g, T x, Predicate pred) {
     return detail::perform_group_operation(g, detail::group_operation_id::any_of,
         detail::group_operation_spec{//
             .init =
-                [&](detail::group_operation_data &) {
+                [&]() {
                     auto per_op_data = std::make_unique<detail::group_bool_data>();
                     per_op_data->values.resize(g.get_local_range().size());
                     per_op_data->values[g.get_local_linear_id()] = pred(x);
                     return per_op_data;
                 },
-            .reached =
-                [&](detail::group_operation_data &group_data, const detail::group_operation_data &) {
-                    auto &per_op = *static_cast<detail::group_bool_data *>(group_data.per_op_data.get());
-                    per_op.values[g.get_local_linear_id()] = pred(x);
-                },
+            .reached = [&](detail::group_bool_data &per_op) { per_op.values[g.get_local_linear_id()] = pred(x); },
             .complete =
-                [&](detail::group_operation_data &op_data) {
-                    const auto &per_op = *static_cast<detail::group_bool_data *>(op_data.per_op_data.get());
+                [&](detail::group_bool_data &per_op) {
                     return std::any_of(per_op.values.begin(), per_op.values.end(), [](bool x) { return x; });
                 }});
 }
@@ -83,7 +77,7 @@ bool joint_all_of(G g, Ptr first, Ptr last, Predicate pred) {
     detail::perform_group_operation(g, detail::group_operation_id::joint_all_of,
         detail::group_operation_spec{//
             .init =
-                [&](detail::group_operation_data &) {
+                [&]() {
                     auto per_op_data = std::make_unique<detail::group_joint_op_data>();
                     per_op_data->first = reinterpret_cast<std::intptr_t>(first);
                     per_op_data->last = reinterpret_cast<std::intptr_t>(last);
@@ -91,8 +85,7 @@ bool joint_all_of(G g, Ptr first, Ptr last, Predicate pred) {
                     return per_op_data;
                 },
             .reached =
-                [&](detail::group_operation_data &group_data, const detail::group_operation_data &) {
-                    auto &per_op = *static_cast<detail::group_joint_op_data *>(group_data.per_op_data.get());
+                [&](detail::group_joint_op_data &per_op) {
                     SIMSYCL_CHECK(per_op.first == reinterpret_cast<std::intptr_t>(first));
                     SIMSYCL_CHECK(per_op.last == reinterpret_cast<std::intptr_t>(last));
                     SIMSYCL_CHECK(per_op.result == result);
@@ -107,20 +100,15 @@ bool all_of_group(G g, T x, Predicate pred) {
     return detail::perform_group_operation(g, detail::group_operation_id::all_of,
         detail::group_operation_spec{//
             .init =
-                [&](detail::group_operation_data &) {
+                [&]() {
                     auto per_op_data = std::make_unique<detail::group_bool_data>();
                     per_op_data->values.resize(g.get_local_range().size());
                     per_op_data->values[g.get_local_linear_id()] = pred(x);
                     return per_op_data;
                 },
-            .reached =
-                [&](detail::group_operation_data &group_data, const detail::group_operation_data &) {
-                    auto &per_op = *static_cast<detail::group_bool_data *>(group_data.per_op_data.get());
-                    per_op.values[g.get_local_linear_id()] = pred(x);
-                },
+            .reached = [&](detail::group_bool_data &per_op) { per_op.values[g.get_local_linear_id()] = pred(x); },
             .complete =
-                [&](detail::group_operation_data &op_data) {
-                    const auto &per_op = *static_cast<detail::group_bool_data *>(op_data.per_op_data.get());
+                [&](detail::group_bool_data &per_op) {
                     return std::all_of(per_op.values.begin(), per_op.values.end(), [](bool x) { return x; });
                 }});
 }
@@ -141,7 +129,7 @@ bool joint_none_of(G g, Ptr first, Ptr last, Predicate pred) {
     detail::perform_group_operation(g, detail::group_operation_id::joint_none_of,
         detail::group_operation_spec{//
             .init =
-                [&](detail::group_operation_data &) {
+                [&]() {
                     auto per_op_data = std::make_unique<detail::group_joint_op_data>();
                     per_op_data->first = reinterpret_cast<std::intptr_t>(first);
                     per_op_data->last = reinterpret_cast<std::intptr_t>(last);
@@ -149,8 +137,7 @@ bool joint_none_of(G g, Ptr first, Ptr last, Predicate pred) {
                     return per_op_data;
                 },
             .reached =
-                [&](detail::group_operation_data &group_data, const detail::group_operation_data &) {
-                    auto &per_op = *static_cast<detail::group_joint_op_data *>(group_data.per_op_data.get());
+                [&](detail::group_joint_op_data &per_op) {
                     SIMSYCL_CHECK(per_op.first == reinterpret_cast<std::intptr_t>(first));
                     SIMSYCL_CHECK(per_op.last == reinterpret_cast<std::intptr_t>(last));
                     SIMSYCL_CHECK(per_op.result == result);
@@ -165,20 +152,15 @@ bool none_of_group(G g, T x, Predicate pred) {
     return detail::perform_group_operation(g, detail::group_operation_id::none_of,
         detail::group_operation_spec{//
             .init =
-                [&](detail::group_operation_data &) {
+                [&]() {
                     auto per_op_data = std::make_unique<detail::group_bool_data>();
                     per_op_data->values.resize(g.get_local_range().size());
                     per_op_data->values[g.get_local_linear_id()] = pred(x);
                     return per_op_data;
                 },
-            .reached =
-                [&](detail::group_operation_data &group_data, const detail::group_operation_data &) {
-                    auto &per_op = *static_cast<detail::group_bool_data *>(group_data.per_op_data.get());
-                    per_op.values[g.get_local_linear_id()] = pred(x);
-                },
+            .reached = [&](detail::group_bool_data &per_op) { per_op.values[g.get_local_linear_id()] = pred(x); },
             .complete =
-                [&](detail::group_operation_data &op_data) {
-                    const auto &per_op = *static_cast<detail::group_bool_data *>(op_data.per_op_data.get());
+                [&](detail::group_bool_data &per_op) {
                     return std::none_of(per_op.values.begin(), per_op.values.end(), [](bool x) { return x; });
                 }});
 }
@@ -192,22 +174,73 @@ bool none_of_group(G g, bool pred) {
 
 template <SubGroup G, TriviallyCopyable T>
 T shift_group_left(G g, T x, typename G::linear_id_type delta = 1) {
-    // CHECK delta must be the same for all work-items in the group
-    SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(g, x, delta);
+    return detail::perform_group_operation(g, detail::group_operation_id::shift_left,
+        detail::group_operation_spec{//
+            .init =
+                [&]() {
+                    auto per_op_data = std::make_unique<detail::group_shift_data<T>>(g.get_local_range().size(), delta);
+                    per_op_data->values[g.get_local_linear_id()] = x;
+                    return per_op_data;
+                },
+            .reached =
+                [&](detail::group_shift_data<T> &per_op) {
+                    SIMSYCL_CHECK(per_op.delta == delta);
+                    per_op.values[g.get_local_linear_id()] = x;
+                },
+            .complete =
+                [&](detail::group_shift_data<T> &per_op) {
+                    const auto target = (g.get_local_linear_id() + per_op.delta);
+                    if(target >= per_op.values.size()) { return detail::unspecified<T>; }
+                    return per_op.values[target];
+                }});
 }
 
 template <SubGroup G, TriviallyCopyable T>
 T shift_group_right(G g, T x, typename G::linear_id_type delta = 1) {
-    // CHECK delta must be the same for all work-items in the group
-    SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(g, x, delta);
+    return detail::perform_group_operation(g, detail::group_operation_id::shift_right,
+        detail::group_operation_spec{//
+            .init =
+                [&]() {
+                    auto per_op_data = std::make_unique<detail::group_shift_data<T>>(g.get_local_range().size(), delta);
+                    per_op_data->values[g.get_local_linear_id()] = x;
+                    return per_op_data;
+                },
+            .reached =
+                [&](detail::group_shift_data<T> &per_op) {
+                    SIMSYCL_CHECK(per_op.delta == delta);
+                    per_op.values[g.get_local_linear_id()] = x;
+                },
+            .complete =
+                [&](detail::group_shift_data<T> &per_op) {
+                    if(per_op.delta > g.get_local_linear_id()) { return detail::unspecified<T>; }
+                    return per_op.values[g.get_local_linear_id() - per_op.delta];
+                }});
 }
 
 // permute
 
 template <SubGroup G, TriviallyCopyable T>
 T permute_group(G g, T x, typename G::linear_id_type mask) {
-    // CHECK mask must be the same for all work-items in the group
-    SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(g, x, mask);
+    return detail::perform_group_operation(g, detail::group_operation_id::permute,
+        detail::group_operation_spec{//
+            .init =
+                [&]() {
+                    auto per_op_data
+                        = std::make_unique<detail::group_permute_data<T>>(g.get_local_range().size(), mask);
+                    per_op_data->values[g.get_local_linear_id()] = x;
+                    return per_op_data;
+                },
+            .reached =
+                [&](detail::group_permute_data<T> &per_op) {
+                    SIMSYCL_CHECK(per_op.mask == mask);
+                    per_op.values[g.get_local_linear_id()] = x;
+                },
+            .complete =
+                [&](detail::group_permute_data<T> &per_op) {
+                    auto target = (g.get_local_linear_id() ^ per_op.mask);
+                    if(target >= per_op.values.size()) { return detail::unspecified<T>; }
+                    return per_op.values[target];
+                }});
 }
 
 // select
