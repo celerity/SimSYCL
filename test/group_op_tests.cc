@@ -119,6 +119,7 @@ TEST_CASE("Group broadcasts behave as expected", "[group_op][broadcast]") {
     }
 }
 
+
 TEST_CASE("Group joint_any_of behaves as expected", "[group_op][joint_any_of]") {
     int inputs[4] = {1, 2, 3, 4};
 
@@ -318,4 +319,57 @@ TEST_CASE("Group none_of_group behaves as expected", "[group_op][none_of_group]"
             });
         });
     }
+}
+
+TEST_CASE("Group shift operation behave as expected", "[group_op][shift]") {
+    int inputs[4] = {1, 2, 3, 4};
+    detail::configure_temporarily cfg{detail::config::max_sub_group_size, 4u};
+
+    SECTION("Left shift") {
+        sycl::queue().submit([&inputs](sycl::handler &cgh) {
+            cgh.parallel_for(sycl::nd_range<1>{8, 8}, [&inputs](sycl::nd_item<1> it) {
+                auto id = it.get_sub_group().get_local_linear_id();
+                auto val = sycl::shift_group_left(it.get_sub_group(), inputs[id], 1);
+                if(id < 3) {
+                    CHECK(val == inputs[id + 1]);
+                } else {
+                    CHECK(val == detail::unspecified<int>);
+                }
+                check_group_op_sequence(it.get_sub_group(), {detail::group_operation_id::shift_left});
+            });
+        });
+    }
+    SECTION("Right shift") {
+        sycl::queue().submit([&inputs](sycl::handler &cgh) {
+            cgh.parallel_for(sycl::nd_range<1>{8, 8}, [&inputs](sycl::nd_item<1> it) {
+                auto id = it.get_sub_group().get_local_linear_id();
+                auto val = sycl::shift_group_right(it.get_sub_group(), inputs[id], 2);
+                if(id >= 2) {
+                    CHECK(val == inputs[id - 2]);
+                } else {
+                    CHECK(val == detail::unspecified<int>);
+                }
+                check_group_op_sequence(it.get_sub_group(), {detail::group_operation_id::shift_right});
+            });
+        });
+    }
+}
+
+TEST_CASE("Group permute behaves as expected", "[group_op][permute]") {
+    int inputs[4] = {1, 2, 3, 4};
+    detail::configure_temporarily cfg{detail::config::max_sub_group_size, 4u};
+
+    sycl::queue().submit([&inputs](sycl::handler &cgh) {
+        cgh.parallel_for(sycl::nd_range<1>{8, 8}, [&inputs](sycl::nd_item<1> it) {
+            auto id = it.get_sub_group().get_local_linear_id();
+            auto val = sycl::permute_group(it.get_sub_group(), inputs[id], 0b0101u);
+            auto target = id ^ 0b0101u;
+            if(target < 4) {
+                CHECK(val == inputs[target]);
+            } else {
+                CHECK(val == detail::unspecified<int>);
+            }
+            check_group_op_sequence(it.get_sub_group(), {detail::group_operation_id::permute});
+        });
+    });
 }
