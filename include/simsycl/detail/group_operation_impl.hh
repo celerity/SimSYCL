@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <optional>
 #include <type_traits>
 #include <typeindex>
 #include <vector>
@@ -29,6 +30,7 @@ enum class group_operation_id {
     shift_right,
     permute,
     select,
+    joint_reduce,
     reduce,
     joint_exclusive_scan,
     exclusive_scan,
@@ -52,13 +54,16 @@ struct group_broadcast_data : group_per_operation_data {
 struct group_barrier_data : group_per_operation_data {
     sycl::memory_scope fence_scope;
 };
-struct group_joint_op_data : group_per_operation_data {
-    std::intptr_t first;
-    std::intptr_t last;
+template <typename T>
+struct group_joint_bool_op_data : group_per_operation_data {
+    T *first;
+    T *last;
     bool result;
+    group_joint_bool_op_data(T *first, T *last, bool result) : first(first), last(last), result(result) {}
 };
 struct group_bool_data : group_per_operation_data {
     std::vector<bool> values;
+    group_bool_data(size_t num_work_items) : values(num_work_items) {}
 };
 template <typename T>
 struct group_shift_data : group_per_operation_data {
@@ -72,11 +77,25 @@ struct group_permute_data : group_per_operation_data {
     size_t mask;
     group_permute_data(size_t num_work_items, size_t mask) : values(num_work_items), mask(mask) {}
 };
-struct group_joint_scan_data : group_per_operation_data {
-    std::intptr_t first;
-    std::intptr_t last;
-    std::intptr_t result;
-    std::vector<std::byte> init;
+template <typename T>
+struct group_select_data : group_per_operation_data {
+    std::vector<T> values;
+    group_select_data(size_t num_work_items) : values(num_work_items) {}
+};
+template <typename T>
+struct group_joint_reduce_data : group_per_operation_data {
+    T *first;
+    T *last;
+    std::optional<T> init;
+    T result;
+    group_joint_reduce_data(T *first, T *last, std::optional<T> init, T result)
+        : first(first), last(last), init(init), result(result) {}
+};
+template <typename T>
+struct group_reduce_data : group_per_operation_data {
+    std::optional<T> init;
+    std::vector<T> values;
+    group_reduce_data(size_t num_work_items, std::optional<T> init) : init(init), values(num_work_items) {}
 };
 
 struct group_operation_data {
@@ -122,6 +141,8 @@ template <GroupOpInitFunction InitF = decltype(default_group_op_init_function),
     typename CompleteF = decltype(default_group_op_function<PerOpT>)>
 struct group_operation_spec {
     using per_op_t = PerOpT;
+    static_assert(std::is_invocable_r_v<void, ReachedF, PerOpT &>, "reached must be of type (PerOpT&) -> void");
+    static_assert(std::is_invocable_v<CompleteF, PerOpT &>, "complete must be invocable with PerOpT&");
     const InitF &init = default_group_op_init_function;
     const ReachedF &reached = default_group_op_function<PerOpT>;
     const CompleteF &complete = default_group_op_function<PerOpT>;
@@ -164,6 +185,51 @@ auto perform_group_operation(G g, group_operation_id id, const Spec &spec) {
     this_nd_item_impl.barrier();
 
     return spec.complete(dynamic_cast<Spec::per_op_t &>(*group_impl.operations[ops_reached - 1].per_op_data));
+}
+
+// more specific helper functions for group operations
+
+template <sycl::Group G, sycl::Pointer Ptr, sycl::Fundamental T>
+void joint_reduce_impl(G g, Ptr first, Ptr last, std::optional<T> init, T result) {
+    perform_group_operation(g, group_operation_id::joint_reduce,
+        group_operation_spec{//
+            .init = [&]() { return std::make_unique<group_joint_reduce_data<T>>(first, last, init, result); },
+            .reached =
+                [&](group_joint_reduce_data<T> &per_op) {
+                    SIMSYCL_CHECK(per_op.first == first);
+                    SIMSYCL_CHECK(per_op.last == last);
+                    SIMSYCL_CHECK(per_op.init == init);
+                    SIMSYCL_CHECK(per_op.result == result);
+                }});
+}
+
+template <sycl::Group G, sycl::Fundamental T, sycl::SyclFunctionObject Op>
+T group_reduce_impl(G g, T x, std::optional<T> init, Op op) {
+    return perform_group_operation(g, group_operation_id::reduce,
+        group_operation_spec{//
+            .init =
+                [&]() {
+                    auto per_op = std::make_unique<group_reduce_data<T>>(g.get_local_range().size(), init);
+                    per_op->values[g.get_local_linear_id()] = x;
+                    return per_op;
+                },
+            .reached =
+                [&](group_reduce_data<T> &per_op) {
+                    SIMSYCL_CHECK(per_op.init == init);
+                    SIMSYCL_CHECK(per_op.values.size() == g.get_local_range().size());
+                    per_op.values[g.get_local_linear_id()] = x;
+                },
+            .complete =
+                [&](const group_reduce_data<T> &per_op) {
+                    T result = per_op.values.front();
+                    if(init) { result = op(*init, result); }
+                    if(per_op.values.size() > 1) {
+                        for(auto i = per_op.values.cbegin() + 1; i != per_op.values.cend(); ++i) {
+                            result = op(result, *i);
+                        }
+                    }
+                    return result;
+                }});
 }
 
 } // namespace simsycl::detail

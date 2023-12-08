@@ -373,3 +373,81 @@ TEST_CASE("Group permute behaves as expected", "[group_op][permute]") {
         });
     });
 }
+
+TEST_CASE("Group select behaves as expected", "[group_op][select]") {
+    int inputs[4] = {1, 2, 3, 4};
+    detail::configure_temporarily cfg{detail::config::max_sub_group_size, 4u};
+
+    sycl::queue().submit([&inputs](sycl::handler &cgh) {
+        cgh.parallel_for(sycl::nd_range<1>{8, 8}, [&inputs](sycl::nd_item<1> it) {
+            auto id = it.get_sub_group().get_local_linear_id();
+            auto val = sycl::select_from_group(it.get_sub_group(), inputs[id], 3 - id);
+            CHECK(val == inputs[3 - id]);
+            check_group_op_sequence(it.get_sub_group(), {detail::group_operation_id::select});
+        });
+    });
+}
+
+TEST_CASE("Group joint_reduce behaves as expected", "[group_op][joint_reduce]") {
+    int inputs[4] = {1, 2, 3, 4};
+
+    SECTION("For work groups") {
+        sycl::queue().submit([&inputs](sycl::handler &cgh) {
+            cgh.parallel_for(sycl::nd_range<1>{8, 4}, [&inputs](sycl::nd_item<1> it) {
+                CHECK(sycl::joint_reduce(it.get_group(), inputs, inputs + 4, sycl::plus<int>{}) == 10);
+                CHECK(sycl::joint_reduce(it.get_group(), inputs, inputs + 3, sycl::multiplies<int>{}) == 6);
+                CHECK(sycl::joint_reduce(it.get_group(), inputs, inputs + 3, 42, sycl::maximum<int>{}) == 42);
+                check_group_op_sequence(it.get_group(),
+                    {detail::group_operation_id::joint_reduce, detail::group_operation_id::joint_reduce,
+                        detail::group_operation_id::joint_reduce});
+            });
+        });
+    }
+
+    SECTION("For subgroups") {
+        detail::configure_temporarily cfg{detail::config::max_sub_group_size, 4u};
+        sycl::queue().submit([&inputs](sycl::handler &cgh) {
+            cgh.parallel_for(sycl::nd_range<1>{8, 8}, [&inputs](sycl::nd_item<1> it) {
+                CHECK(sycl::joint_reduce(it.get_sub_group(), inputs, inputs + 4, sycl::plus<int>{}) == 10);
+                CHECK(sycl::joint_reduce(it.get_sub_group(), inputs, inputs + 3, sycl::multiplies<int>{}) == 6);
+                CHECK(sycl::joint_reduce(it.get_sub_group(), inputs, inputs + 3, 42, sycl::maximum<int>{}) == 42);
+                check_group_op_sequence(it.get_sub_group(),
+                    {detail::group_operation_id::joint_reduce, detail::group_operation_id::joint_reduce,
+                        detail::group_operation_id::joint_reduce});
+            });
+        });
+    }
+}
+
+TEST_CASE("Group reduce_over_group behaves as expected", "[group_op][reduce_over_group]") {
+    int inputs[4] = {1, 2, 3, 4};
+
+    SECTION("For work groups") {
+        sycl::queue().submit([&inputs](sycl::handler &cgh) {
+            cgh.parallel_for(sycl::nd_range<1>{8, 4}, [&inputs](sycl::nd_item<1> it) {
+                auto id = it.get_group().get_local_linear_id();
+                CHECK(sycl::reduce_over_group(it.get_group(), inputs[id], sycl::plus<int>{}) == 10);
+                CHECK(sycl::reduce_over_group(it.get_group(), inputs[id] - 1, sycl::multiplies<int>{}) == 0);
+                CHECK(sycl::reduce_over_group(it.get_group(), inputs[id], -1, sycl::minimum<int>{}) == -1);
+                check_group_op_sequence(it.get_group(),
+                    {detail::group_operation_id::reduce, detail::group_operation_id::reduce,
+                        detail::group_operation_id::reduce});
+            });
+        });
+    }
+
+    SECTION("For subgroups") {
+        detail::configure_temporarily cfg{detail::config::max_sub_group_size, 4u};
+        sycl::queue().submit([&inputs](sycl::handler &cgh) {
+            cgh.parallel_for(sycl::nd_range<1>{8, 8}, [&inputs](sycl::nd_item<1> it) {
+                auto id = it.get_sub_group().get_local_linear_id();
+                CHECK(sycl::reduce_over_group(it.get_sub_group(), inputs[id], sycl::plus<int>{}) == 10);
+                CHECK(sycl::reduce_over_group(it.get_sub_group(), inputs[id] - 1, sycl::multiplies<int>{}) == 0);
+                CHECK(sycl::reduce_over_group(it.get_sub_group(), inputs[id], -1, sycl::minimum<int>{}) == -1);
+                check_group_op_sequence(it.get_sub_group(),
+                    {detail::group_operation_id::reduce, detail::group_operation_id::reduce,
+                        detail::group_operation_id::reduce});
+            });
+        });
+    }
+}

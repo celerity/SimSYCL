@@ -3,17 +3,17 @@
 #include "concepts.hh"
 #include "group.hh"
 #include "group_functions.hh"
-#include "simsycl/detail/group_operation_impl.hh"
 #include "sub_group.hh"
 
 #include "simsycl/detail/check.hh"
+#include "simsycl/detail/group_operation_impl.hh"
 
 namespace simsycl::sycl {
 
 // any_of
 
-template <Group G, Pointer Ptr, typename Predicate>
-    requires std::predicate<Predicate, std::remove_pointer_t<Ptr>>
+template <Group G, Pointer Ptr, typename Predicate, typename T = std::remove_pointer_t<Ptr>>
+    requires std::predicate<Predicate, T>
 bool joint_any_of(G g, Ptr first, Ptr last, Predicate pred) {
     // approach: perform the operation sequentially on all work items, confirm that they compute the same result
     // (this is the closest we can easily get to verifying the standard requirement that
@@ -24,18 +24,11 @@ bool joint_any_of(G g, Ptr first, Ptr last, Predicate pred) {
 
     detail::perform_group_operation(g, detail::group_operation_id::joint_any_of,
         detail::group_operation_spec{//
-            .init =
-                [&]() {
-                    auto per_op_data = std::make_unique<detail::group_joint_op_data>();
-                    per_op_data->first = reinterpret_cast<std::intptr_t>(first);
-                    per_op_data->last = reinterpret_cast<std::intptr_t>(last);
-                    per_op_data->result = result;
-                    return per_op_data;
-                },
+            .init = [&]() { return std::make_unique<detail::group_joint_bool_op_data<T>>(first, last, result); },
             .reached =
-                [&](detail::group_joint_op_data &per_op) {
-                    SIMSYCL_CHECK(per_op.first == reinterpret_cast<std::intptr_t>(first));
-                    SIMSYCL_CHECK(per_op.last == reinterpret_cast<std::intptr_t>(last));
+                [&](detail::group_joint_bool_op_data<T> &per_op) {
+                    SIMSYCL_CHECK(per_op.first == first);
+                    SIMSYCL_CHECK(per_op.last == last);
                     SIMSYCL_CHECK(per_op.result == result);
                 }});
 
@@ -49,8 +42,7 @@ bool any_of_group(G g, T x, Predicate pred) {
         detail::group_operation_spec{//
             .init =
                 [&]() {
-                    auto per_op_data = std::make_unique<detail::group_bool_data>();
-                    per_op_data->values.resize(g.get_local_range().size());
+                    auto per_op_data = std::make_unique<detail::group_bool_data>(g.get_local_range().size());
                     per_op_data->values[g.get_local_linear_id()] = pred(x);
                     return per_op_data;
                 },
@@ -68,29 +60,20 @@ bool any_of_group(G g, bool pred) {
 
 // all_of
 
-template <Group G, Pointer Ptr, typename Predicate>
-    requires std::predicate<Predicate, std::remove_pointer_t<Ptr>>
+template <Group G, Pointer Ptr, typename Predicate, typename T = std::remove_pointer_t<Ptr>>
+    requires std::predicate<Predicate, T>
 bool joint_all_of(G g, Ptr first, Ptr last, Predicate pred) {
     bool result = true;
     for(auto start = first; result && start != last; ++start) { result = pred(*start); }
-
     detail::perform_group_operation(g, detail::group_operation_id::joint_all_of,
         detail::group_operation_spec{//
-            .init =
-                [&]() {
-                    auto per_op_data = std::make_unique<detail::group_joint_op_data>();
-                    per_op_data->first = reinterpret_cast<std::intptr_t>(first);
-                    per_op_data->last = reinterpret_cast<std::intptr_t>(last);
-                    per_op_data->result = result;
-                    return per_op_data;
-                },
+            .init = [&]() { return std::make_unique<detail::group_joint_bool_op_data<T>>(first, last, result); },
             .reached =
-                [&](detail::group_joint_op_data &per_op) {
-                    SIMSYCL_CHECK(per_op.first == reinterpret_cast<std::intptr_t>(first));
-                    SIMSYCL_CHECK(per_op.last == reinterpret_cast<std::intptr_t>(last));
+                [&](detail::group_joint_bool_op_data<T> &per_op) {
+                    SIMSYCL_CHECK(per_op.first == first);
+                    SIMSYCL_CHECK(per_op.last == last);
                     SIMSYCL_CHECK(per_op.result == result);
                 }});
-
     return result;
 }
 
@@ -101,8 +84,7 @@ bool all_of_group(G g, T x, Predicate pred) {
         detail::group_operation_spec{//
             .init =
                 [&]() {
-                    auto per_op_data = std::make_unique<detail::group_bool_data>();
-                    per_op_data->values.resize(g.get_local_range().size());
+                    auto per_op_data = std::make_unique<detail::group_bool_data>(g.get_local_range().size());
                     per_op_data->values[g.get_local_linear_id()] = pred(x);
                     return per_op_data;
                 },
@@ -120,29 +102,20 @@ bool all_of_group(G g, bool pred) {
 
 // none_of
 
-template <Group G, Pointer Ptr, typename Predicate>
-    requires std::predicate<Predicate, std::remove_pointer_t<Ptr>>
+template <Group G, Pointer Ptr, typename Predicate, typename T = std::remove_pointer_t<Ptr>>
+    requires std::predicate<Predicate, T>
 bool joint_none_of(G g, Ptr first, Ptr last, Predicate pred) {
     bool result = true;
     for(auto start = first; result && start != last; ++start) { result = !pred(*start); }
-
     detail::perform_group_operation(g, detail::group_operation_id::joint_none_of,
         detail::group_operation_spec{//
-            .init =
-                [&]() {
-                    auto per_op_data = std::make_unique<detail::group_joint_op_data>();
-                    per_op_data->first = reinterpret_cast<std::intptr_t>(first);
-                    per_op_data->last = reinterpret_cast<std::intptr_t>(last);
-                    per_op_data->result = result;
-                    return per_op_data;
-                },
+            .init = [&]() { return std::make_unique<detail::group_joint_bool_op_data<T>>(first, last, result); },
             .reached =
-                [&](detail::group_joint_op_data &per_op) {
-                    SIMSYCL_CHECK(per_op.first == reinterpret_cast<std::intptr_t>(first));
-                    SIMSYCL_CHECK(per_op.last == reinterpret_cast<std::intptr_t>(last));
+                [&](detail::group_joint_bool_op_data<T> &per_op) {
+                    SIMSYCL_CHECK(per_op.first == first);
+                    SIMSYCL_CHECK(per_op.last == last);
                     SIMSYCL_CHECK(per_op.result == result);
                 }});
-
     return result;
 }
 
@@ -153,8 +126,7 @@ bool none_of_group(G g, T x, Predicate pred) {
         detail::group_operation_spec{//
             .init =
                 [&]() {
-                    auto per_op_data = std::make_unique<detail::group_bool_data>();
-                    per_op_data->values.resize(g.get_local_range().size());
+                    auto per_op_data = std::make_unique<detail::group_bool_data>(g.get_local_range().size());
                     per_op_data->values[g.get_local_linear_id()] = pred(x);
                     return per_op_data;
                 },
@@ -247,35 +219,49 @@ T permute_group(G g, T x, typename G::linear_id_type mask) {
 
 template <SubGroup G, TriviallyCopyable T>
 T select_from_group(G g, T x, typename G::id_type remote_local_id) {
-    SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(g, x, remote_local_id);
+    return detail::perform_group_operation(g, detail::group_operation_id::select,
+        detail::group_operation_spec{//
+            .init =
+                [&]() {
+                    auto per_op_data = std::make_unique<detail::group_select_data<T>>(g.get_local_range().size());
+                    per_op_data->values[g.get_local_linear_id()] = x;
+                    return per_op_data;
+                },
+            .reached = [&](detail::group_select_data<T> &per_op) { per_op.values[g.get_local_linear_id()] = x; },
+            .complete =
+                [&](detail::group_select_data<T> &per_op) {
+                    if(remote_local_id >= per_op.values.size()) { return detail::unspecified<T>; }
+                    return per_op.values[remote_local_id];
+                }});
 }
 
 // reduce
 
-template <Group G, Pointer Ptr, typename Op, typename T = std::iterator_traits<Ptr>::value_type>
-    requires BinaryOperation<Op, T>
+
+template <Group G, Pointer Ptr, SyclFunctionObject Op, typename T = std::iterator_traits<Ptr>::value_type>
 T joint_reduce(G g, Ptr first, Ptr last, Op binary_op) {
-    // CHECK first and last must be the same for all work-items in group g
-    SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(g, first, last, binary_op);
+    T result = *first;
+    for(auto i = first + 1; first != last && i != last; ++i) { result = binary_op(result, *i); }
+    simsycl::detail::joint_reduce_impl(g, first, last, {}, result);
+    return result;
 }
 
-template <Group G, Pointer Ptr, Fundamental T, typename Op>
-    requires BinaryOperation<Op, T>
+template <Group G, Pointer Ptr, Fundamental T, SyclFunctionObject Op>
 T joint_reduce(G g, Ptr first, Ptr last, T init, Op binary_op) {
-    // CHECK first, last, init and the type of binary_op must be the same for all work-items in group g
-    SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(g, first, last, init, binary_op);
+    T result = init;
+    for(auto i = first; i != last; ++i) { result = binary_op(result, *i); }
+    simsycl::detail::joint_reduce_impl(g, first, last, {init}, result);
+    return result;
 }
 
-template <Group G, Fundamental T, typename Op>
-    requires BinaryOperation<Op, T>
+template <Group G, Fundamental T, SyclFunctionObject Op>
 T reduce_over_group(G g, T x, Op binary_op) {
-    SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(g, x, binary_op);
+    return simsycl::detail::group_reduce_impl(g, x, {}, binary_op);
 }
 
-template <Group G, Fundamental V, Fundamental T, typename Op>
-    requires BinaryOperation<Op, T>
+template <Group G, Fundamental V, Fundamental T, SyclFunctionObject Op>
 T reduce_over_group(G g, V x, T init, Op binary_op) {
-    SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(g, x, init, binary_op);
+    return simsycl::detail::group_reduce_impl(g, x, {init}, binary_op);
 }
 
 // exclusive_scan

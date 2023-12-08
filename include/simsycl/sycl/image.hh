@@ -67,9 +67,9 @@ struct is_property_of<property::image::context_bound, unsampled_image<Dimensions
 namespace simsycl::sycl {
 
 template <int Dimensions, typename AllocatorT>
-class sampled_image : public detail::property_interface {
+class sampled_image : public simsycl::detail::property_interface {
   private:
-    using property_compatibility = detail::property_compatibility<sampled_image<Dimensions, AllocatorT>,
+    using property_compatibility = simsycl::detail::property_compatibility<sampled_image<Dimensions, AllocatorT>,
         property::image::use_host_ptr, property::image::use_mutex, property::image::context_bound>;
 
   public:
@@ -106,9 +106,9 @@ class sampled_image : public detail::property_interface {
 };
 
 template <int Dimensions, typename AllocatorT>
-class unsampled_image : public detail::property_interface {
+class unsampled_image : public simsycl::detail::property_interface {
   private:
-    using property_compatibility = detail::property_compatibility<unsampled_image<Dimensions, AllocatorT>,
+    using property_compatibility = simsycl::detail::property_compatibility<unsampled_image<Dimensions, AllocatorT>,
         property::image::use_host_ptr, property::image::use_mutex, property::image::context_bound>;
 
   public:

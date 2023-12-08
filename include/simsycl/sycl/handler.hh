@@ -138,15 +138,12 @@ void parallel_for(
     detail::sequential_for(num_work_items, work_item_offset, kernel_func);
 }
 
-class unnamed_kernel;
-
 template <typename KernelName = unnamed_kernel, int Dimensions, typename... Rest,
     std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
 void parallel_for(sycl::nd_range<Dimensions> execution_range, Rest &&...rest) {
     detail::dispatch_for(execution_range, std::forward_as_tuple(std::forward<Rest>(rest)...),
         std::make_index_sequence<sizeof...(Rest) - 1>(), std::index_sequence<sizeof...(Rest) - 1>());
 }
-
 
 } // namespace simsycl::detail
 
@@ -175,33 +172,33 @@ class handler {
 
     //------ Kernel dispatch API
 
-    template <typename KernelName = detail::unnamed_kernel, typename KernelType>
+    template <typename KernelName = simsycl::detail::unnamed_kernel, typename KernelType>
     void single_task(const KernelType &kernel_func) {
         kernel_func();
     }
 
-    template <typename KernelName = detail::unnamed_kernel, int Dimensions, typename... Rest,
+    template <typename KernelName = simsycl::detail::unnamed_kernel, int Dimensions, typename... Rest,
         std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
     void parallel_for(range<Dimensions> num_work_items, Rest &&...rest) {
-        detail::parallel_for(num_work_items, std::forward<Rest>(rest)...);
+        simsycl::detail::parallel_for(num_work_items, std::forward<Rest>(rest)...);
     }
 
-    template <typename KernelName = detail::unnamed_kernel, typename KernelType, int Dimensions>
+    template <typename KernelName = simsycl::detail::unnamed_kernel, typename KernelType, int Dimensions>
     [[deprecated("Deprecated in SYCL 2020")]] void parallel_for(
         range<Dimensions> num_work_items, id<Dimensions> work_item_offset, KernelType &&kernel_func) {
-        detail::parallel_for(num_work_items, work_item_offset, kernel_func);
+        simsycl::detail::parallel_for(num_work_items, work_item_offset, kernel_func);
     }
 
-    template <typename KernelName = detail::unnamed_kernel, int Dimensions, typename... Rest,
+    template <typename KernelName = simsycl::detail::unnamed_kernel, int Dimensions, typename... Rest,
         std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
     void parallel_for(nd_range<Dimensions> execution_range, Rest &&...rest) {
-        detail::parallel_for(execution_range, std::forward<Rest>(rest)...);
+        simsycl::detail::parallel_for(execution_range, std::forward<Rest>(rest)...);
     }
 
-    template <typename KernelName = detail::unnamed_kernel, typename WorkgroupFunctionType, int Dimensions>
+    template <typename KernelName = simsycl::detail::unnamed_kernel, typename WorkgroupFunctionType, int Dimensions>
     void parallel_for_work_group(range<Dimensions> num_work_groups, const WorkgroupFunctionType &kernel_func);
 
-    template <typename KernelName = detail::unnamed_kernel, typename WorkgroupFunctionType, int Dimensions>
+    template <typename KernelName = simsycl::detail::unnamed_kernel, typename WorkgroupFunctionType, int Dimensions>
     void parallel_for_work_group(
         range<Dimensions> num_work_groups, range<Dimensions> work_group_size, const WorkgroupFunctionType &kernel_func);
 

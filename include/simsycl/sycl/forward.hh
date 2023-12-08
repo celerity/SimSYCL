@@ -88,6 +88,8 @@ class unsampled_image;
 
 namespace simsycl::detail {
 
+class unnamed_kernel;
+
 struct nd_item_impl;
 struct group_impl;
 struct sub_group_impl;
