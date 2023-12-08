@@ -180,7 +180,7 @@ class multi_ptr {
 
 // specialization helper
 template <typename VoidType, access::address_space Space, access::decorated DecorateAddress>
-class multi_ptr<detail::void_type<VoidType>, Space, DecorateAddress> {
+class multi_ptr<simsycl::detail::void_type<VoidType>, Space, DecorateAddress> {
   public:
     static constexpr bool is_decorated = DecorateAddress == access::decorated::yes;
     static constexpr access::address_space address_space = Space;
@@ -273,14 +273,15 @@ class multi_ptr<detail::void_type<VoidType>, Space, DecorateAddress> {
 };
 
 template <access::address_space Space, access::decorated DecorateAddress>
-class multi_ptr<void, Space, DecorateAddress> : public multi_ptr<detail::void_type<void>, Space, DecorateAddress> {
-    using multi_ptr<detail::void_type<void>, Space, DecorateAddress>::multi_ptr;
+class multi_ptr<void, Space, DecorateAddress>
+    : public multi_ptr<simsycl::detail::void_type<void>, Space, DecorateAddress> {
+    using multi_ptr<simsycl::detail::void_type<void>, Space, DecorateAddress>::multi_ptr;
 };
 
 template <access::address_space Space, access::decorated DecorateAddress>
 class multi_ptr<const void, Space, DecorateAddress>
-    : public multi_ptr<detail::void_type<const void>, Space, DecorateAddress> {
-    using multi_ptr<detail::void_type<const void>, Space, DecorateAddress>::multi_ptr;
+    : public multi_ptr<simsycl::detail::void_type<const void>, Space, DecorateAddress> {
+    using multi_ptr<simsycl::detail::void_type<const void>, Space, DecorateAddress>::multi_ptr;
 };
 
 // Deprecated, address_space_cast should be used instead.
