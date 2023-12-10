@@ -8,6 +8,10 @@ namespace simsycl::sycl {
 template <int Dimensions>
 class range : public detail::coordinate<range<Dimensions>, Dimensions> {
   public:
+    constexpr range() {
+        for(int d = 0; d < Dimensions; ++d) { (*this)[d] = 0; }
+    }
+
     template <typename... Values>
         requires(sizeof...(Values) == Dimensions)
     constexpr range(const Values... dims) : detail::coordinate<range<Dimensions>, Dimensions>(dims...) {}
@@ -20,8 +24,6 @@ class range : public detail::coordinate<range<Dimensions>, Dimensions> {
 
   private:
     friend class detail::coordinate<range<Dimensions>, Dimensions>;
-
-    constexpr range() noexcept {}
 };
 
 range(size_t) -> range<1>;

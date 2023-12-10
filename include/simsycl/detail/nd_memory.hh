@@ -7,17 +7,22 @@
 
 namespace simsycl::detail {
 
-inline size_t get_linear_index(const sycl::range<1> &range, const sycl::id<1> &index) { return index[0]; }
+inline size_t get_linear_index(const sycl::range<1> &range, const sycl::id<1> &index) {
+    SIMSYCL_CHECK(index[0] < range[0]);
+    return index[0];
+}
 
 inline size_t get_linear_index(const sycl::range<2> &range, const sycl::id<2> &index) {
+    SIMSYCL_CHECK(index[0] < range[0] && index[1] < range[1]);
     return index[0] * range[1] + index[1];
 }
 
 inline size_t get_linear_index(const sycl::range<3> &range, const sycl::id<3> &index) {
+    SIMSYCL_CHECK(index[0] < range[0] && index[1] < range[1] && index[2] < range[2]);
     return index[0] * range[1] * range[2] + index[1] * range[2] + index[2];
 }
 
-void memcpy_strided_host(const void *source_base_ptr, void *target_base_ptr, size_t elem_size,
+inline void memcpy_strided_host(const void *source_base_ptr, void *target_base_ptr, size_t elem_size,
     const sycl::range<1> &source_range, const sycl::id<1> &source_offset, const sycl::range<1> &target_range,
     const sycl::id<1> &target_offset, const sycl::range<1> &copy_range) {
     const size_t line_size = elem_size * copy_range[0];
@@ -26,7 +31,7 @@ void memcpy_strided_host(const void *source_base_ptr, void *target_base_ptr, siz
         line_size);
 }
 
-void memcpy_strided_host(const void *source_base_ptr, void *target_base_ptr, size_t elem_size,
+inline void memcpy_strided_host(const void *source_base_ptr, void *target_base_ptr, size_t elem_size,
     const sycl::range<2> &source_range, const sycl::id<2> &source_offset, const sycl::range<2> &target_range,
     const sycl::id<2> &target_offset, const sycl::range<2> &copy_range) {
     const size_t line_size = elem_size * copy_range[1];
@@ -39,7 +44,7 @@ void memcpy_strided_host(const void *source_base_ptr, void *target_base_ptr, siz
     }
 }
 
-void memcpy_strided_host(const void *source_base_ptr, void *target_base_ptr, size_t elem_size,
+inline void memcpy_strided_host(const void *source_base_ptr, void *target_base_ptr, size_t elem_size,
     const sycl::range<3> &source_range, const sycl::id<3> &source_offset, const sycl::range<3> &target_range,
     const sycl::id<3> &target_offset, const sycl::range<3> &copy_range) {
     // We simply decompose this into a bunch of 2D copies. Subtract offset on the copy plane, as it will be added again

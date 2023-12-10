@@ -31,6 +31,7 @@ inline constexpr bool is_property_of_v = is_property_of<Property, SyclObject>::v
 class property_list {
   public:
     template <typename... Properties>
+        requires(is_property_v<Properties> && ...)
     property_list(Properties... props) : m_properties{props...} {}
 
   private:
@@ -77,7 +78,7 @@ class property_interface {
     }
 
   protected:
-    const std::vector<std::any> &get__properties() const { return m_properties; }
+    const std::vector<std::any> &get_properties() const { return m_properties; }
 
   private:
     std::vector<std::any> m_properties;

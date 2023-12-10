@@ -300,4 +300,10 @@ multi_ptr(accessor<T, Dimensions, Mode, target::device, IsPlaceholder>)
 template <typename T, int Dimensions>
 multi_ptr(local_accessor<T, Dimensions>) -> multi_ptr<T, access::address_space::local_space, access::decorated::no>;
 
+template <typename ElementType, access::decorated IsDecorated = access::decorated::legacy>
+using global_ptr = multi_ptr<ElementType, access::address_space::global_space, IsDecorated>;
+
+template <typename ElementType, access::decorated IsDecorated = access::decorated::legacy>
+using local_ptr = multi_ptr<ElementType, access::address_space::local_space, IsDecorated>;
+
 } // namespace simsycl::sycl

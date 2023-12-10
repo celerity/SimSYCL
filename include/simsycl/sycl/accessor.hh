@@ -2,13 +2,19 @@
 
 #include "enums.hh"
 #include "forward.hh"
+#include "handler.hh"
 #include "id.hh"
+#include "multi_ptr.hh"
 #include "property.hh"
 #include "range.hh"
 
+#include "../detail/nd_memory.hh"
+#include "../detail/reference_type.hh"
 #include "../detail/subscript.hh"
 
 #include <iterator>
+#include <limits>
+
 
 namespace simsycl::detail {
 
@@ -18,9 +24,126 @@ struct accessor_tag {
     inline static constexpr simsycl::sycl::target target = Target;
 };
 
-template <typename DataT, int Dimensions>
-struct nd_iterator {
-    // TODO
+template <typename Accessor, typename DataT, int Dimensions>
+class accessor_iterator {
+  public:
+    using value_type = DataT;
+    using difference_type = ssize_t;
+    using reference = value_type &;
+    using pointer = value_type *;
+    using iterator_category = std::forward_iterator_tag;
+
+    accessor_iterator() = default;
+
+    reference operator*() const {
+        SIMSYCL_CHECK(m_accessor != nullptr);
+        for(int d = 0; d < Dimensions; ++d) {
+            SIMSYCL_CHECK(m_index[d] >= m_accessor->get_offset()[d]);
+            SIMSYCL_CHECK(m_index[d] < m_accessor->get_offset()[d] + m_accessor->get_range()[d]);
+        }
+        return (*m_accessor)[get_linear_index(m_accessor->get_buffer_range(), m_index)];
+    }
+
+    pointer operator->() const { return &**this; }
+
+    accessor_iterator &operator++() {
+        SIMSYCL_CHECK(m_accessor != nullptr);
+        for(int d = 0; d < Dimensions; ++d) {
+            SIMSYCL_CHECK(m_index[d] < m_accessor->get_offset()[d] + m_accessor->get_range()[d]);
+        }
+        for(int d = Dimensions; d >= 0; --d) {
+            ++m_index[d];
+            if(m_index[d] < m_accessor->get_offset()[d] + m_accessor->get_range()[d]) break;
+            if(d > 0) m_index[d] = m_accessor->get_offset()[d];
+        }
+        return *this;
+    }
+
+    accessor_iterator operator++(int) {
+        accessor_iterator tmp = *this;
+        ++(*this);
+        return tmp;
+    }
+
+    friend bool operator==(const accessor_iterator &lhs, const accessor_iterator &rhs) {
+        return lhs.m_index == rhs.m_index && lhs.m_accessor == rhs.m_accessor;
+    }
+
+    friend bool operator!=(const accessor_iterator &lhs, const accessor_iterator &rhs) { return !(lhs == rhs); }
+
+  private:
+    template <typename, int, sycl::access_mode, sycl::target, sycl::access::placeholder>
+    friend class sycl::accessor;
+
+    struct begin_t {
+    } inline static constexpr begin{};
+    struct end_t {
+    } inline static constexpr end{};
+
+    explicit accessor_iterator(Accessor *accessor, begin_t /* tag */)
+        : m_accessor(accessor), m_index(accessor->get_offset()) {}
+
+    explicit accessor_iterator(Accessor *accessor, end_t /* tag */) : m_accessor(accessor) {
+        m_index = accessor->get_offset();
+        m_index[0] = accessor->get_offset()[0] + accessor->get_range()[0];
+    }
+
+    Accessor *m_accessor = nullptr;
+    sycl::id<Dimensions> m_index;
+};
+
+
+template <typename Accessor, typename DataT>
+class accessor_iterator<Accessor, DataT, 0> {
+  public:
+    using value_type = DataT;
+    using difference_type = ssize_t;
+    using reference = value_type &;
+    using pointer = value_type *;
+    using iterator_category = std::forward_iterator_tag;
+
+    accessor_iterator() = default;
+
+    reference operator*() const {
+        SIMSYCL_CHECK(m_offset == 0);
+        return *m_buffer;
+    }
+
+    pointer operator->() const { return &**this; }
+
+    accessor_iterator &operator++() {
+        SIMSYCL_CHECK(m_offset == 0);
+        m_offset = 1;
+        return *this;
+    }
+
+    accessor_iterator operator++(int) {
+        accessor_iterator tmp = *this;
+        ++(*this);
+        return tmp;
+    }
+
+    friend bool operator==(const accessor_iterator &lhs, const accessor_iterator &rhs) {
+        return lhs.m_offset == rhs.m_offset && lhs.m_buffer == rhs.m_buffer;
+    }
+
+    friend bool operator!=(const accessor_iterator &lhs, const accessor_iterator &rhs) { return !(lhs == rhs); }
+
+  private:
+    template <typename, int, sycl::access_mode, sycl::target, sycl::access::placeholder>
+    friend class sycl::accessor;
+
+    struct start_t {
+    } inline static constexpr begin{};
+    struct end_t {
+    } inline static constexpr end{};
+
+    explicit accessor_iterator(Accessor *accessor, start_t /* tag */)
+        : m_buffer(accessor->get_pointer()), m_offset(0) {}
+    explicit accessor_iterator(Accessor *accessor, end_t /* tag */) : m_buffer(accessor->get_pointer()), m_offset(1) {}
+
+    DataT *m_buffer = nullptr;
+    int m_offset = 0;
 };
 
 } // namespace simsycl::detail
@@ -36,6 +159,14 @@ namespace simsycl::sycl {
 template <>
 struct is_property<property::no_init> : std::true_type {};
 
+template <typename DataT, int Dimensions, access_mode AccessMode, target AccessTarget,
+    access::placeholder IsPlaceholder>
+struct is_property_of<property::no_init, accessor<DataT, Dimensions, AccessMode, AccessTarget, IsPlaceholder>>
+    : std::true_type {};
+
+template <typename DataT, int Dimensions>
+struct is_property_of<property::no_init, local_accessor<DataT, Dimensions>> : std::true_type {};
+
 inline constexpr simsycl::detail::accessor_tag<access_mode::read, target::device> read_only;
 inline constexpr simsycl::detail::accessor_tag<access_mode::write, target::device> write_only;
 inline constexpr simsycl::detail::accessor_tag<access_mode::read_write, target::device> read_write;
@@ -47,7 +178,12 @@ inline constexpr property::no_init no_init;
 
 template <typename DataT, int Dimensions, access_mode AccessMode, target AccessTarget,
     access::placeholder IsPlaceholder>
-class accessor {
+class accessor : public simsycl::detail::property_interface {
+  private:
+    using property_compatibility
+        = detail::property_compatibility<accessor<DataT, Dimensions, AccessMode, AccessTarget, IsPlaceholder>,
+            property::no_init>;
+
   public:
     using value_type = std::conditional_t<AccessMode == access_mode::read, const DataT, DataT>;
     using reference = value_type &;
@@ -57,105 +193,149 @@ class accessor {
     using accessor_ptr = std::enable_if_t<AccessTarget == target::device,
         multi_ptr<value_type, access::address_space::global_space, IsDecorated>>;
 
-    using iterator = simsycl::detail::nd_iterator<value_type, Dimensions>;
-    using const_iterator = simsycl::detail::nd_iterator<const value_type, Dimensions>;
+    using iterator = simsycl::detail::accessor_iterator<accessor, value_type, Dimensions>;
+    using const_iterator = simsycl::detail::accessor_iterator<accessor, const value_type, Dimensions>;
     using reverse_iterator = std::reverse_iterator<iterator>;
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
     using difference_type = typename std::iterator_traits<iterator>::difference_type;
     using size_type = size_t;
 
-    accessor();
+    accessor() = default;
 
     template <typename AllocatorT>
-    accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, const property_list &prop_list = {});
+    accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, const property_list &prop_list = {})
+        : accessor(internal, buffer_ref, prop_list) {}
 
     template <typename AllocatorT, typename TagT>
-    accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, TagT tag, const property_list &prop_list = {});
+    accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, TagT tag, const property_list &prop_list = {})
+        : accessor(internal, buffer_ref, tag, prop_list) {}
 
     template <typename AllocatorT>
     accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, handler &command_group_handler_ref,
-        const property_list &prop_list = {});
+        const property_list &prop_list = {})
+        : accessor(internal, buffer_ref, command_group_handler_ref, prop_list) {}
 
     template <typename AllocatorT, typename TagT>
     accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, handler &command_group_handler_ref, TagT tag,
-        const property_list &prop_list = {});
+        const property_list &prop_list = {})
+        : accessor(internal, buffer_ref, command_group_handler_ref, tag, prop_list) {}
 
     template <typename AllocatorT>
     accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, range<Dimensions> access_range,
-        const property_list &prop_list = {});
+        const property_list &prop_list = {})
+        : accessor(internal, buffer_ref, access_range, prop_list) {}
 
     template <typename AllocatorT, typename TagT>
     accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, range<Dimensions> access_range, TagT tag,
-        const property_list &prop_list = {});
+        const property_list &prop_list = {})
+        : accessor(internal, buffer_ref, access_range, tag, prop_list) {}
 
     template <typename AllocatorT>
     accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, range<Dimensions> access_range,
-        id<Dimensions> access_offset, const property_list &prop_list = {});
+        id<Dimensions> access_offset, const property_list &prop_list = {})
+        : accessor(internal, buffer_ref, access_range, access_offset, prop_list) {}
 
     template <typename AllocatorT, typename TagT>
     accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, range<Dimensions> access_range,
-        id<Dimensions> access_offset, TagT tag, const property_list &prop_list = {});
+        id<Dimensions> access_offset, TagT tag, const property_list &prop_list = {})
+        : accessor(internal, buffer_ref, access_range, access_offset, tag, prop_list) {}
 
     template <typename AllocatorT>
     accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, handler &command_group_handler_ref,
-        range<Dimensions> access_range, const property_list &prop_list = {});
+        range<Dimensions> access_range, const property_list &prop_list = {})
+        : accessor(internal, buffer_ref, command_group_handler_ref, access_range, prop_list) {}
 
     template <typename AllocatorT, typename TagT>
     accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, handler &command_group_handler_ref,
-        range<Dimensions> access_range, TagT tag, const property_list &prop_list = {});
+        range<Dimensions> access_range, TagT tag, const property_list &prop_list = {})
+        : accessor(internal, buffer_ref, command_group_handler_ref, access_range, tag, prop_list) {}
 
     template <typename AllocatorT>
     accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, handler &command_group_handler_ref,
-        range<Dimensions> access_range, id<Dimensions> access_offset, const property_list &prop_list = {});
+        range<Dimensions> access_range, id<Dimensions> access_offset, const property_list &prop_list = {})
+        : accessor(internal, buffer_ref, command_group_handler_ref, access_range, access_offset, prop_list) {}
 
     template <typename AllocatorT, typename TagT>
     accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, handler &command_group_handler_ref,
-        range<Dimensions> access_range, id<Dimensions> access_offset, TagT tag, const property_list &prop_list = {});
+        range<Dimensions> access_range, id<Dimensions> access_offset, TagT tag, const property_list &prop_list = {})
+        : accessor(internal, buffer_ref, command_group_handler_ref, access_range, access_offset, tag, prop_list) {}
 
-    /* -- common interface members -- */
+    friend bool operator==(const accessor &lhs, const accessor &rhs) {
+        return lhs.m_buffer == rhs.m_buffer && lhs.m_buffer_range == rhs.m_buffer_range
+            && lhs.m_access_offset == rhs.m_access_offset && lhs.m_access_range == rhs.m_access_range
+            && lhs.m_required == rhs.m_required;
+    }
 
-    void swap(accessor &other);
+    friend bool operator!=(const accessor &lhs, const accessor &rhs) { return !(lhs == rhs); }
 
-    bool is_placeholder() const;
+    void swap(accessor &other) { return std::swap(this, other); }
 
-    size_type byte_size() const noexcept;
+    bool is_placeholder() const { return !m_required; }
 
-    size_type size() const noexcept;
+    size_type byte_size() const noexcept {
+        SIMSYCL_CHECK(m_buffer != nullptr);
+        return m_access_range.size() * sizeof(DataT);
+    }
 
-    size_type max_size() const noexcept;
+    size_type size() const noexcept {
+        SIMSYCL_CHECK(m_buffer != nullptr);
+        return m_access_range.size();
+    }
 
-    [[deprecated]] size_t get_size() const;
+    size_type max_size() const noexcept { return std::numeric_limits<size_t>::max() / sizeof(DataT); }
 
-    [[deprecated]] size_t get_count() const;
+    [[deprecated]] size_t get_size() const { return byte_size(); }
 
-    bool empty() const noexcept;
+    [[deprecated]] size_t get_count() const { return size(); }
 
-    range<Dimensions> get_range() const;
+    bool empty() const noexcept { return m_access_range.size() == 0; }
 
-    id<Dimensions> get_offset() const;
+    range<Dimensions> get_range() const {
+        SIMSYCL_CHECK(m_buffer != nullptr);
+        return m_access_range;
+    }
 
-    template <access_mode A = AccessMode>
-        requires(A != access_mode::atomic)
-    reference operator[](id<Dimensions> index) const;
+    id<Dimensions> get_offset() const {
+        SIMSYCL_CHECK(m_buffer != nullptr);
+        return m_access_offset;
+    }
 
-    template <access_mode A = AccessMode>
-        requires(A == access_mode::atomic)
-    [[deprecated]] atomic<DataT, access::address_space::global_space> operator[](id<Dimensions> index) const;
+    reference operator[](id<Dimensions> index) const
+        requires(AccessMode != access_mode::atomic)
+    {
+        SIMSYCL_CHECK(m_buffer != nullptr);
+        SIMSYCL_CHECK(m_required);
+        return m_buffer[detail::get_linear_index(m_access_range, index)];
+    }
 
-    decltype(auto) operator[](size_t index) const { return detail::subscript(*this, index); }
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+    [[deprecated]] atomic<DataT, access::address_space::global_space> operator[](id<Dimensions> index) const
+        requires(AccessMode == access_mode::atomic);
+#pragma GCC diagnostic pop
 
-    std::add_pointer_t<value_type> get_pointer() const noexcept;
+    decltype(auto) operator[](size_t index) const { return detail::subscript<Dimensions>(*this, index); }
+
+    std::add_pointer_t<value_type> get_pointer() const noexcept {
+        SIMSYCL_CHECK(m_buffer != nullptr);
+        SIMSYCL_CHECK(m_required);
+        return m_buffer;
+    }
 
     template <access::decorated IsDecorated>
-    accessor_ptr<IsDecorated> get_multi_ptr() const noexcept;
+    accessor_ptr<IsDecorated> get_multi_ptr() const noexcept {
+        SIMSYCL_CHECK(m_buffer != nullptr);
+        SIMSYCL_CHECK(m_required);
+        return accessor_ptr<IsDecorated>(m_buffer);
+    }
 
-    iterator begin() const noexcept;
+    iterator begin() const noexcept { return iterator(*this, iterator::begin); }
 
-    iterator end() const noexcept;
+    iterator end() const noexcept { return iterator(*this, iterator::end); }
 
-    const_iterator cbegin() const noexcept;
+    const_iterator cbegin() const noexcept { return const_iterator(*this, const_iterator::begin); }
 
-    const_iterator cend() const noexcept;
+    const_iterator cend() const noexcept { return const_iterator(*this, const_iterator::end); }
 
     reverse_iterator rbegin() const noexcept;
 
@@ -164,10 +344,113 @@ class accessor {
     const_reverse_iterator crbegin() const noexcept;
 
     const_reverse_iterator crend() const noexcept;
+
+  private:
+    friend class handler;
+
+    struct internal_t {
+    } constexpr inline static internal{};
+
+    DataT *m_buffer = nullptr;
+    range<Dimensions> m_buffer_range;
+    id<Dimensions> m_access_offset;
+    range<Dimensions> m_access_range;
+    bool m_required = false;
+
+    template <typename AllocatorT>
+    void init(buffer<DataT, Dimensions, AllocatorT> &buffer_ref) {
+        m_buffer = buffer_ref.state().buffer;
+        m_buffer_range = buffer_ref.state().range;
+        m_access_range = m_buffer_range;
+    }
+    void init(const id<Dimensions> &access_offset) { m_access_offset = access_offset; }
+
+    void init(const range<Dimensions> &access_range) { m_access_range = access_range; }
+
+    void init(handler & /* cgh */) { m_required = true; }
+
+    void init(const property_list &prop_list) {
+        static_cast<detail::property_interface &>(*this)
+            = detail::property_interface(prop_list, property_compatibility());
+    }
+
+    void init(simsycl::detail::accessor_tag<AccessMode, AccessTarget> /* tag */) {}
+
+    template <typename... Params>
+    explicit accessor(internal_t /* tag */, Params &&...args) {
+        (init(args), ...);
+    }
+
+    void require() {
+        SIMSYCL_CHECK(m_buffer != nullptr);
+        m_required = true;
+    }
+
+    const range<3> &get_buffer_range() const { return m_buffer_range; }
 };
 
+template <typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
+accessor(buffer<DataT, Dimensions, AllocatorT> &, detail::accessor_tag<AccessMode, AccessTarget>)
+    -> accessor<DataT, Dimensions, AccessMode, AccessTarget, access::placeholder::false_t>;
+
+template <typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
+accessor(buffer<DataT, Dimensions, AllocatorT> &, detail::accessor_tag<AccessMode, AccessTarget>, const property_list &)
+    -> accessor<DataT, Dimensions, AccessMode, AccessTarget, access::placeholder::false_t>;
+
+template <typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
+accessor(buffer<DataT, Dimensions, AllocatorT> &, handler &, detail::accessor_tag<AccessMode, AccessTarget>)
+    -> accessor<DataT, Dimensions, AccessMode, AccessTarget, access::placeholder::false_t>;
+
+template <typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
+accessor(buffer<DataT, Dimensions, AllocatorT> &, handler &, detail::accessor_tag<AccessMode, AccessTarget>,
+    const property_list &) -> accessor<DataT, Dimensions, AccessMode, AccessTarget, access::placeholder::false_t>;
+
+template <typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
+accessor(buffer<DataT, Dimensions, AllocatorT> &, range<Dimensions>, detail::accessor_tag<AccessMode, AccessTarget>)
+    -> accessor<DataT, Dimensions, AccessMode, AccessTarget, access::placeholder::false_t>;
+
+template <typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
+accessor(buffer<DataT, Dimensions, AllocatorT> &, range<Dimensions>, detail::accessor_tag<AccessMode, AccessTarget>,
+    const property_list &) -> accessor<DataT, Dimensions, AccessMode, AccessTarget, access::placeholder::false_t>;
+
+template <typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
+accessor(buffer<DataT, Dimensions, AllocatorT> &, handler &, range<Dimensions>,
+    detail::accessor_tag<AccessMode, AccessTarget>)
+    -> accessor<DataT, Dimensions, AccessMode, AccessTarget, access::placeholder::false_t>;
+
+template <typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
+accessor(buffer<DataT, Dimensions, AllocatorT> &, handler &, range<Dimensions>,
+    detail::accessor_tag<AccessMode, AccessTarget>, const property_list &)
+    -> accessor<DataT, Dimensions, AccessMode, AccessTarget, access::placeholder::false_t>;
+
+template <typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
+accessor(buffer<DataT, Dimensions, AllocatorT> &, range<Dimensions>, id<Dimensions>,
+    detail::accessor_tag<AccessMode, AccessTarget>)
+    -> accessor<DataT, Dimensions, AccessMode, AccessTarget, access::placeholder::false_t>;
+
+template <typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
+accessor(buffer<DataT, Dimensions, AllocatorT> &, range<Dimensions>, id<Dimensions>,
+    detail::accessor_tag<AccessMode, AccessTarget>, const property_list &)
+    -> accessor<DataT, Dimensions, AccessMode, AccessTarget, access::placeholder::false_t>;
+
+template <typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
+accessor(buffer<DataT, Dimensions, AllocatorT> &, handler &, range<Dimensions>, id<Dimensions>,
+    detail::accessor_tag<AccessMode, AccessTarget>)
+    -> accessor<DataT, Dimensions, AccessMode, AccessTarget, access::placeholder::false_t>;
+
+template <typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
+accessor(buffer<DataT, Dimensions, AllocatorT> &, handler &, range<Dimensions>, id<Dimensions>,
+    detail::accessor_tag<AccessMode, AccessTarget>, const property_list &)
+    -> accessor<DataT, Dimensions, AccessMode, AccessTarget, access::placeholder::false_t>;
+
+
 template <typename DataT, access_mode AccessMode, target AccessTarget, access::placeholder IsPlaceholder>
-class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> {
+class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> : public simsycl::detail::property_interface {
+  private:
+    using property_compatibility
+        = detail::property_compatibility<accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder>,
+            property::no_init>;
+
   public:
     using value_type = std::conditional_t<AccessMode == access_mode::read, const DataT, DataT>;
     using reference = value_type &;
@@ -177,64 +460,102 @@ class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> {
     using accessor_ptr = std::enable_if_t<AccessTarget == target::device,
         multi_ptr<value_type, access::address_space::global_space, IsDecorated>>;
 
-    using iterator = simsycl::detail::nd_iterator<value_type, 0>;
-    using const_iterator = simsycl::detail::nd_iterator<const value_type, 0>;
+    using iterator = simsycl::detail::accessor_iterator<accessor, value_type, 0>;
+    using const_iterator = simsycl::detail::accessor_iterator<accessor, const value_type, 0>;
     using reverse_iterator = std::reverse_iterator<iterator>;
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
     using difference_type = typename std::iterator_traits<iterator>::difference_type;
     using size_type = size_t;
 
-    accessor();
+    accessor() = default;
 
     template <typename AllocatorT>
-    accessor(buffer<DataT, 1, AllocatorT> &buffer_ref, const property_list &prop_list = {});
+    accessor(buffer<DataT, 1, AllocatorT> &buffer_ref, const property_list &prop_list = {})
+        : simsycl::detail::property_interface(prop_list, property_compatibility()),
+          m_buffer(buffer_ref.state().m_buffer), m_required(false) {}
 
     template <typename AllocatorT>
     accessor(buffer<DataT, 1, AllocatorT> &buffer_ref, handler &command_group_handler_ref,
-        const property_list &prop_list = {});
+        const property_list &prop_list = {})
+        : simsycl::detail::property_interface(prop_list, property_compatibility()),
+          m_buffer(buffer_ref.state().m_buffer), m_required(true) {
+        (void)command_group_handler_ref;
+    }
 
-    /* -- common interface members -- */
+    friend bool operator==(const accessor &lhs, const accessor &rhs) {
+        return lhs.m_buffer == rhs.m_buffer && lhs.m_required == rhs.m_required;
+    }
 
-    void swap(accessor &other);
+    friend bool operator!=(const accessor &lhs, const accessor &rhs) { return !(lhs == rhs); }
 
-    bool is_placeholder() const;
+    void swap(accessor &other) { return std::swap(this, other); }
 
-    size_type byte_size() const noexcept;
+    bool is_placeholder() const { return !m_required; }
 
-    size_type size() const noexcept;
+    size_type byte_size() const noexcept { return sizeof(DataT); }
 
-    size_type max_size() const noexcept;
+    size_type size() const noexcept { return 1; }
 
-    [[deprecated]] size_t get_size() const;
+    size_type max_size() const noexcept { return 1; }
 
-    [[deprecated]] size_t get_count() const;
+    [[deprecated]] size_t get_size() const { return byte_size(); }
 
-    bool empty() const noexcept;
+    [[deprecated]] size_t get_count() const { return size(); }
 
-    template <access_mode A = AccessMode, std::enable_if_t<A != access_mode::atomic, int> = 0>
-    operator reference() const;
+    bool empty() const noexcept { return false; }
 
-    template <access_mode A = AccessMode, std::enable_if_t<A != access_mode::atomic && A != access_mode::read, int> = 0>
-    const accessor &operator=(const value_type &other) const;
+    operator reference() const
+        requires(AccessMode != access_mode::atomic)
+    {
+        SIMSYCL_CHECK(m_buffer != nullptr);
+        SIMSYCL_CHECK(m_required);
+        return *m_buffer;
+    }
 
-    template <access_mode A = AccessMode, std::enable_if_t<A != access_mode::atomic && A != access_mode::read, int> = 0>
-    const accessor &operator=(value_type &&other) const;
+    const accessor &operator=(const value_type &other) const
+        requires(AccessMode != access_mode::atomic && AccessMode != access_mode::read)
+    {
+        SIMSYCL_CHECK(m_buffer != nullptr);
+        SIMSYCL_CHECK(m_required);
+        *m_buffer = other;
+        return *this;
+    }
 
-    template <access_mode A = AccessMode, std::enable_if_t<A == access_mode::atomic, int> = 0>
-    [[deprecated]] operator atomic<DataT, access::address_space::global_space>() const;
+    const accessor &operator=(value_type &&other) const
+        requires(AccessMode != access_mode::atomic && AccessMode != access_mode::read)
+    {
+        SIMSYCL_CHECK(m_buffer != nullptr);
+        SIMSYCL_CHECK(m_required);
+        *m_buffer = std::move(other);
+        return *this;
+    }
 
-    std::add_pointer_t<value_type> get_pointer() const noexcept;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+    [[deprecated]] operator atomic<DataT, access::address_space::global_space>() const
+        requires(AccessMode == access_mode::atomic);
+#pragma GCC diagnostic pop
+
+    std::add_pointer_t<value_type> get_pointer() const noexcept {
+        SIMSYCL_CHECK(m_buffer != nullptr);
+        SIMSYCL_CHECK(m_required);
+        return m_buffer;
+    }
 
     template <access::decorated IsDecorated>
-    accessor_ptr<IsDecorated> get_multi_ptr() const noexcept;
+    accessor_ptr<IsDecorated> get_multi_ptr() const noexcept {
+        SIMSYCL_CHECK(m_buffer != nullptr);
+        SIMSYCL_CHECK(m_required);
+        return m_buffer;
+    }
 
-    iterator begin() const noexcept;
+    iterator begin() const noexcept { return iterator(*this, iterator::begin); }
 
-    iterator end() const noexcept;
+    iterator end() const noexcept { return iterator(*this, iterator::end); }
 
-    const_iterator cbegin() const noexcept;
+    const_iterator cbegin() const noexcept { return const_iterator(*this, const_iterator::begin); }
 
-    const_iterator cend() const noexcept;
+    const_iterator cend() const noexcept { return const_iterator(*this, const_iterator::end); }
 
     reverse_iterator rbegin() const noexcept;
 
@@ -243,6 +564,183 @@ class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> {
     const_reverse_iterator crbegin() const noexcept;
 
     const_reverse_iterator crend() const noexcept;
+
+  private:
+    friend class handler;
+
+    DataT *m_buffer = nullptr;
+    bool m_required = false;
+
+    void require() {
+        SIMSYCL_CHECK(m_buffer != nullptr);
+        m_required = true;
+    }
+};
+
+
+template <typename DataT, int Dimensions>
+class local_accessor final : public simsycl::detail::property_interface {
+  private:
+    using property_compatibility = detail::property_compatibility<local_accessor<DataT, Dimensions>, property::no_init>;
+
+  public:
+    using value_type = DataT;
+    using reference = value_type &;
+    using const_reference = const DataT &;
+
+    template <access::decorated IsDecorated>
+    using accessor_ptr = multi_ptr<value_type, access::address_space::local_space, IsDecorated>;
+
+    using iterator = simsycl::detail::accessor_iterator<local_accessor, value_type, Dimensions>;
+    using const_iterator = simsycl::detail::accessor_iterator<local_accessor, const value_type, Dimensions>;
+    using reverse_iterator = std::reverse_iterator<iterator>;
+    using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+    using difference_type = typename std::iterator_traits<iterator>::difference_type;
+    using size_type = size_t;
+
+    local_accessor() = default;
+
+    local_accessor(
+        range<Dimensions> allocation_size, handler &command_group_handler_ref, const property_list &prop_list = {})
+        : property_interface(prop_list, property_compatibility()),
+          m_allocation_ptr(detail::require_local_memory(
+              command_group_handler_ref, allocation_size.size() * sizeof(DataT), alignof(DataT))),
+          m_range(allocation_size) {}
+
+    void swap(local_accessor &other) { std::swap(*this, other); }
+
+    size_type byte_size() const noexcept { return m_range.size() * sizeof(DataT); }
+
+    size_type size() const noexcept { return m_range.size(); }
+
+    size_type max_size() const noexcept { return std::numeric_limits<size_t>::max() / sizeof(DataT); }
+
+    bool empty() const noexcept { return m_range.size() == 0; }
+
+    range<Dimensions> get_range() const { return m_range; }
+
+    reference operator[](id<Dimensions> index) const {
+        return get_allocation()[detail::get_linear_index(m_range, index)];
+    }
+
+    decltype(auto) operator[](size_t index) const { return detail::subscript<Dimensions>(*this, index); }
+
+    [[deprecated]] local_ptr<DataT> get_pointer() const noexcept { return local_ptr<DataT>(get_allocation()); }
+
+    template <access::decorated IsDecorated>
+    accessor_ptr<IsDecorated> get_multi_ptr() const noexcept {
+        return accessor_ptr<IsDecorated>(get_allocation());
+    }
+
+    iterator begin() const noexcept { return iterator(*this, iterator::begin); }
+
+    iterator end() const noexcept { return iterator(*this, iterator::end); }
+
+    const_iterator cbegin() const noexcept { return const_iterator(*this, const_iterator::begin); }
+
+    const_iterator cend() const noexcept { return const_iterator(*this, const_iterator::end); }
+
+    reverse_iterator rbegin() const noexcept;
+
+    reverse_iterator rend() const noexcept;
+
+    const_reverse_iterator crbegin() const noexcept;
+
+    const_reverse_iterator crend() const noexcept;
+
+  private:
+    friend iterator;
+    friend const_iterator;
+
+    void **m_allocation_ptr;
+    sycl::range<Dimensions> m_range;
+
+    const range<3> &get_buffer_range() const { return get_range(); }
+
+    inline DataT *get_allocation() const { return static_cast<DataT*>(*m_allocation_ptr); }
+};
+
+template <typename DataT>
+class local_accessor<DataT, 0> final : public simsycl::detail::property_interface {
+  private:
+    using property_compatibility = detail::property_compatibility<local_accessor<DataT, 0>, property::no_init>;
+
+  public:
+    using value_type = DataT;
+    using reference = value_type &;
+    using const_reference = const DataT &;
+
+    template <access::decorated IsDecorated>
+    using accessor_ptr = multi_ptr<value_type, access::address_space::local_space, IsDecorated>;
+
+    using iterator = simsycl::detail::accessor_iterator<local_accessor, value_type, 0>;
+    using const_iterator = simsycl::detail::accessor_iterator<local_accessor, const value_type, 0>;
+    using reverse_iterator = std::reverse_iterator<iterator>;
+    using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+    using difference_type = typename std::iterator_traits<iterator>::difference_type;
+    using size_type = size_t;
+
+    local_accessor() {}
+
+    local_accessor(handler &command_group_handler_ref, const property_list &prop_list)
+        : property_interface(prop_list, property_compatibility()),
+          m_allocation_ptr(detail::require_local_memory(command_group_handler_ref, sizeof(DataT), alignof(DataT))) {}
+
+    void swap(local_accessor &other);
+
+    bool is_placeholder() const;
+
+    size_type byte_size() const noexcept { return sizeof(DataT); }
+
+    size_type size() const noexcept { return 1; }
+
+    size_type max_size() const noexcept { return 1; }
+
+    [[deprecated]] size_t get_size() const { return byte_size(); }
+
+    [[deprecated]] size_t get_count() const { return 1; }
+
+    bool empty() const noexcept { return false; }
+
+    operator reference() const { return *get_allocation(); }
+
+    const local_accessor &operator=(const value_type &other) const {
+        *get_allocation() = other;
+        return *this;
+    }
+
+    const local_accessor &operator=(value_type &&other) const {
+        *get_allocation() = std::move(other);
+        return *this;
+    }
+
+    std::add_pointer_t<value_type> get_pointer() const noexcept { return get_allocation(); }
+
+    template <access::decorated IsDecorated>
+    accessor_ptr<IsDecorated> get_multi_ptr() const noexcept {
+        return accessor_ptr<IsDecorated>(get_allocation());
+    }
+
+    iterator begin() const noexcept { return iterator(*this, iterator::begin); }
+
+    iterator end() const noexcept { return iterator(*this, iterator::end); }
+
+    const_iterator cbegin() const noexcept { return const_iterator(*this, const_iterator::begin); }
+
+    const_iterator cend() const noexcept { return const_iterator(*this, const_iterator::end); }
+
+    reverse_iterator rbegin() const noexcept;
+
+    reverse_iterator rend() const noexcept;
+
+    const_reverse_iterator crbegin() const noexcept;
+
+    const_reverse_iterator crend() const noexcept;
+
+  private:
+    void **m_allocation_ptr;
+
+    inline DataT *get_allocation() const { return static_cast<DataT>(*m_allocation_ptr); }
 };
 
 } // namespace simsycl::sycl

@@ -3,6 +3,12 @@ project(SimSYCL VERSION 0.1 LANGUAGES CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+if(CMAKE_GENERATOR STREQUAL "Ninja")
+  # Force colored warnings in Ninja's output, if the compiler has -fdiagnostics-color support.
+  # Rationale in https://github.com/ninja-build/ninja/issues/814
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=always")
+endif()
+
 find_package(Boost 1.70 COMPONENTS context REQUIRED)
 
 # Function to set properties, compile options, and link options for all simsycl targets
@@ -68,3 +74,4 @@ set_simsycl_target_options(main)
 
 enable_testing()
 add_subdirectory(test)
+add_subdirectory(examples)

@@ -25,7 +25,11 @@ class reference_type {
   protected:
     using state_type = State;
 
-    explicit reference_type(state_type &&st) : m_state(std::make_shared(std::move(st))) {
+    reference_type() = default;
+
+    template <typename... CtorParams>
+    explicit reference_type(std::in_place_t /* tag */, CtorParams &&...ctor_args)
+        : m_state(std::make_shared<State>(std::forward<CtorParams>(ctor_args)...)) {
         static_assert(std::is_base_of_v<reference_type, Derived>);
     }
 

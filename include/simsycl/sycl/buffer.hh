@@ -6,6 +6,7 @@
 
 #include "../detail/reference_type.hh"
 
+#include <concepts>
 #include <cstring>
 #include <memory>
 #include <mutex>
@@ -44,30 +45,35 @@ class context_bound {
 namespace simsycl::sycl {
 
 template <>
-struct is_property<property::buffer::use_host_ptr> : public std::true_type {};
+struct is_property<property::buffer::use_host_ptr> : std::true_type {};
 
 template <typename T, int Dimensions, typename AllocatorT>
-struct is_property_of<property::buffer::use_host_ptr, buffer<T, Dimensions, AllocatorT>> : public std::true_type {};
+struct is_property_of<property::buffer::use_host_ptr, buffer<T, Dimensions, AllocatorT>> : std::true_type {};
 
 template <>
-struct is_property<property::buffer::use_mutex> : public std::true_type {};
+struct is_property<property::buffer::use_mutex> : std::true_type {};
 
 template <typename T, int Dimensions, typename AllocatorT>
-struct is_property_of<property::buffer::use_mutex, buffer<T, Dimensions, AllocatorT>> : public std::true_type {};
+struct is_property_of<property::buffer::use_mutex, buffer<T, Dimensions, AllocatorT>> : std::true_type {};
 
 template <>
-struct is_property<property::buffer::context_bound> : public std::true_type {};
+struct is_property<property::buffer::context_bound> : std::true_type {};
 
 template <typename T, int Dimensions, typename AllocatorT>
-struct is_property_of<property::buffer::context_bound, buffer<T, Dimensions, AllocatorT>> : public std::true_type {};
+struct is_property_of<property::buffer::context_bound, buffer<T, Dimensions, AllocatorT>> : std::true_type {};
 
 } // namespace simsycl::sycl
 
 namespace simsycl::detail {
 
-template <typename Container, typename T>
-constexpr bool is_container_v = std::is_convertible_v<decltype(std::data(std::declval<Container &>())), T *>
-    && std::is_convertible_v<decltype(std::size(std::declval<Container &>())), size_t>;
+template <typename C, typename T>
+constexpr bool is_container_v = requires(C &c) {
+    { std::data(c) } -> std::convertible_to<T *>;
+    { std::size(c) } -> std::convertible_to<size_t>;
+};
+
+template <typename C, typename T>
+concept Container = is_container_v<C, T>;
 
 template <typename T, int Dimensions, typename AllocatorT>
 struct buffer_state {
@@ -77,15 +83,20 @@ struct buffer_state {
     T *write_back_to = nullptr; // TODO has to be an arbitrary output iterator (aka a type-erased lambda)
 
     buffer_state(sycl::range<Dimensions> range, const AllocatorT &allocator = {}, T *write_back_to = nullptr)
-        : range(range), allocator(allocator), buffer(allocator.allocate(range.size())), write_back_to(write_back_to) {}
-
-    ~buffer_state() {
-        if(write_back_to != nullptr) { std::copy_n(buffer, range.size(), write_back_to); }
-        allocator.deallocate(buffer);
+        : range(range), allocator(allocator), buffer(this->allocator.allocate(range.size())),
+          write_back_to(write_back_to) {
+        memset(buffer, static_cast<int>(detail::uninitialized_memory_pattern), range.size() * sizeof(T));
     }
 
     buffer_state(const buffer_state &) = delete;
+    buffer_state(buffer_state &&) = delete;
     buffer_state &operator=(const buffer_state &) = delete;
+    buffer_state &operator=(buffer_state &&) = delete;
+
+    ~buffer_state() {
+        if(write_back_to != nullptr) { std::copy_n(buffer, range.size(), write_back_to); }
+        allocator.deallocate(buffer, range.size());
+    }
 };
 
 } // namespace simsycl::detail
@@ -99,8 +110,8 @@ class buffer final
   private:
     using reference_type
         = detail::reference_type<buffer<T, Dimensions, AllocatorT>, detail::buffer_state<T, Dimensions, AllocatorT>>;
-    using property_compatibility = detail::property_compatibility<buffer<T>, property::buffer::use_host_ptr,
-        property::buffer::use_mutex, property::buffer::context_bound>;
+    using property_compatibility = detail::property_compatibility<buffer<T, Dimensions, AllocatorT>,
+        property::buffer::use_host_ptr, property::buffer::use_mutex, property::buffer::context_bound>;
     using typename reference_type::state_type;
 
   public:
@@ -113,8 +124,8 @@ class buffer final
         : buffer(buffer_range, AllocatorT(), prop_list) {}
 
     buffer(const range<Dimensions> &buffer_range, AllocatorT allocator, const property_list &prop_list = {})
-        : property_interface(prop_list, property_compatibility()), reference_type(state_type(buffer_range, allocator)) {
-    }
+        : reference_type(std::in_place, buffer_range, allocator),
+          property_interface(prop_list, property_compatibility()) {}
 
     buffer(T *host_data, const range<Dimensions> &buffer_range, const property_list &prop_list = {})
         : buffer(host_data, buffer_range, AllocatorT(), prop_list) {}
@@ -122,7 +133,7 @@ class buffer final
     buffer(
         T *host_data, const range<Dimensions> &buffer_range, AllocatorT allocator, const property_list &prop_list = {})
         : property_interface(prop_list, property_compatibility()),
-          reference_type(state_type(buffer_range, allocator, prop_list, host_data)) {
+          reference_type(std::in_place, buffer_range, allocator, prop_list, host_data) {
         std::copy_n(host_data, state().range.size(), state().buffer);
     }
 
@@ -132,14 +143,16 @@ class buffer final
     buffer(const T *host_data, const range<Dimensions> &buffer_range, AllocatorT allocator,
         const property_list &prop_list = {})
         : property_interface(prop_list, property_compatibility()),
-          reference_type(state_type(buffer_range, allocator, prop_list)) {
+          reference_type(std::in_place, buffer_range, allocator, prop_list) {
         std::copy_n(host_data, state().range.size(), state().buffer);
     }
 
-    template <typename Container, std::enable_if_t<detail::is_container_v<Container, T> && Dimensions == 1, int> = 0>
+    template <simsycl::detail::Container<T> Container>
+        requires(Dimensions == 1)
     buffer(Container &container, AllocatorT allocator, const property_list &prop_list = {});
 
-    template <typename Container, std::enable_if_t<detail::is_container_v<Container, T> && Dimensions == 1, int> = 0>
+    template <simsycl::detail::Container<T> Container>
+        requires(Dimensions == 1)
     buffer(Container &container, const property_list &prop_list = {}) : buffer(container, AllocatorT(), prop_list) {}
 
     buffer(const std::shared_ptr<T> &host_data, const range<Dimensions> &buffer_range, AllocatorT allocator,
@@ -156,10 +169,12 @@ class buffer final
         const property_list &prop_list = {})
         : buffer(host_data, buffer_range, AllocatorT(), prop_list) {}
 
-    template <class InputIterator, std::enable_if_t<Dimensions == 1, int> = 0>
+    template <class InputIterator>
+        requires(Dimensions == 1)
     buffer(InputIterator first, InputIterator last, AllocatorT allocator, const property_list &prop_list = {});
 
-    template <class InputIterator, std::enable_if_t<Dimensions == 1, int> = 0>
+    template <class InputIterator>
+        requires(Dimensions == 1)
     buffer(InputIterator first, InputIterator last, const property_list &prop_list = {})
         : buffer(first, last, AllocatorT(), prop_list) {}
 
@@ -213,15 +228,16 @@ class buffer final
         typename std::allocator_traits<AllocatorT>::template rebind_alloc<ReinterpretT>>
     reinterpret(range<ReinterpretDim> reinterpret_range) const;
 
-    template <typename ReinterpretT, int ReinterpretDim = Dimensions,
-        std::enable_if_t<ReinterpretDim == 1 || (ReinterpretDim == Dimensions && sizeof(ReinterpretT) == sizeof(T)),
-            int>
-        = 0>
+    template <typename ReinterpretT, int ReinterpretDim = Dimensions>
+        requires(ReinterpretDim == 1 || (ReinterpretDim == Dimensions && sizeof(ReinterpretT) == sizeof(T)))
     buffer<ReinterpretT, ReinterpretDim,
         typename std::allocator_traits<AllocatorT>::template rebind_alloc<ReinterpretT>>
     reinterpret() const;
 
   private:
+    template <typename, int, access_mode, target, access::placeholder>
+    friend class accessor;
+
     using reference_type::state;
 };
 
@@ -241,12 +257,12 @@ buffer(const T *, const range<Dimensions> &, AllocatorT, const property_list & =
 template <class T, int Dimensions>
 buffer(const T *, const range<Dimensions> &, const property_list & = {}) -> buffer<T, Dimensions>;
 
-template <typename Container, typename AllocatorT,
-    std::enable_if_t<detail::is_container_v<Container, typename Container::value_type>, int> = 0>
+template <typename Container, typename AllocatorT>
+    requires(detail::is_container_v<Container, typename Container::value_type>)
 buffer(Container &, AllocatorT, const property_list & = {}) -> buffer<typename Container::value_type, 1, AllocatorT>;
 
-template <typename Container,
-    std::enable_if_t<detail::is_container_v<Container, typename Container::value_type>, int> = 0>
+template <typename Container>
+    requires(detail::is_container_v<Container, typename Container::value_type>)
 buffer(Container &, const property_list & = {}) -> buffer<typename Container::value_type, 1>;
 
 } // namespace simsycl::sycl

@@ -18,10 +18,10 @@ struct accelerator_selector {};
 namespace simsycl::sycl {
 
 // Predefined device selectors
-detail::default_selector default_selector_v;
-detail::cpu_selector cpu_selector_v;
-detail::gpu_selector gpu_selector_v;
-detail::accelerator_selector accelerator_selector_v;
+inline constexpr detail::default_selector default_selector_v;
+inline constexpr detail::cpu_selector cpu_selector_v;
+inline constexpr detail::gpu_selector gpu_selector_v;
+inline constexpr detail::accelerator_selector accelerator_selector_v;
 
 // Predefined types for compatibility with old SYCL 1.2.1 device selectors
 using default_selector = detail::default_selector;
@@ -82,8 +82,10 @@ class device {
     static std::vector<device> get_devices(info::device_type device_type = info::device_type::all);
 };
 
-template <aspect Aspect> struct any_device_has;
-template <aspect Aspect> struct all_devices_have;
+template <aspect Aspect>
+struct any_device_has;
+template <aspect Aspect>
+struct all_devices_have;
 
 template <aspect A>
 inline constexpr bool any_device_has_v = any_device_has<A>::value;

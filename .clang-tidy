@@ -22,6 +22,7 @@ Checks: -*,
   -readability-magic-numbers,
   -readability-uppercase-literal-suffix,
   -readability-convert-member-functions-to-static
+  -readability-qualified-auto
 
 CheckOptions:
   # Naming conventions
