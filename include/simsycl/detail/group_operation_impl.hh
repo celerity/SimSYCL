@@ -97,6 +97,15 @@ struct group_reduce_data : group_per_operation_data {
     std::vector<T> values;
     group_reduce_data(size_t num_work_items, std::optional<T> init) : init(init), values(num_work_items) {}
 };
+template <typename T>
+struct group_joint_scan_data : group_per_operation_data {
+    T *first;
+    T *last;
+    std::optional<T> init;
+    std::vector<T> results;
+    group_joint_scan_data(T *first, T *last, std::optional<T> init, const std::vector<T> &results)
+        : first(first), last(last), init(init), results(results) {}
+};
 
 struct group_operation_data {
     group_operation_id id;
@@ -229,6 +238,21 @@ T group_reduce_impl(G g, T x, std::optional<T> init, Op op) {
                         }
                     }
                     return result;
+                }});
+}
+
+template <sycl::Group G, sycl::Pointer Ptr, sycl::Fundamental T>
+void joint_scan_impl(
+    G g, group_operation_id op_id, Ptr first, Ptr last, std::optional<T> init, const std::vector<T> &results) {
+    perform_group_operation(g, op_id,
+        group_operation_spec{//
+            .init = [&]() { return std::make_unique<group_joint_scan_data<T>>(first, last, init, results); },
+            .reached =
+                [&](group_joint_scan_data<T> &per_op) {
+                    SIMSYCL_CHECK(per_op.first == first);
+                    SIMSYCL_CHECK(per_op.last == last);
+                    SIMSYCL_CHECK(per_op.init == init);
+                    SIMSYCL_CHECK(per_op.results == results);
                 }});
 }
 

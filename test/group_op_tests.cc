@@ -451,3 +451,51 @@ TEST_CASE("Group reduce_over_group behaves as expected", "[group_op][reduce_over
         });
     }
 }
+
+TEST_CASE("Group joint scans behave as expected", "[group_op][joint_exclusive_scan][joint_inclusive_scan]") {
+    int inputs[4] = {1, 2, 3, 4};
+
+    SECTION("For work groups") {
+        sycl::queue().submit([&inputs](sycl::handler &cgh) {
+            cgh.parallel_for(sycl::nd_range<1>{8, 4}, [&inputs](sycl::nd_item<1> it) {
+                std::vector<int> outputs = {0, 0, 0, 0};
+                sycl::joint_exclusive_scan(it.get_group(), inputs, inputs + 4, outputs.data(), sycl::plus<int>{});
+                CHECK(outputs == std::vector<int>({0, 1, 3, 6}));
+                sycl::joint_inclusive_scan(it.get_group(), inputs, inputs + 4, outputs.data(), sycl::plus<int>{});
+                CHECK(outputs == std::vector<int>({1, 3, 6, 10}));
+                sycl::joint_exclusive_scan(it.get_group(), inputs, inputs + 4, outputs.data(), sycl::maximum<int>{});
+                CHECK(outputs == std::vector<int>({std::numeric_limits<int>::lowest(), 1, 2, 3}));
+                sycl::joint_inclusive_scan(it.get_group(), inputs, inputs + 4, outputs.data(), sycl::minimum<int>{});
+                CHECK(outputs == std::vector<int>({1, 1, 1, 1}));
+
+                check_group_op_sequence(it.get_group(),
+                    {detail::group_operation_id::joint_exclusive_scan, detail::group_operation_id::joint_inclusive_scan,
+                        detail::group_operation_id::joint_exclusive_scan,
+                        detail::group_operation_id::joint_inclusive_scan});
+            });
+        });
+    }
+
+    SECTION("For subgroups") {
+        detail::configure_temporarily cfg{detail::config::max_sub_group_size, 4u};
+        sycl::queue().submit([&inputs](sycl::handler &cgh) {
+            cgh.parallel_for(sycl::nd_range<1>{8, 8}, [&inputs](sycl::nd_item<1> it) {
+                std::vector<int> outputs = {0, 0, 0, 0};
+                auto sg = it.get_sub_group();
+                sycl::joint_exclusive_scan(sg, inputs, inputs + 4, outputs.data(), sycl::plus<int>{});
+                CHECK(outputs == std::vector<int>({0, 1, 3, 6}));
+                sycl::joint_inclusive_scan(sg, inputs, inputs + 4, outputs.data(), sycl::plus<int>{});
+                CHECK(outputs == std::vector<int>({1, 3, 6, 10}));
+                sycl::joint_exclusive_scan(sg, inputs, inputs + 4, outputs.data(), sycl::maximum<int>{});
+                CHECK(outputs == std::vector<int>({std::numeric_limits<int>::lowest(), 1, 2, 3}));
+                sycl::joint_inclusive_scan(sg, inputs, inputs + 4, outputs.data(), sycl::minimum<int>{});
+                CHECK(outputs == std::vector<int>({1, 1, 1, 1}));
+
+                check_group_op_sequence(sg,
+                    {detail::group_operation_id::joint_exclusive_scan, detail::group_operation_id::joint_inclusive_scan,
+                        detail::group_operation_id::joint_exclusive_scan,
+                        detail::group_operation_id::joint_inclusive_scan});
+            });
+        });
+    }
+}
