@@ -269,8 +269,13 @@ T reduce_over_group(G g, V x, T init, Op binary_op) {
 template <Group G, PointerToFundamental InPtr, PointerToFundamental OutPtr, SyclFunctionObject Op,
     typename T = std::iterator_traits<InPtr>::value_type>
 OutPtr joint_exclusive_scan(G g, InPtr first, InPtr last, OutPtr result, Op binary_op) {
-    // CHECK first, last, result and the type of binary_op must be the same for all work-items in group g
-    SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(g, first, last, result, binary_op);
+    std::vector<T> results(std::distance(first, last));
+    results[0] = known_identity_v<Op, T>;
+    for(auto i = 0u; i < results.size() - 1; ++i) { results[i + 1] = binary_op(results[i], first[i]); }
+    simsycl::detail::joint_scan_impl(
+        g, simsycl::detail::group_operation_id::joint_exclusive_scan, first, last, {}, results);
+    std::copy(results.cbegin(), results.cend(), result);
+    return result;
 }
 
 template <Group G, PointerToFundamental InPtr, PointerToFundamental OutPtr, Fundamental T, SyclFunctionObject Op>
@@ -294,8 +299,13 @@ T exclusive_scan_over_group(G g, V x, T init, Op binary_op) {
 template <Group G, PointerToFundamental InPtr, PointerToFundamental OutPtr, SyclFunctionObject Op,
     typename T = std::iterator_traits<InPtr>::value_type>
 OutPtr joint_inclusive_scan(G g, InPtr first, InPtr last, OutPtr result, Op binary_op) {
-    // CHECK first, last, result and the type of binary_op must be the same for all work-items in group g
-    SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(g, first, last, result, binary_op);
+    std::vector<T> results(std::distance(first, last));
+    results[0] = *first;
+    for(auto i = 1u; i < results.size(); ++i) { results[i] = binary_op(results[i - 1], first[i]); }
+    simsycl::detail::joint_scan_impl(
+        g, simsycl::detail::group_operation_id::joint_inclusive_scan, first, last, {}, results);
+    std::copy(results.cbegin(), results.cend(), result);
+    return result;
 }
 
 template <Group G, PointerToFundamental InPtr, PointerToFundamental OutPtr, Fundamental T, SyclFunctionObject Op>
