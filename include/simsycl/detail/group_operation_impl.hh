@@ -7,6 +7,7 @@
 #include <typeindex>
 #include <vector>
 
+#include "simsycl/detail/check.hh"
 #include "simsycl/sycl/concepts.hh"
 #include "simsycl/sycl/enums.hh"
 #include "simsycl/sycl/group.hh"
@@ -105,6 +106,12 @@ struct group_joint_scan_data : group_per_operation_data {
     std::vector<T> results;
     group_joint_scan_data(T *first, T *last, std::optional<T> init, const std::vector<T> &results)
         : first(first), last(last), init(init), results(results) {}
+};
+template <typename T>
+struct group_scan_data : group_per_operation_data {
+    std::optional<T> init;
+    std::vector<T> values;
+    group_scan_data(size_t num_work_items, std::optional<T> init) : init(init), values(num_work_items) {}
 };
 
 struct group_operation_data {
@@ -253,6 +260,42 @@ void joint_scan_impl(
                     SIMSYCL_CHECK(per_op.last == last);
                     SIMSYCL_CHECK(per_op.init == init);
                     SIMSYCL_CHECK(per_op.results == results);
+                }});
+}
+
+template <sycl::Group G, sycl::Fundamental T, sycl::SyclFunctionObject Op>
+T group_scan_impl(G g, group_operation_id op_id, T x, std::optional<T> init, Op op) {
+    return perform_group_operation(g, op_id,
+        group_operation_spec{//
+            .init =
+                [&]() {
+                    auto per_op = std::make_unique<group_scan_data<T>>(g.get_local_range().size(), init);
+                    per_op->values[g.get_local_linear_id()] = x;
+                    return per_op;
+                },
+            .reached =
+                [&](group_scan_data<T> &per_op) {
+                    SIMSYCL_CHECK(per_op.init == init);
+                    SIMSYCL_CHECK(per_op.values.size() == g.get_local_range().size());
+                    per_op.values[g.get_local_linear_id()] = x;
+                },
+            .complete =
+                [&](const group_scan_data<T> &per_op) {
+                    std::vector<T> results(per_op.values.size());
+                    if(op_id == group_operation_id::exclusive_scan) {
+                        results[0] = simsycl::sycl::known_identity_v<Op, T>;
+                        if(init) { results[0] = op(*init, results[0]); }
+                        for(auto i = 0u; i < results.size() - 1; ++i) {
+                            results[i + 1] = op(results[i], per_op.values[i]);
+                        }
+                    } else if(op_id == group_operation_id::inclusive_scan) {
+                        results[0] = per_op.values[0];
+                        if(init) { results[0] = op(*init, results[0]); }
+                        for(auto i = 1u; i < results.size(); ++i) { results[i] = op(results[i - 1], per_op.values[i]); }
+                    } else {
+                        SIMSYCL_CHECK(false && "unexpected scan group operation id");
+                    }
+                    return results[g.get_local_linear_id()];
                 }});
 }
 
