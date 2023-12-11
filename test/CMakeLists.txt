@@ -9,11 +9,10 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(Catch2)
 
 add_executable(tests group_op_tests.cc)
-
-set_target_properties(tests PROPERTIES CXX_STANDARD 20)
-set_target_properties(tests PROPERTIES CXX_STANDARD_REQUIRED ON)
-target_compile_options(tests PRIVATE -Wall -Wextra -Wpedantic)
-target_compile_options(tests PRIVATE -fsanitize=address)
-
 target_link_libraries(tests PRIVATE Catch2::Catch2WithMain simsycl)
-target_link_options(tests PRIVATE -fsanitize=address)
+set_simsycl_target_options(tests)
+
+list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
+include(CTest)
+include(Catch)
+catch_discover_tests(tests)

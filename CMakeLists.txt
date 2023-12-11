@@ -3,7 +3,20 @@ project(SimSYCL VERSION 0.1 LANGUAGES CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-find_package(Boost 1.60 COMPONENTS context REQUIRED)
+find_package(Boost 1.70 COMPONENTS context REQUIRED)
+
+# Function to set properties, compile options, and link options for all simsycl targets
+function(set_simsycl_target_options target)
+    set_target_properties(${target} PROPERTIES CXX_STANDARD 20)
+    set_target_properties(${target} PROPERTIES CXX_STANDARD_REQUIRED ON)
+    target_compile_options(${target} PRIVATE
+        $<$<CXX_COMPILER_ID:MSVC>:/W4>
+        $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic $<$<CONFIG:Debug>:-fsanitize=address>>
+    )
+    target_link_options(${target} PRIVATE
+        $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:$<$<CONFIG:Debug>:-fsanitize=address>>
+    )
+endfunction()
 
 add_library(simsycl
     include/sycl/sycl.hpp
@@ -46,20 +59,12 @@ add_library(simsycl
     src/simsycl/dummy.cc
 )
 target_link_libraries(simsycl Boost::context)
-
 target_include_directories(simsycl PUBLIC include)
-set_target_properties(simsycl PROPERTIES CXX_STANDARD 20)
-set_target_properties(simsycl PROPERTIES CXX_STANDARD_REQUIRED ON)
-target_compile_options(simsycl PRIVATE -Wall -Wextra -Wpedantic)
-target_compile_options(simsycl PRIVATE -fsanitize=address)
-target_link_options(simsycl PRIVATE -fsanitize=address)
+set_simsycl_target_options(simsycl)
 
 add_executable(main src/test/main.cc)
 target_link_libraries(main simsycl)
-set_target_properties(main PROPERTIES CXX_STANDARD 20)
-set_target_properties(main PROPERTIES CXX_STANDARD_REQUIRED ON)
-target_compile_options(main PRIVATE -Wall -Wextra -Wpedantic)
-target_compile_options(main PRIVATE -fsanitize=address)
-target_link_options(main PRIVATE -fsanitize=address)
+set_simsycl_target_options(main)
 
+enable_testing()
 add_subdirectory(test)
