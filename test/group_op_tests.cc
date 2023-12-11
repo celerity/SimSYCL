@@ -1,3 +1,4 @@
+#include "simsycl/sycl/group_algorithms.hh"
 #include <catch2/catch_test_macros.hpp>
 
 #include <sycl/sycl.hpp>
@@ -495,6 +496,94 @@ TEST_CASE("Group joint scans behave as expected", "[group_op][joint_exclusive_sc
                     {detail::group_operation_id::joint_exclusive_scan, detail::group_operation_id::joint_inclusive_scan,
                         detail::group_operation_id::joint_exclusive_scan,
                         detail::group_operation_id::joint_inclusive_scan});
+            });
+        });
+    }
+
+    SECTION("With init value") {
+        sycl::queue().submit([&inputs](sycl::handler &cgh) {
+            cgh.parallel_for(sycl::nd_range<1>{8, 4}, [&inputs](sycl::nd_item<1> it) {
+                std::vector<int> outputs = {0, 0, 0, 0};
+                sycl::joint_exclusive_scan(it.get_group(), inputs, inputs + 4, outputs.data(), 5, sycl::plus<int>{});
+                CHECK(outputs == std::vector<int>({5, 6, 8, 11}));
+                sycl::joint_inclusive_scan(it.get_group(), inputs, inputs + 4, outputs.data(), 5, sycl::plus<int>{});
+                CHECK(outputs == std::vector<int>({6, 8, 11, 15}));
+                sycl::joint_exclusive_scan(it.get_group(), inputs, inputs + 4, outputs.data(), 2, sycl::maximum<int>{});
+                CHECK(outputs == std::vector<int>({2, 2, 2, 3}));
+                sycl::joint_inclusive_scan(
+                    it.get_group(), inputs, inputs + 4, outputs.data(), -1, sycl::minimum<int>{});
+                CHECK(outputs == std::vector<int>({-1, -1, -1, -1}));
+
+                check_group_op_sequence(it.get_group(),
+                    {detail::group_operation_id::joint_exclusive_scan, detail::group_operation_id::joint_inclusive_scan,
+                        detail::group_operation_id::joint_exclusive_scan,
+                        detail::group_operation_id::joint_inclusive_scan});
+            });
+        });
+    }
+}
+
+
+TEST_CASE("Group scans behave as expected", "[group_op][exclusive_scan_over_group][inclusive_scan_over_group]") {
+    int inputs[4] = {1, 2, 3, 4};
+
+    SECTION("For work groups") {
+        sycl::queue().submit([&inputs](sycl::handler &cgh) {
+            cgh.parallel_for(sycl::nd_range<1>{8, 4}, [&inputs](sycl::nd_item<1> it) {
+                const auto id = it.get_group().get_local_linear_id();
+                CHECK(sycl::exclusive_scan_over_group(it.get_group(), inputs[id], sycl::plus<int>{})
+                    == std::vector<int>({0, 1, 3, 6})[id]);
+                CHECK(sycl::inclusive_scan_over_group(it.get_group(), inputs[id], sycl::plus<int>{})
+                    == std::vector<int>({1, 3, 6, 10})[id]);
+                CHECK(sycl::exclusive_scan_over_group(it.get_group(), inputs[id], sycl::maximum<int>{})
+                    == std::vector<int>({std::numeric_limits<int>::lowest(), 1, 2, 3})[id]);
+                CHECK(sycl::inclusive_scan_over_group(it.get_group(), inputs[id], sycl::minimum<int>{})
+                    == std::vector<int>({1, 1, 1, 1})[id]);
+
+                check_group_op_sequence(it.get_group(),
+                    {detail::group_operation_id::exclusive_scan, detail::group_operation_id::inclusive_scan,
+                        detail::group_operation_id::exclusive_scan, detail::group_operation_id::inclusive_scan});
+            });
+        });
+    }
+
+    SECTION("For subgroups") {
+        detail::configure_temporarily cfg{detail::config::max_sub_group_size, 4u};
+        sycl::queue().submit([&inputs](sycl::handler &cgh) {
+            cgh.parallel_for(sycl::nd_range<1>{8, 8}, [&inputs](sycl::nd_item<1> it) {
+                const auto id = it.get_sub_group().get_local_linear_id();
+                CHECK(sycl::exclusive_scan_over_group(it.get_sub_group(), inputs[id], sycl::plus<int>{})
+                    == std::vector<int>({0, 1, 3, 6})[id]);
+                CHECK(sycl::inclusive_scan_over_group(it.get_sub_group(), inputs[id], sycl::plus<int>{})
+                    == std::vector<int>({1, 3, 6, 10})[id]);
+                CHECK(sycl::exclusive_scan_over_group(it.get_sub_group(), inputs[id], sycl::maximum<int>{})
+                    == std::vector<int>({std::numeric_limits<int>::lowest(), 1, 2, 3})[id]);
+                CHECK(sycl::inclusive_scan_over_group(it.get_sub_group(), inputs[id], sycl::minimum<int>{})
+                    == std::vector<int>({1, 1, 1, 1})[id]);
+
+                check_group_op_sequence(it.get_sub_group(),
+                    {detail::group_operation_id::exclusive_scan, detail::group_operation_id::inclusive_scan,
+                        detail::group_operation_id::exclusive_scan, detail::group_operation_id::inclusive_scan});
+            });
+        });
+    }
+
+    SECTION("With init value") {
+        sycl::queue().submit([&inputs](sycl::handler &cgh) {
+            cgh.parallel_for(sycl::nd_range<1>{8, 4}, [&inputs](sycl::nd_item<1> it) {
+                const auto id = it.get_group().get_local_linear_id();
+                CHECK(sycl::exclusive_scan_over_group(it.get_group(), inputs[id], 5, sycl::plus<int>{})
+                    == std::vector<int>({5, 6, 8, 11})[id]);
+                CHECK(sycl::inclusive_scan_over_group(it.get_group(), inputs[id], 5, sycl::plus<int>{})
+                    == std::vector<int>({6, 8, 11, 15})[id]);
+                CHECK(sycl::exclusive_scan_over_group(it.get_group(), inputs[id], 2, sycl::maximum<int>{})
+                    == std::vector<int>({2, 2, 2, 3})[id]);
+                CHECK(sycl::inclusive_scan_over_group(it.get_group(), inputs[id], -1, sycl::minimum<int>{})
+                    == std::vector<int>({-1, -1, -1, -1})[id]);
+
+                check_group_op_sequence(it.get_group(),
+                    {detail::group_operation_id::exclusive_scan, detail::group_operation_id::inclusive_scan,
+                        detail::group_operation_id::exclusive_scan, detail::group_operation_id::inclusive_scan});
             });
         });
     }

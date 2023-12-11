@@ -280,18 +280,24 @@ OutPtr joint_exclusive_scan(G g, InPtr first, InPtr last, OutPtr result, Op bina
 
 template <Group G, PointerToFundamental InPtr, PointerToFundamental OutPtr, Fundamental T, SyclFunctionObject Op>
 OutPtr joint_exclusive_scan(G g, InPtr first, InPtr last, OutPtr result, T init, Op binary_op) {
-    // CHECK first, last, result, init and the type of binary_op must be the same for all work-items in group g
-    SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(g, first, last, result, init, binary_op);
+    std::vector<T> results(std::distance(first, last));
+    results[0] = init;
+    for(auto i = 0u; i < results.size() - 1; ++i) { results[i + 1] = binary_op(results[i], first[i]); }
+    simsycl::detail::joint_scan_impl(
+        g, simsycl::detail::group_operation_id::joint_exclusive_scan, first, last, {init}, results);
+    std::copy(results.cbegin(), results.cend(), result);
+    return result;
 }
 
 template <Group G, Fundamental T, SyclFunctionObject Op>
 T exclusive_scan_over_group(G g, T x, Op binary_op) {
-    SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(g, x, binary_op);
+    return simsycl::detail::group_scan_impl(g, simsycl::detail::group_operation_id::exclusive_scan, x, {}, binary_op);
 }
 
 template <Group G, Fundamental V, Fundamental T, SyclFunctionObject Op>
 T exclusive_scan_over_group(G g, V x, T init, Op binary_op) {
-    SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(g, x, init, binary_op);
+    return simsycl::detail::group_scan_impl(
+        g, simsycl::detail::group_operation_id::exclusive_scan, x, {init}, binary_op);
 }
 
 // inclusive_scan
@@ -310,18 +316,24 @@ OutPtr joint_inclusive_scan(G g, InPtr first, InPtr last, OutPtr result, Op bina
 
 template <Group G, PointerToFundamental InPtr, PointerToFundamental OutPtr, Fundamental T, SyclFunctionObject Op>
 OutPtr joint_inclusive_scan(G g, InPtr first, InPtr last, OutPtr result, T init, Op binary_op) {
-    // CHECK first, last, result, init and the type of binary_op must be the same for all work-items in group g
-    SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(g, first, last, result, init, binary_op);
+    std::vector<T> results(std::distance(first, last));
+    results[0] = binary_op(init, *first);
+    for(auto i = 1u; i < results.size(); ++i) { results[i] = binary_op(results[i - 1], first[i]); }
+    simsycl::detail::joint_scan_impl(
+        g, simsycl::detail::group_operation_id::joint_inclusive_scan, first, last, {init}, results);
+    std::copy(results.cbegin(), results.cend(), result);
+    return result;
 }
 
 template <Group G, Fundamental T, SyclFunctionObject Op>
 T inclusive_scan_over_group(G g, T x, Op binary_op) {
-    SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(g, x, binary_op);
+    return simsycl::detail::group_scan_impl(g, simsycl::detail::group_operation_id::inclusive_scan, x, {}, binary_op);
 }
 
 template <Group G, Fundamental V, Fundamental T, SyclFunctionObject Op>
 T inclusive_scan_over_group(G g, V x, T init, Op binary_op) {
-    SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(g, x, init, binary_op);
+    return simsycl::detail::group_scan_impl(
+        g, simsycl::detail::group_operation_id::inclusive_scan, x, {init}, binary_op);
 }
 
 } // namespace simsycl::sycl
