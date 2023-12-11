@@ -238,7 +238,7 @@ T select_from_group(G g, T x, typename G::id_type remote_local_id) {
 // reduce
 
 
-template <Group G, Pointer Ptr, SyclFunctionObject Op, typename T = std::iterator_traits<Ptr>::value_type>
+template <Group G, Pointer Ptr, SyclFunctionObject Op, typename T = typename std::iterator_traits<Ptr>::value_type>
 T joint_reduce(G g, Ptr first, Ptr last, Op binary_op) {
     T result = *first;
     for(auto i = first + 1; first != last && i != last; ++i) { result = binary_op(result, *i); }
@@ -267,7 +267,7 @@ T reduce_over_group(G g, V x, T init, Op binary_op) {
 // exclusive_scan
 
 template <Group G, PointerToFundamental InPtr, PointerToFundamental OutPtr, SyclFunctionObject Op,
-    typename T = std::iterator_traits<InPtr>::value_type>
+    typename T = typename std::iterator_traits<InPtr>::value_type>
 OutPtr joint_exclusive_scan(G g, InPtr first, InPtr last, OutPtr result, Op binary_op) {
     std::vector<T> results(std::distance(first, last));
     results[0] = known_identity_v<Op, T>;
@@ -303,7 +303,7 @@ T exclusive_scan_over_group(G g, V x, T init, Op binary_op) {
 // inclusive_scan
 
 template <Group G, PointerToFundamental InPtr, PointerToFundamental OutPtr, SyclFunctionObject Op,
-    typename T = std::iterator_traits<InPtr>::value_type>
+    typename T = typename std::iterator_traits<InPtr>::value_type>
 OutPtr joint_inclusive_scan(G g, InPtr first, InPtr last, OutPtr result, Op binary_op) {
     std::vector<T> results(std::distance(first, last));
     results[0] = *first;

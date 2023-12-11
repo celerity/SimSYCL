@@ -13,7 +13,7 @@ template <typename DataT, int Dimensions = 1,
 class accessor;
 
 template <typename T, access::address_space AddressSpace = access::address_space::global_space>
-class [[deprecated("Deprecated in SYCL 2020")]] atomic;
+class atomic;
 
 template <typename T, int Dimensions = 1, typename AllocatorT = buffer_allocator<std::remove_const_t<T>>>
 class buffer;

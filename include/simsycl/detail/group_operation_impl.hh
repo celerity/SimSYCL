@@ -152,7 +152,7 @@ void default_group_op_function(T &per_group) {
 }
 
 template <GroupOpInitFunction InitF = decltype(default_group_op_init_function),
-    typename PerOpT = std::invoke_result_t<InitF>::element_type,
+    typename PerOpT = typename std::invoke_result_t<InitF>::element_type,
     typename ReachedF = decltype(default_group_op_function<PerOpT>),
     typename CompleteF = decltype(default_group_op_function<PerOpT>)>
 struct group_operation_spec {
@@ -188,7 +188,7 @@ auto perform_group_operation(G g, group_operation_id id, const Spec &spec) {
         SIMSYCL_CHECK(op.id == new_op.id);
         SIMSYCL_CHECK(op.expected_num_work_items == new_op.expected_num_work_items);
         SIMSYCL_CHECK(op.num_work_items_participating < op.expected_num_work_items);
-        spec.reached(dynamic_cast<Spec::per_op_t &>(*op.per_op_data));
+        spec.reached(dynamic_cast<typename Spec::per_op_t &>(*op.per_op_data));
         ops_reached++;
 
         op.num_work_items_participating++;
@@ -200,7 +200,7 @@ auto perform_group_operation(G g, group_operation_id id, const Spec &spec) {
     }
     this_nd_item_impl.barrier();
 
-    return spec.complete(dynamic_cast<Spec::per_op_t &>(*group_impl.operations[ops_reached - 1].per_op_data));
+    return spec.complete(dynamic_cast<typename Spec::per_op_t &>(*group_impl.operations[ops_reached - 1].per_op_data));
 }
 
 // more specific helper functions for group operations
