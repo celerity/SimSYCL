@@ -31,7 +31,7 @@ namespace simsycl::sycl {
 class queue : public simsycl::detail::property_interface {
   private:
     using property_compatibility
-        = simsycl::detail::property_compatibility<queue, property::queue::enable_profiling, property::queue::in_order>;
+        = simsycl::detail::property_compatibility_with<queue, property::queue::enable_profiling, property::queue::in_order>;
 
   public:
     explicit queue(const property_list &prop_list = {}) : property_interface(prop_list, property_compatibility()) {}

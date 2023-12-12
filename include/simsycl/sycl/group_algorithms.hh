@@ -3,6 +3,7 @@
 #include "concepts.hh"
 #include "group.hh"
 #include "group_functions.hh"
+#include "ops.hh"
 #include "sub_group.hh"
 
 #include "simsycl/detail/check.hh"

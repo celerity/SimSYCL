@@ -8,7 +8,7 @@ namespace simsycl::sycl {
 
 class context : public detail::property_interface {
   private:
-    using property_compatibilty = detail::property_compatibility<context /* apparently no compatible properties? */>;
+    using property_compatibilty = detail::property_compatibility_with<context /* apparently no compatible properties? */>;
 
   public:
     explicit context(const property_list &prop_list = {});

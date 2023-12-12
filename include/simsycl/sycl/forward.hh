@@ -30,6 +30,8 @@ class exception_list;
 
 class handler;
 
+struct half; // TODO
+
 template <typename DataT, int Dimensions>
 class host_sampled_image_accessor;
 
@@ -101,5 +103,11 @@ sub_group_impl &get_group_impl(const sycl::sub_group &g);
 template <int Dimensions>
 group_impl &get_group_impl(const sycl::group<Dimensions> &g);
 
+template <typename T, int Dimensions, typename AllocatorT>
+T *get_buffer_data(sycl::buffer<T, Dimensions, AllocatorT> &buf);
+
+sycl::handler make_handler();
+
+void **require_local_memory(sycl::handler &cgh, size_t size, size_t align);
 
 } // namespace simsycl::detail

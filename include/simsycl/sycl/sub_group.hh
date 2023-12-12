@@ -115,12 +115,12 @@ class sub_group {
 template <>
 struct is_group<sub_group> : std::true_type {};
 
-template <>
-struct is_sub_group<sub_group> : std::true_type {};
-
 } // namespace simsycl::sycl
 
 namespace simsycl::detail {
+
+template <>
+struct is_sub_group<sycl::sub_group> : std::true_type {};
 
 inline sycl::sub_group make_sub_group(const sycl::id<1> &local_id, const sycl::range<1> &local_range,
     const sycl::id<1> &group_id, const sycl::range<1> &group_range, detail::sub_group_impl *impl) {

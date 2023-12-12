@@ -8,7 +8,7 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(Catch2)
 
-add_executable(tests group_op_tests.cc launch_tests.cc)
+add_executable(tests group_op_tests.cc launch_tests.cc reduction_tests.cc)
 target_link_libraries(tests PRIVATE Catch2::Catch2WithMain simsycl)
 set_simsycl_target_options(tests)
 

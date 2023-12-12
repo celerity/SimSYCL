@@ -69,7 +69,7 @@ namespace simsycl::sycl {
 template <int Dimensions, typename AllocatorT>
 class sampled_image : public simsycl::detail::property_interface {
   private:
-    using property_compatibility = simsycl::detail::property_compatibility<sampled_image<Dimensions, AllocatorT>,
+    using property_compatibility = simsycl::detail::property_compatibility_with<sampled_image<Dimensions, AllocatorT>,
         property::image::use_host_ptr, property::image::use_mutex, property::image::context_bound>;
 
   public:
@@ -108,7 +108,7 @@ class sampled_image : public simsycl::detail::property_interface {
 template <int Dimensions, typename AllocatorT>
 class unsampled_image : public simsycl::detail::property_interface {
   private:
-    using property_compatibility = simsycl::detail::property_compatibility<unsampled_image<Dimensions, AllocatorT>,
+    using property_compatibility = simsycl::detail::property_compatibility_with<unsampled_image<Dimensions, AllocatorT>,
         property::image::use_host_ptr, property::image::use_mutex, property::image::context_bound>;
 
   public:

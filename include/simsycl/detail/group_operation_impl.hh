@@ -12,6 +12,7 @@
 #include "simsycl/sycl/concepts.hh"
 #include "simsycl/sycl/enums.hh"
 #include "simsycl/sycl/group.hh"
+#include "simsycl/sycl/ops.hh"
 #include "simsycl/sycl/sub_group.hh"
 
 namespace simsycl::detail {
@@ -175,7 +176,7 @@ auto perform_group_operation(G g, group_operation_id id, const Spec &spec) {
     const auto linear_id_in_group = g.get_local_linear_id();
     auto &this_nd_item_impl = *group_impl.item_impls[linear_id_in_group];
     size_t &ops_reached
-        = sycl::is_sub_group_v<G> ? this_nd_item_impl.group_ops_reached : this_nd_item_impl.sub_group_ops_reached;
+        = is_sub_group_v<G> ? this_nd_item_impl.group_ops_reached : this_nd_item_impl.sub_group_ops_reached;
 
     detail::group_operation_data new_op;
     new_op.id = id;
@@ -288,7 +289,7 @@ T group_scan_impl(G g, group_operation_id op_id, T x, std::optional<T> init, Op 
                 [&](const group_scan_data<T> &per_op) {
                     std::vector<T> results(per_op.values.size());
                     if(op_id == group_operation_id::exclusive_scan) {
-                        results[0] = simsycl::sycl::known_identity_v<Op, T>;
+                        results[0] = sycl::known_identity_v<Op, T>;
                         if(init) { results[0] = op(*init, results[0]); }
                         for(auto i = 0u; i < results.size() - 1; ++i) {
                             results[i + 1] = op(results[i], per_op.values[i]);

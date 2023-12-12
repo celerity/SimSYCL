@@ -4,6 +4,7 @@
 #include "forward.hh"
 #include "property.hh"
 
+#include "../detail/allocation.hh"
 #include "../detail/reference_type.hh"
 
 #include <concepts>
@@ -110,7 +111,7 @@ class buffer final
   private:
     using reference_type
         = detail::reference_type<buffer<T, Dimensions, AllocatorT>, detail::buffer_state<T, Dimensions, AllocatorT>>;
-    using property_compatibility = detail::property_compatibility<buffer<T, Dimensions, AllocatorT>,
+    using property_compatibility = detail::property_compatibility_with<buffer<T, Dimensions, AllocatorT>,
         property::buffer::use_host_ptr, property::buffer::use_mutex, property::buffer::context_bound>;
     using typename reference_type::state_type;
 
@@ -235,8 +236,8 @@ class buffer final
     reinterpret() const;
 
   private:
-    template <typename, int, access_mode, target, access::placeholder>
-    friend class accessor;
+    template <typename U, int D, typename A>
+    friend U *simsycl::detail::get_buffer_data(sycl::buffer<U, D, A> &buf);
 
     using reference_type::state;
 };
@@ -271,3 +272,12 @@ template <typename T, int Dimensions, typename AllocatorT>
 class std::hash<simsycl::sycl::buffer<T, Dimensions, AllocatorT>>
     : std::hash<simsycl::detail::reference_type<simsycl::sycl::buffer<T, Dimensions, AllocatorT>,
           simsycl::detail::buffer_state<T, Dimensions, AllocatorT>>> {};
+
+namespace simsycl::detail {
+
+template <typename T, int Dimensions, typename AllocatorT>
+T *get_buffer_data(sycl::buffer<T, Dimensions, AllocatorT> &buf) {
+    return buf.state().buffer;
+}
+
+} // namespace simsycl::detail

@@ -21,10 +21,6 @@
 
 namespace simsycl::detail {
 
-sycl::handler make_handler();
-
-void **require_local_memory(sycl::handler &cgh, size_t size, size_t align);
-
 template <typename Func, typename... Params>
 void sequential_for(const sycl::range<1> &range, const sycl::id<1> &offset, Func &&func, Params &&...args) {
     sycl::id<1> id;

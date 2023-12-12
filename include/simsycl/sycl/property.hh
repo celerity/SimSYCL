@@ -44,17 +44,29 @@ class property_list {
 
 namespace simsycl::detail {
 
-template <typename Derived, typename... CompatibleProperties>
+template <typename... CompatibleProperties>
 struct property_compatibility {};
 
-// TODO must be merged with reference_type
+template <typename Derived, typename... CompatibleProperties>
+struct property_compatibility_with {};
+
 class property_interface {
   public:
     property_interface() = default;
 
+    template <typename... CompatibleProperties>
+    explicit property_interface(const sycl::property_list &prop_list,
+        property_compatibility<CompatibleProperties...> /* compatibility */)
+        : m_properties(prop_list.m_properties) {
+        static_assert((sycl::is_property_v<CompatibleProperties> && ...));
+        for(const auto &prop : prop_list.m_properties) {
+            SIMSYCL_CHECK(((prop.type() == typeid(CompatibleProperties)) || ...));
+        }
+    }
+
     template <typename Derived, typename... CompatibleProperties>
     explicit property_interface(const sycl::property_list &prop_list,
-        property_compatibility<Derived, CompatibleProperties...> /* compatibility */)
+        property_compatibility_with<Derived, CompatibleProperties...> /* compatibility */)
         : m_properties(prop_list.m_properties) {
         static_assert((sycl::is_property_v<CompatibleProperties> && ...));
         static_assert((sycl::is_property_of_v<CompatibleProperties, Derived> && ...));

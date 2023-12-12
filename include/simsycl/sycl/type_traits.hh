@@ -9,6 +9,10 @@ struct is_group : std::false_type {};
 template <class T>
 inline constexpr bool is_group_v = is_group<T>::value;
 
+}
+
+namespace simsycl::detail {
+
 template <class T>
 struct is_sub_group : std::false_type {};
 template <class T>
@@ -18,16 +22,6 @@ template <class Fn>
 struct is_function_object : std::false_type {};
 template <class Fn>
 inline constexpr bool is_function_object_v = is_function_object<Fn>::value;
-
-template <typename BinaryOperation, typename AccumulatorT>
-struct known_identity {};
-template <typename BinaryOperation, typename AccumulatorT>
-inline constexpr AccumulatorT known_identity_v = known_identity<BinaryOperation, AccumulatorT>::value;
-
-template <typename BinaryOperation, typename AccumulatorT>
-struct has_known_identity : std::false_type {};
-template <typename BinaryOperation, typename AccumulatorT>
-inline constexpr bool has_known_identity_v = has_known_identity<BinaryOperation, AccumulatorT>::value;
 
 // TODO: Add sycl::half when we have that type
 template <typename T>

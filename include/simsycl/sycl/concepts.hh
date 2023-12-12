@@ -26,18 +26,18 @@ concept Boolean = std::is_same_v<std::remove_cv_t<T>, bool>;
 // SYCL
 
 template <typename T>
-concept Group = is_group_v<T>;
+concept Group = sycl::is_group_v<T>;
 
 template <typename T>
-concept SubGroup = is_sub_group_v<T>;
+concept SubGroup = detail::is_sub_group_v<T>;
 
 template <typename Fn, typename T>
 concept BinaryOperation = std::is_invocable_r_v<T, Fn, T, T>;
 
 template <typename Fn>
-concept SyclFunctionObject = is_function_object_v<Fn>;
+concept SyclFunctionObject = detail::is_function_object_v<Fn>;
 
 template <typename T>
-concept Arithmetic = is_arithmetic_v<T>;
+concept Arithmetic = detail::is_arithmetic_v<T>;
 
 } // namespace simsycl::sycl

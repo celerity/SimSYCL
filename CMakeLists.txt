@@ -28,6 +28,7 @@ add_library(simsycl
     include/sycl/sycl.hpp
     include/CL/sycl.hpp
     include/simsycl/sycl.hh
+    include/simsycl/detail/allocation.hh
     include/simsycl/detail/check.hh
     include/simsycl/detail/config.hh
     include/simsycl/detail/coordinate.hh
@@ -45,7 +46,6 @@ add_library(simsycl
     include/simsycl/sycl/event.hh
     include/simsycl/sycl/exception.hh
     include/simsycl/sycl/forward.hh
-    include/simsycl/sycl/function_objects.hh
     include/simsycl/sycl/group_algorithms.hh
     include/simsycl/sycl/group_functions.hh
     include/simsycl/sycl/group.hh
@@ -56,10 +56,12 @@ add_library(simsycl
     include/simsycl/sycl/multi_ptr.hh
     include/simsycl/sycl/nd_item.hh
     include/simsycl/sycl/nd_range.hh
+    include/simsycl/sycl/ops.hh
     include/simsycl/sycl/platform.hh
     include/simsycl/sycl/property.hh
     include/simsycl/sycl/queue.hh
     include/simsycl/sycl/range.hh
+    include/simsycl/sycl/reduction.hh
     include/simsycl/sycl/sub_group.hh
     include/simsycl/sycl/type_traits.hh
     src/simsycl/dummy.cc

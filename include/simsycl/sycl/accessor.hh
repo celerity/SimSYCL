@@ -1,8 +1,8 @@
 #pragma once
 
+#include "buffer.hh"
 #include "enums.hh"
 #include "forward.hh"
-#include "handler.hh"
 #include "id.hh"
 #include "multi_ptr.hh"
 #include "property.hh"
@@ -181,7 +181,7 @@ template <typename DataT, int Dimensions, access_mode AccessMode, target AccessT
 class accessor : public simsycl::detail::property_interface {
   private:
     using property_compatibility
-        = detail::property_compatibility<accessor<DataT, Dimensions, AccessMode, AccessTarget, IsPlaceholder>,
+        = detail::property_compatibility_with<accessor<DataT, Dimensions, AccessMode, AccessTarget, IsPlaceholder>,
             property::no_init>;
 
   public:
@@ -206,8 +206,9 @@ class accessor : public simsycl::detail::property_interface {
     accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, const property_list &prop_list = {})
         : accessor(internal, buffer_ref, prop_list) {}
 
-    template <typename AllocatorT, typename TagT>
-    accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, TagT tag, const property_list &prop_list = {})
+    template <typename AllocatorT>
+    accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref,
+        const detail::accessor_tag<AccessMode, AccessTarget> tag, const property_list &prop_list = {})
         : accessor(internal, buffer_ref, tag, prop_list) {}
 
     template <typename AllocatorT>
@@ -215,9 +216,9 @@ class accessor : public simsycl::detail::property_interface {
         const property_list &prop_list = {})
         : accessor(internal, buffer_ref, command_group_handler_ref, prop_list) {}
 
-    template <typename AllocatorT, typename TagT>
-    accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, handler &command_group_handler_ref, TagT tag,
-        const property_list &prop_list = {})
+    template <typename AllocatorT>
+    accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, handler &command_group_handler_ref,
+        const detail::accessor_tag<AccessMode, AccessTarget> tag, const property_list &prop_list = {})
         : accessor(internal, buffer_ref, command_group_handler_ref, tag, prop_list) {}
 
     template <typename AllocatorT>
@@ -225,9 +226,9 @@ class accessor : public simsycl::detail::property_interface {
         const property_list &prop_list = {})
         : accessor(internal, buffer_ref, access_range, prop_list) {}
 
-    template <typename AllocatorT, typename TagT>
-    accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, range<Dimensions> access_range, TagT tag,
-        const property_list &prop_list = {})
+    template <typename AllocatorT>
+    accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, range<Dimensions> access_range,
+        const detail::accessor_tag<AccessMode, AccessTarget> tag, const property_list &prop_list = {})
         : accessor(internal, buffer_ref, access_range, tag, prop_list) {}
 
     template <typename AllocatorT>
@@ -235,9 +236,10 @@ class accessor : public simsycl::detail::property_interface {
         id<Dimensions> access_offset, const property_list &prop_list = {})
         : accessor(internal, buffer_ref, access_range, access_offset, prop_list) {}
 
-    template <typename AllocatorT, typename TagT>
+    template <typename AllocatorT>
     accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, range<Dimensions> access_range,
-        id<Dimensions> access_offset, TagT tag, const property_list &prop_list = {})
+        id<Dimensions> access_offset, const detail::accessor_tag<AccessMode, AccessTarget> tag,
+        const property_list &prop_list = {})
         : accessor(internal, buffer_ref, access_range, access_offset, tag, prop_list) {}
 
     template <typename AllocatorT>
@@ -245,9 +247,10 @@ class accessor : public simsycl::detail::property_interface {
         range<Dimensions> access_range, const property_list &prop_list = {})
         : accessor(internal, buffer_ref, command_group_handler_ref, access_range, prop_list) {}
 
-    template <typename AllocatorT, typename TagT>
+    template <typename AllocatorT>
     accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, handler &command_group_handler_ref,
-        range<Dimensions> access_range, TagT tag, const property_list &prop_list = {})
+        range<Dimensions> access_range, const detail::accessor_tag<AccessMode, AccessTarget> tag,
+        const property_list &prop_list = {})
         : accessor(internal, buffer_ref, command_group_handler_ref, access_range, tag, prop_list) {}
 
     template <typename AllocatorT>
@@ -255,9 +258,10 @@ class accessor : public simsycl::detail::property_interface {
         range<Dimensions> access_range, id<Dimensions> access_offset, const property_list &prop_list = {})
         : accessor(internal, buffer_ref, command_group_handler_ref, access_range, access_offset, prop_list) {}
 
-    template <typename AllocatorT, typename TagT>
+    template <typename AllocatorT>
     accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, handler &command_group_handler_ref,
-        range<Dimensions> access_range, id<Dimensions> access_offset, TagT tag, const property_list &prop_list = {})
+        range<Dimensions> access_range, id<Dimensions> access_offset,
+        const detail::accessor_tag<AccessMode, AccessTarget> tag, const property_list &prop_list = {})
         : accessor(internal, buffer_ref, command_group_handler_ref, access_range, access_offset, tag, prop_list) {}
 
     friend bool operator==(const accessor &lhs, const accessor &rhs) {
@@ -314,7 +318,11 @@ class accessor : public simsycl::detail::property_interface {
         requires(AccessMode == access_mode::atomic);
 #pragma GCC diagnostic pop
 
-    decltype(auto) operator[](size_t index) const { return detail::subscript<Dimensions>(*this, index); }
+    decltype(auto) operator[](size_t index) const
+        requires(Dimensions > 1)
+    {
+        return detail::subscript<Dimensions>(*this, index);
+    }
 
     std::add_pointer_t<value_type> get_pointer() const noexcept {
         SIMSYCL_CHECK(m_buffer != nullptr);
@@ -359,8 +367,8 @@ class accessor : public simsycl::detail::property_interface {
 
     template <typename AllocatorT>
     void init(buffer<DataT, Dimensions, AllocatorT> &buffer_ref) {
-        m_buffer = buffer_ref.state().buffer;
-        m_buffer_range = buffer_ref.state().range;
+        m_buffer = detail::get_buffer_data(buffer_ref);
+        m_buffer_range = buffer_ref.get_range();
         m_access_range = m_buffer_range;
     }
     void init(const id<Dimensions> &access_offset) { m_access_offset = access_offset; }
@@ -448,7 +456,7 @@ template <typename DataT, access_mode AccessMode, target AccessTarget, access::p
 class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> : public simsycl::detail::property_interface {
   private:
     using property_compatibility
-        = detail::property_compatibility<accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder>,
+        = detail::property_compatibility_with<accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder>,
             property::no_init>;
 
   public:
@@ -472,13 +480,13 @@ class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> : public simsy
     template <typename AllocatorT>
     accessor(buffer<DataT, 1, AllocatorT> &buffer_ref, const property_list &prop_list = {})
         : simsycl::detail::property_interface(prop_list, property_compatibility()),
-          m_buffer(buffer_ref.state().m_buffer), m_required(false) {}
+          m_buffer(detail::get_buffer_data(buffer_ref)), m_required(false) {}
 
     template <typename AllocatorT>
     accessor(buffer<DataT, 1, AllocatorT> &buffer_ref, handler &command_group_handler_ref,
         const property_list &prop_list = {})
         : simsycl::detail::property_interface(prop_list, property_compatibility()),
-          m_buffer(buffer_ref.state().m_buffer), m_required(true) {
+          m_buffer(detail::get_buffer_data(buffer_ref)), m_required(true) {
         (void)command_group_handler_ref;
     }
 
@@ -581,7 +589,7 @@ class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> : public simsy
 template <typename DataT, int Dimensions>
 class local_accessor final : public simsycl::detail::property_interface {
   private:
-    using property_compatibility = detail::property_compatibility<local_accessor<DataT, Dimensions>, property::no_init>;
+    using property_compatibility = detail::property_compatibility_with<local_accessor<DataT, Dimensions>, property::no_init>;
 
   public:
     using value_type = DataT;
@@ -657,13 +665,13 @@ class local_accessor final : public simsycl::detail::property_interface {
 
     const range<3> &get_buffer_range() const { return get_range(); }
 
-    inline DataT *get_allocation() const { return static_cast<DataT*>(*m_allocation_ptr); }
+    inline DataT *get_allocation() const { return static_cast<DataT *>(*m_allocation_ptr); }
 };
 
 template <typename DataT>
 class local_accessor<DataT, 0> final : public simsycl::detail::property_interface {
   private:
-    using property_compatibility = detail::property_compatibility<local_accessor<DataT, 0>, property::no_init>;
+    using property_compatibility = detail::property_compatibility_with<local_accessor<DataT, 0>, property::no_init>;
 
   public:
     using value_type = DataT;
