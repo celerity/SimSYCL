@@ -14,7 +14,7 @@ class allocation {
   public:
     allocation() = default;
     allocation(const size_t size_bytes, const size_t alignment_bytes)
-        : m_size(size_bytes), m_alignment(alignment_bytes), m_ptr(aligned_alloc(alignment_bytes, size_bytes)) {
+        : m_size(size_bytes), m_alignment(alignment_bytes), m_ptr(std::aligned_alloc(alignment_bytes, size_bytes)) {
         memset(m_ptr, static_cast<int>(uninitialized_memory_pattern), size_bytes);
     }
 

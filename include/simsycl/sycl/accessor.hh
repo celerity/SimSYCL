@@ -28,7 +28,7 @@ template <typename Accessor, typename DataT, int Dimensions>
 class accessor_iterator {
   public:
     using value_type = DataT;
-    using difference_type = ssize_t;
+    using difference_type = std::make_signed_t<size_t>;
     using reference = value_type &;
     using pointer = value_type *;
     using iterator_category = std::forward_iterator_tag;
