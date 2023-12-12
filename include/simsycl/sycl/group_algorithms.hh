@@ -216,6 +216,10 @@ T permute_group(G g, T x, typename G::linear_id_type mask) {
                 }});
 }
 
+template <typename Group, typename T>
+T permute_group_by_xor(Group g, T x, typename Group::linear_id_type mask); // TODO
+
+
 // select
 
 template <SubGroup G, TriviallyCopyable T>

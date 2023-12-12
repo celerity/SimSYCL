@@ -29,5 +29,7 @@ struct is_arithmetic : std::bool_constant<std::is_arithmetic_v<T>> {};
 template <class T>
 inline constexpr bool is_arithmetic_v = is_arithmetic<T>::value;
 
+template<typename...>
+constexpr bool always_false = false;
 
 } // namespace simsycl::sycl

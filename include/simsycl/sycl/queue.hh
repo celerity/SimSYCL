@@ -5,6 +5,9 @@
 #include "handler.hh"
 #include "property.hh"
 
+#include "../detail/reference_type.hh"
+
+
 namespace simsycl::sycl::property::queue {
 
 class enable_profiling {};
@@ -26,18 +29,27 @@ struct is_property_of<property::queue::in_order, queue> : std::true_type {};
 
 } // namespace simsycl::sycl
 
+namespace simsycl::detail {
+
+struct queue_state {};
+
+} // namespace simsycl::detail
+
 namespace simsycl::sycl {
 
-class queue : public simsycl::detail::property_interface {
+class queue : public detail::reference_type<queue, detail::queue_state>, public simsycl::detail::property_interface {
   private:
-    using property_compatibility
-        = simsycl::detail::property_compatibility_with<queue, property::queue::enable_profiling, property::queue::in_order>;
+    using reference_type = detail::reference_type<queue, detail::queue_state>;
+    using property_compatibility = simsycl::detail::property_compatibility_with<queue,
+        property::queue::enable_profiling, property::queue::in_order>;
 
   public:
-    explicit queue(const property_list &prop_list = {}) : property_interface(prop_list, property_compatibility()) {}
+    explicit queue(const property_list &prop_list = {})
+        : reference_type(std::in_place), property_interface(prop_list, property_compatibility()) {}
 
     explicit queue(const async_handler &async_handler, const property_list &prop_list = {})
-        : property_interface(prop_list, property_compatibility()), m_async_handler(async_handler) {}
+        : reference_type(std::in_place), property_interface(prop_list, property_compatibility()),
+          m_async_handler(async_handler) {}
 
     template <typename DeviceSelector>
     explicit queue(const DeviceSelector &device_selector, const property_list &prop_list = {});
@@ -63,8 +75,6 @@ class queue : public simsycl::detail::property_interface {
     explicit queue(const context &sycl_context, const device &sycl_device, const async_handler &async_handler,
         const property_list &prop_list = {});
 
-    /* -- common interface members -- */
-
     backend get_backend() const noexcept;
 
     context get_context() const;
@@ -81,9 +91,11 @@ class queue : public simsycl::detail::property_interface {
 
     template <typename T>
     event submit(T cgf) {
+        auto status = detail::execution_status::submit();
         auto cgh = simsycl::detail::make_handler();
+        status.start();
         cgf(cgh);
-        return event();
+        return status.end();
     }
 
     template <typename T>
@@ -100,145 +112,170 @@ class queue : public simsycl::detail::property_interface {
 
     template <typename KernelName, typename KernelType>
     event single_task(const KernelType &kernel_func) {
+        auto status = detail::execution_status::submit_and_start();
         kernel_func();
-        return event();
+        return status.end();
     }
 
     template <typename KernelName, typename KernelType>
     event single_task(event /* dep_event */, const KernelType &kernel_func) {
+        auto status = detail::execution_status::submit_and_start();
         kernel_func();
-        return event();
+        return status.end();
     }
 
     template <typename KernelName, typename KernelType>
     event single_task(const std::vector<event> & /* dep_events */, const KernelType &kernel_func) {
+        auto status = detail::execution_status::submit_and_start();
         kernel_func();
-        return event();
+        return status.end();
     }
 
     template <typename KernelName, int Dims, typename... Rest, std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
     event parallel_for(range<Dims> num_work_items, Rest &&...rest) {
+        auto status = detail::execution_status::submit_and_start();
         simsycl::detail::parallel_for(num_work_items, std::forward<Rest>(rest)...);
-        return event();
+        return status.end();
     }
 
     template <typename KernelName, int Dims, typename... Rest, std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
     event parallel_for(range<Dims> num_work_items, event /* dep_event */, Rest &&...rest) {
+        auto status = detail::execution_status::submit_and_start();
         simsycl::detail::parallel_for(num_work_items, std::forward<Rest>(rest)...);
-        return event();
+        return status.end();
     }
 
     template <typename KernelName, int Dims, typename... Rest, std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
     event parallel_for(range<Dims> num_work_items, const std::vector<event> & /* dep_events */, Rest &&...rest) {
+        auto status = detail::execution_status::submit_and_start();
         simsycl::detail::parallel_for(num_work_items, std::forward<Rest>(rest)...);
-        return event();
+        return status.end();
     }
 
     template <typename KernelName, int Dims, typename... Rest, std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
     event parallel_for(nd_range<Dims> execution_range, Rest &&...rest) {
+        auto status = detail::execution_status::submit_and_start();
         simsycl::detail::parallel_for(execution_range, std::forward<Rest>(rest)...);
-        return event();
+        return status.end();
     }
 
     template <typename KernelName, int Dims, typename... Rest, std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
     event parallel_for(nd_range<Dims> execution_range, event /* dep_event */, Rest &&...rest) {
+        auto status = detail::execution_status::submit_and_start();
         simsycl::detail::parallel_for(execution_range, std::forward<Rest>(rest)...);
-        return event();
+        return status.end();
     }
 
     template <typename KernelName, int Dims, typename... Rest, std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
     event parallel_for(nd_range<Dims> execution_range, const std::vector<event> & /* dep_events */, Rest &&...rest) {
+        auto status = detail::execution_status::submit_and_start();
         simsycl::detail::parallel_for(execution_range, std::forward<Rest>(rest)...);
-        return event();
+        return status.end();
     }
 
     /* -- USM functions -- */
 
     event memcpy(void *dest, const void *src, size_t num_bytes) {
+        auto status = detail::execution_status::submit_and_start();
         ::memcpy(dest, src, num_bytes);
-        return event();
+        return status.end();
     }
 
     event memcpy(void *dest, const void *src, size_t num_bytes, event /* dep_event */) {
+        auto status = detail::execution_status::submit_and_start();
         ::memcpy(dest, src, num_bytes);
-        return event();
+        return status.end();
     }
 
     event memcpy(void *dest, const void *src, size_t num_bytes, const std::vector<event> & /* dep_events */) {
+        auto status = detail::execution_status::submit_and_start();
         ::memcpy(dest, src, num_bytes);
-        return event();
+        return status.end();
     }
 
     template <typename T>
     event copy(const T *src, T *dest, size_t count) {
+        auto status = detail::execution_status::submit_and_start();
         std::copy_n(src, count, dest);
-        return event();
+        return status.end();
     }
 
     template <typename T>
     event copy(const T *src, T *dest, size_t count, event dep_event) {
         (void)(dep_event);
+        auto status = detail::execution_status::submit_and_start();
         std::copy_n(src, count, dest);
-        return event();
+        return status.end();
     }
 
     template <typename T>
     event copy(const T *src, T *dest, size_t count, const std::vector<event> &dep_events) {
         (void)(dep_events);
+        auto status = detail::execution_status::submit_and_start();
         std::copy_n(src, count, dest);
-        return event();
+        return status.end();
     }
 
     event memset(void *ptr, int value, size_t num_bytes) {
+        auto status = detail::execution_status::submit_and_start();
         ::memset(ptr, value, num_bytes);
-        return event();
+        return status.end();
     }
 
     event memset(void *ptr, int value, size_t num_bytes, event /* dep_event */) {
+        auto status = detail::execution_status::submit_and_start();
         ::memset(ptr, value, num_bytes);
-        return event();
+        return status.end();
     }
 
     event memset(void *ptr, int value, size_t num_bytes, const std::vector<event> & /* dep_events */) {
+        auto status = detail::execution_status::submit_and_start();
         ::memset(ptr, value, num_bytes);
-        return event();
+        return status.end();
     }
 
     template <typename T>
     event fill(void *ptr, const T &pattern, size_t count) {
+        auto status = detail::execution_status::submit_and_start();
         std::fill_n(ptr, count, pattern);
-        return event();
+        return status.end();
     }
 
     template <typename T>
     event fill(void *ptr, const T &pattern, size_t count, event /* dep_event */) {
+        auto status = detail::execution_status::submit_and_start();
         std::fill_n(ptr, count, pattern);
-        return event();
+        return status.end();
     }
 
     template <typename T>
     event fill(void *ptr, const T &pattern, size_t count, const std::vector<event> & /* dep_events */) {
+        auto status = detail::execution_status::submit_and_start();
         std::fill_n(ptr, count, pattern);
-        return event();
+        return status.end();
     }
 
-    event prefetch(void * /* ptr */, size_t /* num_bytes */) { return event(); }
+    event prefetch(void * /* ptr */, size_t /* num_bytes */) { return detail::execution_status::instant(); }
 
-    event prefetch(void * /* ptr */, size_t /* num_bytes */, event /* dep_event */) { return event(); }
+    event prefetch(void * /* ptr */, size_t /* num_bytes */, event /* dep_event */) {
+        return detail::execution_status::instant();
+    }
 
     event prefetch(void * /* ptr */, size_t /* num_bytes */, const std::vector<event> & /* dep_events */) {
-        return event();
+        return detail::execution_status::instant();
     }
 
-    event mem_advise(void * /* ptr */, size_t /* num_bytes */, int /* advice */) { return event(); }
+    event mem_advise(void * /* ptr */, size_t /* num_bytes */, int /* advice */) {
+        return detail::execution_status::instant();
+    }
 
     event mem_advise(void * /* ptr */, size_t /* num_bytes */, int /* advice */, event /* dep_event */) {
-        return event();
+        return detail::execution_status::instant();
     }
 
     event mem_advise(
         void * /* ptr */, size_t /* num_bytes */, int /* advice */, const std::vector<event> & /* dep_events */) {
-        return event();
+        return detail::execution_status::instant();
     }
 
     /// Placeholder accessor shortcuts

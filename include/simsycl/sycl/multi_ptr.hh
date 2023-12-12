@@ -1,6 +1,5 @@
 #pragma once
 
-#include "accessor.hh"
 #include "enums.hh"
 #include "forward.hh"
 
@@ -305,5 +304,37 @@ using global_ptr = multi_ptr<ElementType, access::address_space::global_space, I
 
 template <typename ElementType, access::decorated IsDecorated = access::decorated::legacy>
 using local_ptr = multi_ptr<ElementType, access::address_space::local_space, IsDecorated>;
+
+// Deprecated in SYCL 2020
+template <typename ElementType>
+
+using constant_ptr [[deprecated]]
+= multi_ptr<ElementType, access::address_space::constant_space, access::decorated::legacy>;
+
+template <typename ElementType, access::decorated IsDecorated = access::decorated::legacy>
+using private_ptr = multi_ptr<ElementType, access::address_space::private_space, IsDecorated>;
+
+// Template specialization aliases for different pointer address spaces.
+// The interface exposes non-decorated pointer while keeping the address space information internally.
+
+template <typename ElementType>
+using raw_global_ptr = multi_ptr<ElementType, access::address_space::global_space, access::decorated::no>;
+
+template <typename ElementType>
+using raw_local_ptr = multi_ptr<ElementType, access::address_space::local_space, access::decorated::no>;
+
+template <typename ElementType>
+using raw_private_ptr = multi_ptr<ElementType, access::address_space::private_space, access::decorated::no>;
+
+// Template specialization aliases for different pointer address spaces.
+// The interface exposes decorated pointer.
+template <typename ElementType>
+using decorated_global_ptr = multi_ptr<ElementType, access::address_space::global_space, access::decorated::yes>;
+
+template <typename ElementType>
+using decorated_local_ptr = multi_ptr<ElementType, access::address_space::local_space, access::decorated::yes>;
+
+template <typename ElementType>
+using decorated_private_ptr = multi_ptr<ElementType, access::address_space::private_space, access::decorated::yes>;
 
 } // namespace simsycl::sycl

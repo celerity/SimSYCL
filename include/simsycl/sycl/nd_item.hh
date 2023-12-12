@@ -6,6 +6,7 @@
 
 #include "group.hh"
 #include "id.hh"
+#include "multi_ptr.hh"
 #include "range.hh"
 #include "sub_group.hh"
 
@@ -40,6 +41,11 @@ sycl::nd_item<Dimensions> make_nd_item(const sycl::item<Dimensions, false> &glob
 } // namespace simsycl::detail
 
 namespace simsycl::sycl {
+
+class device_event {
+  public:
+    void wait() noexcept {}
+};
 
 template <int Dimensions>
 class nd_item {
@@ -103,6 +109,46 @@ class nd_item {
         = access::fence_space::global_and_local) const {
         SIMSYCL_NOT_IMPLEMENTED(access_space);
     }
+
+    // Deprecated in SYCL 2020.
+    template <typename DataT>
+    [[deprecated]] device_event async_work_group_copy(
+        local_ptr<DataT> dest, global_ptr<DataT> src, size_t num_elements) const;
+
+    // Deprecated in SYCL 2020.
+    template <typename DataT>
+    [[deprecated]] device_event async_work_group_copy(
+        global_ptr<DataT> dest, local_ptr<DataT> src, size_t num_elements) const;
+
+    // Deprecated in SYCL 2020.
+    template <typename DataT>
+    [[deprecated]] device_event async_work_group_copy(
+        local_ptr<DataT> dest, global_ptr<DataT> src, size_t num_elements, size_t src_stride) const;
+
+    // Deprecated in SYCL 2020.
+    template <typename DataT>
+    [[deprecated]] device_event async_work_group_copy(
+        global_ptr<DataT> dest, local_ptr<DataT> src, size_t num_elements, size_t dest_stride) const;
+
+    template <typename DestDataT, typename SrcDataT>
+        requires(std::is_same_v<DestDataT, std::remove_const_t<SrcDataT>>)
+    device_event async_work_group_copy(
+        decorated_local_ptr<DestDataT> dest, decorated_global_ptr<SrcDataT> src, size_t num_elements) const;
+
+    template <typename DestDataT, typename SrcDataT>
+        requires(std::is_same_v<DestDataT, std::remove_const_t<SrcDataT>>)
+    device_event async_work_group_copy(
+        decorated_global_ptr<DestDataT> dest, decorated_local_ptr<SrcDataT> src, size_t num_elements) const;
+
+    template <typename DestDataT, typename SrcDataT>
+        requires(std::is_same_v<DestDataT, std::remove_const_t<SrcDataT>>)
+    device_event async_work_group_copy(decorated_local_ptr<DestDataT> dest, decorated_global_ptr<SrcDataT> src,
+        size_t num_elements, size_t src_stride) const;
+
+    template <typename DestDataT, typename SrcDataT>
+        requires(std::is_same_v<DestDataT, std::remove_const_t<SrcDataT>>)
+    device_event async_work_group_copy(decorated_global_ptr<DestDataT> dest, decorated_local_ptr<SrcDataT> src,
+        size_t num_elements, size_t dest_stride) const;
 
     template <typename... Events>
     void wait_for(Events... events) const {

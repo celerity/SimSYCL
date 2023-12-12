@@ -110,4 +110,8 @@ sycl::handler make_handler();
 
 void **require_local_memory(sycl::handler &cgh, size_t size, size_t align);
 
+struct execution_status;
+
+sycl::event make_event(const execution_status &status);
+
 } // namespace simsycl::detail

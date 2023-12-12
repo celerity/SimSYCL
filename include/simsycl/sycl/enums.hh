@@ -1,5 +1,8 @@
 #pragma once
 
+#include <cstdint>
+
+
 namespace simsycl::sycl {
 
 enum class addressing_mode { mirrored_repeat, repeat, clamp_to_edge, clamp, none };
@@ -307,9 +310,17 @@ struct command_execution_status;
 
 namespace simsycl::sycl::info::event_profiling {
 
-struct command_submit;
-struct command_start;
-struct command_end;
+struct command_submit {
+    using return_type = uint64_t;
+};
+
+struct command_start {
+    using return_type = uint64_t;
+};
+
+struct command_end {
+    using return_type = uint64_t;
+};
 
 } // namespace simsycl::sycl::info::event_profiling
 
