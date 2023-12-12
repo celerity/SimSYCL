@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.13)
-project(SimSYCL VERSION 0.1 LANGUAGES CXX)
+
+set(SimSYCL_VERSION 0.1)
+project(SimSYCL VERSION "${SimSYCL_VERSION}" LANGUAGES CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -67,7 +69,10 @@ add_library(simsycl
     src/simsycl/dummy.cc
 )
 target_link_libraries(simsycl Boost::context)
-target_include_directories(simsycl PUBLIC include)
+target_include_directories(simsycl PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
 set_simsycl_target_options(simsycl)
 
 add_executable(main src/test/main.cc)
@@ -77,3 +82,38 @@ set_simsycl_target_options(main)
 enable_testing()
 add_subdirectory(test)
 add_subdirectory(examples)
+
+include(CMakePackageConfigHelpers)
+
+install(
+  DIRECTORY ${PROJECT_SOURCE_DIR}/include/
+  DESTINATION include
+)
+install(
+  TARGETS simsycl
+  EXPORT install_exports
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib
+)
+write_basic_package_version_file(
+  "${CMAKE_CURRENT_BINARY_DIR}/simsycl-config-version.cmake"
+  VERSION "${SimSYCL_VERSION}"
+  COMPATIBILITY SameMajorVersion
+)
+install(
+  EXPORT install_exports
+  FILE "simsycl-targets.cmake"
+  NAMESPACE SimSYCL::
+  DESTINATION lib/cmake/SimSYCL
+)
+set(SIMSYCL_INSTALL_LOCATION ${CMAKE_INSTALL_PREFIX})
+configure_file(
+  "${PROJECT_SOURCE_DIR}/cmake/simsycl-config.cmake.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/simsycl-config.cmake"
+  @ONLY
+)
+install(FILES
+  "${CMAKE_CURRENT_BINARY_DIR}/simsycl-config.cmake"
+  "${CMAKE_CURRENT_BINARY_DIR}/simsycl-config-version.cmake"
+  DESTINATION lib/cmake/SimSYCL
+)
