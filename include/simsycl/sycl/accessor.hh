@@ -18,13 +18,13 @@
 
 namespace simsycl::detail {
 
-template <simsycl::sycl::access_mode AccessMode, simsycl::sycl::target Target>
+template<simsycl::sycl::access_mode AccessMode, simsycl::sycl::target Target>
 struct accessor_tag {
     inline static constexpr simsycl::sycl::access_mode access_mode = AccessMode;
     inline static constexpr simsycl::sycl::target target = Target;
 };
 
-template <typename Accessor, typename DataT, int Dimensions>
+template<typename Accessor, typename DataT, int Dimensions>
 class accessor_iterator {
   public:
     using value_type = DataT;
@@ -72,7 +72,7 @@ class accessor_iterator {
     friend bool operator!=(const accessor_iterator &lhs, const accessor_iterator &rhs) { return !(lhs == rhs); }
 
   private:
-    template <typename, int, sycl::access_mode, sycl::target, sycl::access::placeholder>
+    template<typename, int, sycl::access_mode, sycl::target, sycl::access::placeholder>
     friend class sycl::accessor;
 
     struct begin_t {
@@ -93,7 +93,7 @@ class accessor_iterator {
 };
 
 
-template <typename Accessor, typename DataT>
+template<typename Accessor, typename DataT>
 class accessor_iterator<Accessor, DataT, 0> {
   public:
     using value_type = DataT;
@@ -130,7 +130,7 @@ class accessor_iterator<Accessor, DataT, 0> {
     friend bool operator!=(const accessor_iterator &lhs, const accessor_iterator &rhs) { return !(lhs == rhs); }
 
   private:
-    template <typename, int, sycl::access_mode, sycl::target, sycl::access::placeholder>
+    template<typename, int, sycl::access_mode, sycl::target, sycl::access::placeholder>
     friend class sycl::accessor;
 
     struct start_t {
@@ -156,15 +156,14 @@ struct no_init {};
 
 namespace simsycl::sycl {
 
-template <>
+template<>
 struct is_property<property::no_init> : std::true_type {};
 
-template <typename DataT, int Dimensions, access_mode AccessMode, target AccessTarget,
-    access::placeholder IsPlaceholder>
+template<typename DataT, int Dimensions, access_mode AccessMode, target AccessTarget, access::placeholder IsPlaceholder>
 struct is_property_of<property::no_init, accessor<DataT, Dimensions, AccessMode, AccessTarget, IsPlaceholder>>
     : std::true_type {};
 
-template <typename DataT, int Dimensions>
+template<typename DataT, int Dimensions>
 struct is_property_of<property::no_init, local_accessor<DataT, Dimensions>> : std::true_type {};
 
 inline constexpr simsycl::detail::accessor_tag<access_mode::read, target::device> read_only;
@@ -176,8 +175,7 @@ inline constexpr simsycl::detail::accessor_tag<access_mode::read_write, target::
 
 inline constexpr property::no_init no_init;
 
-template <typename DataT, int Dimensions, access_mode AccessMode, target AccessTarget,
-    access::placeholder IsPlaceholder>
+template<typename DataT, int Dimensions, access_mode AccessMode, target AccessTarget, access::placeholder IsPlaceholder>
 class accessor : public simsycl::detail::property_interface {
   private:
     using property_compatibility
@@ -189,7 +187,7 @@ class accessor : public simsycl::detail::property_interface {
     using reference = value_type &;
     using const_reference = const DataT &;
 
-    template <access::decorated IsDecorated>
+    template<access::decorated IsDecorated>
     using accessor_ptr = std::enable_if_t<AccessTarget == target::device,
         multi_ptr<value_type, access::address_space::global_space, IsDecorated>>;
 
@@ -202,63 +200,63 @@ class accessor : public simsycl::detail::property_interface {
 
     accessor() = default;
 
-    template <typename AllocatorT>
+    template<typename AllocatorT>
     accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, const property_list &prop_list = {})
         : accessor(internal, buffer_ref, prop_list) {}
 
-    template <typename AllocatorT>
+    template<typename AllocatorT>
     accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref,
         const detail::accessor_tag<AccessMode, AccessTarget> tag, const property_list &prop_list = {})
         : accessor(internal, buffer_ref, tag, prop_list) {}
 
-    template <typename AllocatorT>
+    template<typename AllocatorT>
     accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, handler &command_group_handler_ref,
         const property_list &prop_list = {})
         : accessor(internal, buffer_ref, command_group_handler_ref, prop_list) {}
 
-    template <typename AllocatorT>
+    template<typename AllocatorT>
     accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, handler &command_group_handler_ref,
         const detail::accessor_tag<AccessMode, AccessTarget> tag, const property_list &prop_list = {})
         : accessor(internal, buffer_ref, command_group_handler_ref, tag, prop_list) {}
 
-    template <typename AllocatorT>
+    template<typename AllocatorT>
     accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, range<Dimensions> access_range,
         const property_list &prop_list = {})
         : accessor(internal, buffer_ref, access_range, prop_list) {}
 
-    template <typename AllocatorT>
+    template<typename AllocatorT>
     accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, range<Dimensions> access_range,
         const detail::accessor_tag<AccessMode, AccessTarget> tag, const property_list &prop_list = {})
         : accessor(internal, buffer_ref, access_range, tag, prop_list) {}
 
-    template <typename AllocatorT>
+    template<typename AllocatorT>
     accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, range<Dimensions> access_range,
         id<Dimensions> access_offset, const property_list &prop_list = {})
         : accessor(internal, buffer_ref, access_range, access_offset, prop_list) {}
 
-    template <typename AllocatorT>
+    template<typename AllocatorT>
     accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, range<Dimensions> access_range,
         id<Dimensions> access_offset, const detail::accessor_tag<AccessMode, AccessTarget> tag,
         const property_list &prop_list = {})
         : accessor(internal, buffer_ref, access_range, access_offset, tag, prop_list) {}
 
-    template <typename AllocatorT>
+    template<typename AllocatorT>
     accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, handler &command_group_handler_ref,
         range<Dimensions> access_range, const property_list &prop_list = {})
         : accessor(internal, buffer_ref, command_group_handler_ref, access_range, prop_list) {}
 
-    template <typename AllocatorT>
+    template<typename AllocatorT>
     accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, handler &command_group_handler_ref,
         range<Dimensions> access_range, const detail::accessor_tag<AccessMode, AccessTarget> tag,
         const property_list &prop_list = {})
         : accessor(internal, buffer_ref, command_group_handler_ref, access_range, tag, prop_list) {}
 
-    template <typename AllocatorT>
+    template<typename AllocatorT>
     accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, handler &command_group_handler_ref,
         range<Dimensions> access_range, id<Dimensions> access_offset, const property_list &prop_list = {})
         : accessor(internal, buffer_ref, command_group_handler_ref, access_range, access_offset, prop_list) {}
 
-    template <typename AllocatorT>
+    template<typename AllocatorT>
     accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, handler &command_group_handler_ref,
         range<Dimensions> access_range, id<Dimensions> access_offset,
         const detail::accessor_tag<AccessMode, AccessTarget> tag, const property_list &prop_list = {})
@@ -330,7 +328,7 @@ class accessor : public simsycl::detail::property_interface {
         return m_buffer;
     }
 
-    template <access::decorated IsDecorated>
+    template<access::decorated IsDecorated>
     accessor_ptr<IsDecorated> get_multi_ptr() const noexcept {
         SIMSYCL_CHECK(m_buffer != nullptr);
         SIMSYCL_CHECK(m_required);
@@ -365,7 +363,7 @@ class accessor : public simsycl::detail::property_interface {
     range<Dimensions> m_access_range;
     bool m_required = false;
 
-    template <typename AllocatorT>
+    template<typename AllocatorT>
     void init(buffer<DataT, Dimensions, AllocatorT> &buffer_ref) {
         m_buffer = detail::get_buffer_data(buffer_ref);
         m_buffer_range = buffer_ref.get_range();
@@ -384,7 +382,7 @@ class accessor : public simsycl::detail::property_interface {
 
     void init(simsycl::detail::accessor_tag<AccessMode, AccessTarget> /* tag */) {}
 
-    template <typename... Params>
+    template<typename... Params>
     explicit accessor(internal_t /* tag */, Params &&...args) {
         (init(args), ...);
     }
@@ -397,62 +395,62 @@ class accessor : public simsycl::detail::property_interface {
     const range<3> &get_buffer_range() const { return m_buffer_range; }
 };
 
-template <typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
+template<typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
 accessor(buffer<DataT, Dimensions, AllocatorT> &, detail::accessor_tag<AccessMode, AccessTarget>)
     -> accessor<DataT, Dimensions, AccessMode, AccessTarget, access::placeholder::false_t>;
 
-template <typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
+template<typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
 accessor(buffer<DataT, Dimensions, AllocatorT> &, detail::accessor_tag<AccessMode, AccessTarget>, const property_list &)
     -> accessor<DataT, Dimensions, AccessMode, AccessTarget, access::placeholder::false_t>;
 
-template <typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
+template<typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
 accessor(buffer<DataT, Dimensions, AllocatorT> &, handler &, detail::accessor_tag<AccessMode, AccessTarget>)
     -> accessor<DataT, Dimensions, AccessMode, AccessTarget, access::placeholder::false_t>;
 
-template <typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
+template<typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
 accessor(buffer<DataT, Dimensions, AllocatorT> &, handler &, detail::accessor_tag<AccessMode, AccessTarget>,
     const property_list &) -> accessor<DataT, Dimensions, AccessMode, AccessTarget, access::placeholder::false_t>;
 
-template <typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
+template<typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
 accessor(buffer<DataT, Dimensions, AllocatorT> &, range<Dimensions>, detail::accessor_tag<AccessMode, AccessTarget>)
     -> accessor<DataT, Dimensions, AccessMode, AccessTarget, access::placeholder::false_t>;
 
-template <typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
+template<typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
 accessor(buffer<DataT, Dimensions, AllocatorT> &, range<Dimensions>, detail::accessor_tag<AccessMode, AccessTarget>,
     const property_list &) -> accessor<DataT, Dimensions, AccessMode, AccessTarget, access::placeholder::false_t>;
 
-template <typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
+template<typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
 accessor(buffer<DataT, Dimensions, AllocatorT> &, handler &, range<Dimensions>,
     detail::accessor_tag<AccessMode, AccessTarget>)
     -> accessor<DataT, Dimensions, AccessMode, AccessTarget, access::placeholder::false_t>;
 
-template <typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
+template<typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
 accessor(buffer<DataT, Dimensions, AllocatorT> &, handler &, range<Dimensions>,
     detail::accessor_tag<AccessMode, AccessTarget>, const property_list &)
     -> accessor<DataT, Dimensions, AccessMode, AccessTarget, access::placeholder::false_t>;
 
-template <typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
+template<typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
 accessor(buffer<DataT, Dimensions, AllocatorT> &, range<Dimensions>, id<Dimensions>,
     detail::accessor_tag<AccessMode, AccessTarget>)
     -> accessor<DataT, Dimensions, AccessMode, AccessTarget, access::placeholder::false_t>;
 
-template <typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
+template<typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
 accessor(buffer<DataT, Dimensions, AllocatorT> &, range<Dimensions>, id<Dimensions>,
     detail::accessor_tag<AccessMode, AccessTarget>, const property_list &)
     -> accessor<DataT, Dimensions, AccessMode, AccessTarget, access::placeholder::false_t>;
 
-template <typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
+template<typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
 accessor(buffer<DataT, Dimensions, AllocatorT> &, handler &, range<Dimensions>, id<Dimensions>,
     detail::accessor_tag<AccessMode, AccessTarget>)
     -> accessor<DataT, Dimensions, AccessMode, AccessTarget, access::placeholder::false_t>;
 
-template <typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
+template<typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
 accessor(buffer<DataT, Dimensions, AllocatorT> &, handler &, range<Dimensions>, id<Dimensions>,
     detail::accessor_tag<AccessMode, AccessTarget>, const property_list &)
     -> accessor<DataT, Dimensions, AccessMode, AccessTarget, access::placeholder::false_t>;
 
 
-template <typename DataT, access_mode AccessMode, target AccessTarget, access::placeholder IsPlaceholder>
+template<typename DataT, access_mode AccessMode, target AccessTarget, access::placeholder IsPlaceholder>
 class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> : public simsycl::detail::property_interface {
   private:
     using property_compatibility
@@ -464,7 +462,7 @@ class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> : public simsy
     using reference = value_type &;
     using const_reference = const DataT &;
 
-    template <access::decorated IsDecorated>
+    template<access::decorated IsDecorated>
     using accessor_ptr = std::enable_if_t<AccessTarget == target::device,
         multi_ptr<value_type, access::address_space::global_space, IsDecorated>>;
 
@@ -477,12 +475,12 @@ class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> : public simsy
 
     accessor() = default;
 
-    template <typename AllocatorT>
+    template<typename AllocatorT>
     accessor(buffer<DataT, 1, AllocatorT> &buffer_ref, const property_list &prop_list = {})
         : simsycl::detail::property_interface(prop_list, property_compatibility()),
           m_buffer(detail::get_buffer_data(buffer_ref)), m_required(false) {}
 
-    template <typename AllocatorT>
+    template<typename AllocatorT>
     accessor(buffer<DataT, 1, AllocatorT> &buffer_ref, handler &command_group_handler_ref,
         const property_list &prop_list = {})
         : simsycl::detail::property_interface(prop_list, property_compatibility()),
@@ -550,7 +548,7 @@ class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> : public simsy
         return m_buffer;
     }
 
-    template <access::decorated IsDecorated>
+    template<access::decorated IsDecorated>
     accessor_ptr<IsDecorated> get_multi_ptr() const noexcept {
         SIMSYCL_CHECK(m_buffer != nullptr);
         SIMSYCL_CHECK(m_required);
@@ -586,7 +584,7 @@ class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> : public simsy
 };
 
 
-template <typename DataT, int Dimensions>
+template<typename DataT, int Dimensions>
 class local_accessor final : public simsycl::detail::property_interface {
   private:
     using property_compatibility
@@ -597,7 +595,7 @@ class local_accessor final : public simsycl::detail::property_interface {
     using reference = value_type &;
     using const_reference = const DataT &;
 
-    template <access::decorated IsDecorated>
+    template<access::decorated IsDecorated>
     using accessor_ptr = multi_ptr<value_type, access::address_space::local_space, IsDecorated>;
 
     using iterator = simsycl::detail::accessor_iterator<local_accessor, value_type, Dimensions>;
@@ -636,7 +634,7 @@ class local_accessor final : public simsycl::detail::property_interface {
 
     [[deprecated]] local_ptr<DataT> get_pointer() const noexcept { return local_ptr<DataT>(get_allocation()); }
 
-    template <access::decorated IsDecorated>
+    template<access::decorated IsDecorated>
     accessor_ptr<IsDecorated> get_multi_ptr() const noexcept {
         return accessor_ptr<IsDecorated>(get_allocation());
     }
@@ -669,7 +667,7 @@ class local_accessor final : public simsycl::detail::property_interface {
     inline DataT *get_allocation() const { return static_cast<DataT *>(*m_allocation_ptr); }
 };
 
-template <typename DataT>
+template<typename DataT>
 class local_accessor<DataT, 0> final : public simsycl::detail::property_interface {
   private:
     using property_compatibility = detail::property_compatibility_with<local_accessor<DataT, 0>, property::no_init>;
@@ -679,7 +677,7 @@ class local_accessor<DataT, 0> final : public simsycl::detail::property_interfac
     using reference = value_type &;
     using const_reference = const DataT &;
 
-    template <access::decorated IsDecorated>
+    template<access::decorated IsDecorated>
     using accessor_ptr = multi_ptr<value_type, access::address_space::local_space, IsDecorated>;
 
     using iterator = simsycl::detail::accessor_iterator<local_accessor, value_type, 0>;
@@ -725,7 +723,7 @@ class local_accessor<DataT, 0> final : public simsycl::detail::property_interfac
 
     std::add_pointer_t<value_type> get_pointer() const noexcept { return get_allocation(); }
 
-    template <access::decorated IsDecorated>
+    template<access::decorated IsDecorated>
     accessor_ptr<IsDecorated> get_multi_ptr() const noexcept {
         return accessor_ptr<IsDecorated>(get_allocation());
     }

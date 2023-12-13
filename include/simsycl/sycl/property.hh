@@ -16,33 +16,33 @@ class property_interface;
 
 namespace simsycl::sycl {
 
-template <typename Property>
+template<typename Property>
 struct is_property : std::false_type {};
 
-template <typename Property>
+template<typename Property>
 inline constexpr bool is_property_v = is_property<Property>::value;
 
-template <typename Property, typename SyclObject>
+template<typename Property, typename SyclObject>
 struct is_property_of : std::false_type {};
 
-template <typename Property, typename SyclObject>
+template<typename Property, typename SyclObject>
 inline constexpr bool is_property_of_v = is_property_of<Property, SyclObject>::value;
 
 class property_list {
   public:
-    template <typename... Properties>
+    template<typename... Properties>
         requires(is_property_v<Properties> && ...)
     property_list(Properties... props) : m_properties{props...} {}
 
     // Implemented by hipSYCL and DPC++ although the spec does not mention any members beside the constructor
-    template <typename Property>
+    template<typename Property>
     bool has_property() const noexcept {
         return std::any_of(m_properties.begin(), m_properties.end(),
             [](const std::any &prop) { return prop.type() == typeid(Property); });
     }
 
     // Implemented by hipSYCL and DPC++ although the spec does not mention any members beside the constructor
-    template <typename Property>
+    template<typename Property>
     Property get_property() const {
         const auto iter = std::find_if(m_properties.begin(), m_properties.end(),
             [](const std::any &prop) { return prop.type() == typeid(Property); });
@@ -60,19 +60,19 @@ class property_list {
 
 namespace simsycl::detail {
 
-template <typename... CompatibleProperties>
+template<typename... CompatibleProperties>
 struct property_compatibility {};
 
-template <typename Derived, typename... CompatibleProperties>
+template<typename Derived, typename... CompatibleProperties>
 struct property_compatibility_with {};
 
 class property_interface {
   public:
     property_interface() = default;
 
-    template <typename... CompatibleProperties>
-    explicit property_interface(const sycl::property_list &prop_list,
-        property_compatibility<CompatibleProperties...> /* compatibility */)
+    template<typename... CompatibleProperties>
+    explicit property_interface(
+        const sycl::property_list &prop_list, property_compatibility<CompatibleProperties...> /* compatibility */)
         : m_properties(prop_list.m_properties) {
         static_assert((sycl::is_property_v<CompatibleProperties> && ...));
         for(const auto &prop : prop_list.m_properties) {
@@ -80,7 +80,7 @@ class property_interface {
         }
     }
 
-    template <typename Derived, typename... CompatibleProperties>
+    template<typename Derived, typename... CompatibleProperties>
     explicit property_interface(const sycl::property_list &prop_list,
         property_compatibility_with<Derived, CompatibleProperties...> /* compatibility */)
         : m_properties(prop_list.m_properties) {
@@ -91,13 +91,13 @@ class property_interface {
         }
     }
 
-    template <typename Property>
+    template<typename Property>
     bool has_property() const noexcept {
         return std::any_of(m_properties.begin(), m_properties.end(),
             [](const std::any &prop) { return prop.type() == typeid(Property); });
     }
 
-    template <typename Property>
+    template<typename Property>
     Property get_property() const {
         const auto iter = std::find_if(m_properties.begin(), m_properties.end(),
             [](const std::any &prop) { return prop.type() == typeid(Property); });

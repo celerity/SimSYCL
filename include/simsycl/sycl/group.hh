@@ -11,7 +11,7 @@
 
 namespace simsycl::detail {
 
-template <int Dimensions>
+template<int Dimensions>
 sycl::group<Dimensions> make_group(const sycl::item<Dimensions, false> &local_item,
     const sycl::item<Dimensions, false> &global_item, const sycl::item<Dimensions, false> &group_item,
     detail::group_impl *impl) {
@@ -22,7 +22,7 @@ sycl::group<Dimensions> make_group(const sycl::item<Dimensions, false> &local_it
 
 namespace simsycl::sycl {
 
-template <int Dimensions>
+template<int Dimensions>
 class group {
   public:
     using id_type = id<Dimensions>;
@@ -79,17 +79,17 @@ class group {
 
     bool leader() const { return (get_local_linear_id() == 0); }
 
-    template <typename WorkItemFunctionT>
+    template<typename WorkItemFunctionT>
     void parallel_for_work_item(WorkItemFunctionT func) const {
         SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(func);
     }
 
-    template <typename WorkItemFunctionT>
+    template<typename WorkItemFunctionT>
     void parallel_for_work_item(range<Dimensions> flexible_range, WorkItemFunctionT func) const {
         SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(flexible_range, func);
     }
 
-    template <access::mode AccessMode = access_mode::read_write>
+    template<access::mode AccessMode = access_mode::read_write>
     void mem_fence(typename std::enable_if_t<AccessMode == access_mode::read || AccessMode == access_mode::write
                            || AccessMode == access_mode::read_write,
                        access::fence_space>
@@ -98,7 +98,7 @@ class group {
         SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(access_space);
     }
 
-    template <typename... Events>
+    template<typename... Events>
     void wait_for(Events... events) const {
         SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(events...);
     }
@@ -129,7 +129,7 @@ class group {
     friend detail::group_impl &detail::get_group_impl<Dimensions>(const sycl::group<Dimensions> &g);
 };
 
-template <int Dimensions>
+template<int Dimensions>
 struct is_group<group<Dimensions>> : std::true_type {};
 
 } // namespace simsycl::sycl

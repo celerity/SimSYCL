@@ -8,12 +8,12 @@
 
 namespace simsycl::detail {
 
-template <int Dimensions>
+template<int Dimensions>
 sycl::item<Dimensions, true> make_item(
     const sycl::id<Dimensions> &the_id, const sycl::range<Dimensions> &range, const sycl::id<Dimensions> &offset) {
     return sycl::item<Dimensions, true>(the_id, range, offset);
 }
-template <int Dimensions>
+template<int Dimensions>
 sycl::item<Dimensions, false> make_item(const sycl::id<Dimensions> &the_id, const sycl::range<Dimensions> &range) {
     return sycl::item<Dimensions, false>(the_id, range, sycl::id<Dimensions>::zero());
 }
@@ -22,7 +22,7 @@ sycl::item<Dimensions, false> make_item(const sycl::id<Dimensions> &the_id, cons
 
 namespace simsycl::sycl {
 
-template <int Dimensions, bool WithOffset>
+template<int Dimensions, bool WithOffset>
 class item {
   public:
     static_assert(Dimensions >= 1 && Dimensions <= 3);

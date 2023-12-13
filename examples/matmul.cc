@@ -5,7 +5,7 @@
 
 const size_t MAT_SIZE = 128;
 
-template <typename T>
+template<typename T>
 void set_identity(sycl::queue queue, sycl::buffer<T, 2> mat, bool reverse) {
     queue.submit([&](sycl::handler &cgh) {
         sycl::accessor dw{mat, cgh, sycl::write_only, sycl::no_init};
@@ -21,7 +21,7 @@ void set_identity(sycl::queue queue, sycl::buffer<T, 2> mat, bool reverse) {
     });
 }
 
-template <typename T>
+template<typename T>
 void multiply(sycl::queue queue, sycl::buffer<T, 2> mat_a, sycl::buffer<T, 2> mat_b, sycl::buffer<T, 2> mat_c) {
     queue.submit([&](sycl::handler &cgh) {
         sycl::accessor a{mat_a, cgh, sycl::read_only};
@@ -56,7 +56,7 @@ void multiply(sycl::queue queue, sycl::buffer<T, 2> mat_a, sycl::buffer<T, 2> ma
 }
 
 // TODO this should really reduce into a buffer<bool> on the device, but we currently do not support reductions
-template <typename T>
+template<typename T>
 void verify(sycl::queue &queue, sycl::buffer<T, 2> mat_c) {
     queue
         .submit([&](sycl::handler &cgh) {

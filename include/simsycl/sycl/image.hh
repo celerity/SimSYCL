@@ -33,32 +33,32 @@ class context_bound {
 
 namespace simsycl::sycl {
 
-template <>
+template<>
 struct is_property<property::image::use_host_ptr> : public std::true_type {};
 
-template <int Dimensions, typename AllocatorT>
+template<int Dimensions, typename AllocatorT>
 struct is_property_of<property::image::use_host_ptr, sampled_image<Dimensions, AllocatorT>> : public std::true_type {};
 
-template <int Dimensions, typename AllocatorT>
+template<int Dimensions, typename AllocatorT>
 struct is_property_of<property::image::use_host_ptr, unsampled_image<Dimensions, AllocatorT>> : public std::true_type {
 };
 
-template <>
+template<>
 struct is_property<property::image::use_mutex> : public std::true_type {};
 
-template <int Dimensions, typename AllocatorT>
+template<int Dimensions, typename AllocatorT>
 struct is_property_of<property::image::use_mutex, sampled_image<Dimensions, AllocatorT>> : public std::true_type {};
 
-template <int Dimensions, typename AllocatorT>
+template<int Dimensions, typename AllocatorT>
 struct is_property_of<property::image::use_mutex, unsampled_image<Dimensions, AllocatorT>> : public std::true_type {};
 
-template <>
+template<>
 struct is_property<property::image::context_bound> : public std::true_type {};
 
-template <int Dimensions, typename AllocatorT>
+template<int Dimensions, typename AllocatorT>
 struct is_property_of<property::image::context_bound, sampled_image<Dimensions, AllocatorT>> : public std::true_type {};
 
-template <int Dimensions, typename AllocatorT>
+template<int Dimensions, typename AllocatorT>
 struct is_property_of<property::image::context_bound, unsampled_image<Dimensions, AllocatorT>> : public std::true_type {
 };
 
@@ -66,7 +66,7 @@ struct is_property_of<property::image::context_bound, unsampled_image<Dimensions
 
 namespace simsycl::sycl {
 
-template <int Dimensions, typename AllocatorT>
+template<int Dimensions, typename AllocatorT>
 class sampled_image : public simsycl::detail::property_interface {
   private:
     using property_compatibility = simsycl::detail::property_compatibility_with<sampled_image<Dimensions, AllocatorT>,
@@ -76,14 +76,14 @@ class sampled_image : public simsycl::detail::property_interface {
     sampled_image(const void *host_pointer, image_format format, image_sampler sampler,
         const range<Dimensions> &range_ref, const property_list &prop_list = {});
 
-    template <int D = Dimensions, std::enable_if_t<(D > 1), int> = 0>
+    template<int D = Dimensions, std::enable_if_t<(D > 1), int> = 0>
     sampled_image(const void *host_pointer, image_format format, image_sampler sampler,
         const range<Dimensions> &range_ref, const range<Dimensions - 1> &pitch, const property_list &prop_list = {});
 
     sampled_image(std::shared_ptr<const void> &host_pointer, image_format format, image_sampler sampler,
         const range<Dimensions> &range_ref, const property_list &prop_list = {});
 
-    template <int D = Dimensions, std::enable_if_t<(D > 1), int> = 0>
+    template<int D = Dimensions, std::enable_if_t<(D > 1), int> = 0>
     sampled_image(std::shared_ptr<const void> &host_pointer, image_format format, image_sampler sampler,
         const range<Dimensions> &range_ref, const range<Dimensions - 1> &pitch, const property_list &prop_list = {});
 
@@ -91,21 +91,21 @@ class sampled_image : public simsycl::detail::property_interface {
 
     range<Dimensions> get_range() const;
 
-    template <int D = Dimensions, std::enable_if_t<(D > 1), int> = 0>
+    template<int D = Dimensions, std::enable_if_t<(D > 1), int> = 0>
     range<Dimensions - 1> get_pitch() const;
 
     size_t byte_size() const;
 
     size_t size() const;
 
-    template <typename... Ts>
+    template<typename... Ts>
     auto get_access(Ts... args);
 
-    template <typename... Ts>
+    template<typename... Ts>
     auto get_host_access(Ts... args);
 };
 
-template <int Dimensions, typename AllocatorT>
+template<int Dimensions, typename AllocatorT>
 class unsampled_image : public simsycl::detail::property_interface {
   private:
     using property_compatibility = simsycl::detail::property_compatibility_with<unsampled_image<Dimensions, AllocatorT>,
@@ -117,11 +117,11 @@ class unsampled_image : public simsycl::detail::property_interface {
     unsampled_image(image_format format, const range<Dimensions> &range_ref, AllocatorT allocator,
         const property_list &prop_list = {});
 
-    template <int D = Dimensions, std::enable_if_t<(D > 1), int> = 0>
+    template<int D = Dimensions, std::enable_if_t<(D > 1), int> = 0>
     unsampled_image(image_format format, const range<Dimensions> &range_ref, const range<Dimensions - 1> &pitch,
         const property_list &prop_list = {});
 
-    template <int D = Dimensions, std::enable_if_t<(D > 1), int> = 0>
+    template<int D = Dimensions, std::enable_if_t<(D > 1), int> = 0>
     unsampled_image(image_format format, const range<Dimensions> &range_ref, const range<Dimensions - 1> &pitch,
         AllocatorT allocator, const property_list &prop_list = {});
 
@@ -131,11 +131,11 @@ class unsampled_image : public simsycl::detail::property_interface {
     unsampled_image(void *host_pointer, image_format format, const range<Dimensions> &range_ref, AllocatorT allocator,
         const property_list &prop_list = {});
 
-    template <int D = Dimensions, std::enable_if_t<(D > 1), int> = 0>
+    template<int D = Dimensions, std::enable_if_t<(D > 1), int> = 0>
     unsampled_image(void *host_pointer, image_format format, const range<Dimensions> &range_ref,
         const range<Dimensions - 1> &pitch, const property_list &prop_list = {});
 
-    template <int D = Dimensions, std::enable_if_t<(D > 1), int> = 0>
+    template<int D = Dimensions, std::enable_if_t<(D > 1), int> = 0>
     unsampled_image(void *host_pointer, image_format format, const range<Dimensions> &range_ref,
         const range<Dimensions - 1> &pitch, AllocatorT allocator, const property_list &prop_list = {});
 
@@ -145,11 +145,11 @@ class unsampled_image : public simsycl::detail::property_interface {
     unsampled_image(std::shared_ptr<void> &host_pointer, image_format format, const range<Dimensions> &range_ref,
         AllocatorT allocator, const property_list &prop_list = {});
 
-    template <int D = Dimensions, std::enable_if_t<(D > 1), int> = 0>
+    template<int D = Dimensions, std::enable_if_t<(D > 1), int> = 0>
     unsampled_image(std::shared_ptr<void> &host_pointer, image_format format, const range<Dimensions> &range_ref,
         const range<Dimensions - 1> &pitch, const property_list &prop_list = {});
 
-    template <int D = Dimensions, std::enable_if_t<(D > 1), int> = 0>
+    template<int D = Dimensions, std::enable_if_t<(D > 1), int> = 0>
     unsampled_image(std::shared_ptr<void> &host_pointer, image_format format, const range<Dimensions> &range_ref,
         const range<Dimensions - 1> &pitch, AllocatorT allocator, const property_list &prop_list = {});
 
@@ -157,7 +157,7 @@ class unsampled_image : public simsycl::detail::property_interface {
 
     range<Dimensions> get_range() const;
 
-    template <int D = Dimensions, std::enable_if_t<(D > 1), int> = 0>
+    template<int D = Dimensions, std::enable_if_t<(D > 1), int> = 0>
     range<Dimensions - 1> get_pitch() const;
 
     size_t byte_size() const noexcept;
@@ -166,13 +166,13 @@ class unsampled_image : public simsycl::detail::property_interface {
 
     AllocatorT get_allocator() const;
 
-    template <typename... Ts>
+    template<typename... Ts>
     auto get_access(Ts... args);
 
-    template <typename... Ts>
+    template<typename... Ts>
     auto get_host_access(Ts... args);
 
-    template <typename Destination = std::nullptr_t>
+    template<typename Destination = std::nullptr_t>
     void set_final_data(Destination final_data = nullptr);
 
     void set_write_back(bool flag = true);

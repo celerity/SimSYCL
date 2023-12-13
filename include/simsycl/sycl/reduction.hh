@@ -19,14 +19,14 @@ struct initialize_to_identity {};
 
 namespace simsycl::sycl {
 
-template <>
+template<>
 struct is_property<property::reduction::initialize_to_identity> : std::true_type {};
 
 } // namespace simsycl::sycl
 
 namespace simsycl::detail {
 
-template <typename T, typename BinaryOperation, int Dimensions>
+template<typename T, typename BinaryOperation, int Dimensions>
 class reducer {
   public:
     using value_type = T;
@@ -49,7 +49,7 @@ class reducer {
     }
 
   private:
-    template <int D, typename U, int S>
+    template<int D, typename U, int S>
     friend decltype(auto) subscript(U &, sycl::id<D>, size_t);
 
     reducer<T, BinaryOperation, 0> m_dim0;
@@ -60,7 +60,7 @@ class reducer {
     }
 };
 
-template <typename T, typename BinaryOperation>
+template<typename T, typename BinaryOperation>
 class reducer<T, BinaryOperation, 0> {
   public:
     using value_type = T;
@@ -133,7 +133,7 @@ class reducer<T, BinaryOperation, 0> {
     BinaryOperation m_combiner;
 };
 
-template <typename T, typename BinaryOperation>
+template<typename T, typename BinaryOperation>
 void begin_reduction(T *value, BinaryOperation /* combiner */, const std::type_identity_t<T> *explicit_identity,
     const sycl::property_list &prop_list) {
     const property_interface props(
@@ -153,11 +153,11 @@ void begin_reduction(T *value, BinaryOperation /* combiner */, const std::type_i
 
 namespace simsycl::sycl {
 
-template <class T, std::size_t Extent = std::dynamic_extent>
+template<class T, std::size_t Extent = std::dynamic_extent>
 using span = std::span<T, Extent>;
 
 // TODO in the spec, this simply accepts `typename BufferT` - is this more restrictive?
-template <typename T, int Dimensions, typename AllocatorT, typename BinaryOperation>
+template<typename T, int Dimensions, typename AllocatorT, typename BinaryOperation>
 auto reduction(buffer<T, Dimensions, AllocatorT> &vars, handler &cgh, BinaryOperation combiner,
     const property_list &prop_list = {}) {
     (void)cgh;
@@ -167,18 +167,18 @@ auto reduction(buffer<T, Dimensions, AllocatorT> &vars, handler &cgh, BinaryOper
     return detail::reducer<T, BinaryOperation, Dimensions>(value, combiner);
 }
 
-template <typename T, typename BinaryOperation>
+template<typename T, typename BinaryOperation>
 auto reduction(T *var, BinaryOperation combiner, const property_list &prop_list = {}) {
     detail::begin_reduction(var, combiner, nullptr, prop_list);
     return detail::reducer<T, BinaryOperation, 0>(var, combiner);
 }
 
-template <typename T, size_t Extent, typename BinaryOperation>
+template<typename T, size_t Extent, typename BinaryOperation>
     requires(Extent != std::dynamic_extent)
 auto reduction(span<T, Extent> vars, BinaryOperation combiner, const property_list &prop_list = {});
 
 // TODO in the spec, this simply accepts `typename BufferT` - is this more restrictive?
-template <typename T, int Dimensions, typename AllocatorT, typename BinaryOperation>
+template<typename T, int Dimensions, typename AllocatorT, typename BinaryOperation>
 auto reduction(buffer<T, Dimensions, AllocatorT> &vars, handler &cgh, const T &identity, BinaryOperation combiner,
     const property_list &prop_list = {}) {
     (void)cgh;
@@ -188,13 +188,13 @@ auto reduction(buffer<T, Dimensions, AllocatorT> &vars, handler &cgh, const T &i
     return detail::reducer<T, BinaryOperation, Dimensions>(value, combiner);
 }
 
-template <typename T, typename BinaryOperation>
+template<typename T, typename BinaryOperation>
 auto reduction(T *var, const T &identity, BinaryOperation combiner, const property_list &prop_list = {}) {
     detail::begin_reduction(var, combiner, identity, prop_list);
     return detail::reducer<T, BinaryOperation, 0>(var, combiner);
 }
 
-template <typename T, size_t Extent, typename BinaryOperation>
+template<typename T, size_t Extent, typename BinaryOperation>
     requires(Extent != std::dynamic_extent)
 auto reduction(span<T, Extent> vars, const T &identity, BinaryOperation combiner, const property_list &prop_list = {});
 

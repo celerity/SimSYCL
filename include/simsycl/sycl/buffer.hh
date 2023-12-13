@@ -45,38 +45,38 @@ class context_bound {
 
 namespace simsycl::sycl {
 
-template <>
+template<>
 struct is_property<property::buffer::use_host_ptr> : std::true_type {};
 
-template <typename T, int Dimensions, typename AllocatorT>
+template<typename T, int Dimensions, typename AllocatorT>
 struct is_property_of<property::buffer::use_host_ptr, buffer<T, Dimensions, AllocatorT>> : std::true_type {};
 
-template <>
+template<>
 struct is_property<property::buffer::use_mutex> : std::true_type {};
 
-template <typename T, int Dimensions, typename AllocatorT>
+template<typename T, int Dimensions, typename AllocatorT>
 struct is_property_of<property::buffer::use_mutex, buffer<T, Dimensions, AllocatorT>> : std::true_type {};
 
-template <>
+template<>
 struct is_property<property::buffer::context_bound> : std::true_type {};
 
-template <typename T, int Dimensions, typename AllocatorT>
+template<typename T, int Dimensions, typename AllocatorT>
 struct is_property_of<property::buffer::context_bound, buffer<T, Dimensions, AllocatorT>> : std::true_type {};
 
 } // namespace simsycl::sycl
 
 namespace simsycl::detail {
 
-template <typename C, typename T>
+template<typename C, typename T>
 constexpr bool is_container_v = requires(C &c) {
     { std::data(c) } -> std::convertible_to<T *>;
     { std::size(c) } -> std::convertible_to<size_t>;
 };
 
-template <typename C, typename T>
+template<typename C, typename T>
 concept Container = is_container_v<C, T>;
 
-template <typename T, int Dimensions, typename AllocatorT>
+template<typename T, int Dimensions, typename AllocatorT>
 struct buffer_state {
     sycl::range<Dimensions> range;
     AllocatorT allocator;
@@ -104,7 +104,7 @@ struct buffer_state {
 
 namespace simsycl::sycl {
 
-template <typename T, int Dimensions, typename AllocatorT>
+template<typename T, int Dimensions, typename AllocatorT>
 class buffer final
     : public detail::reference_type<buffer<T, Dimensions, AllocatorT>, detail::buffer_state<T, Dimensions, AllocatorT>>,
       public detail::property_interface {
@@ -148,11 +148,11 @@ class buffer final
         std::copy_n(host_data, state().range.size(), state().buffer);
     }
 
-    template <simsycl::detail::Container<T> Container>
+    template<simsycl::detail::Container<T> Container>
         requires(Dimensions == 1)
     buffer(Container &container, AllocatorT allocator, const property_list &prop_list = {});
 
-    template <simsycl::detail::Container<T> Container>
+    template<simsycl::detail::Container<T> Container>
         requires(Dimensions == 1)
     buffer(Container &container, const property_list &prop_list = {}) : buffer(container, AllocatorT(), prop_list) {}
 
@@ -170,11 +170,11 @@ class buffer final
         const property_list &prop_list = {})
         : buffer(host_data, buffer_range, AllocatorT(), prop_list) {}
 
-    template <class InputIterator>
+    template<class InputIterator>
         requires(Dimensions == 1)
     buffer(InputIterator first, InputIterator last, AllocatorT allocator, const property_list &prop_list = {});
 
-    template <class InputIterator>
+    template<class InputIterator>
         requires(Dimensions == 1)
     buffer(InputIterator first, InputIterator last, const property_list &prop_list = {})
         : buffer(first, last, AllocatorT(), prop_list) {}
@@ -195,87 +195,87 @@ class buffer final
 
     AllocatorT get_allocator() const { return state().allocator; }
 
-    template <access_mode Mode = access_mode::read_write, target Targ = target::device>
+    template<access_mode Mode = access_mode::read_write, target Targ = target::device>
     accessor<T, Dimensions, Mode, Targ> get_access(handler &command_group_handler);
 
     // Deprecated
-    template <access_mode Mode>
+    template<access_mode Mode>
     accessor<T, Dimensions, Mode, target::host_buffer> get_access();
 
-    template <access_mode Mode = access_mode::read_write, target Targ = target::device>
+    template<access_mode Mode = access_mode::read_write, target Targ = target::device>
     accessor<T, Dimensions, Mode, Targ> get_access(
         handler &command_group_handler, range<Dimensions> access_range, id<Dimensions> access_offset = {});
 
     // Deprecated
-    template <access_mode Mode>
+    template<access_mode Mode>
     accessor<T, Dimensions, Mode, target::host_buffer> get_access(
         range<Dimensions> access_range, id<Dimensions> access_offset = {});
 
-    template <typename... Ts>
+    template<typename... Ts>
     auto get_access(Ts...);
 
-    template <typename... Ts>
+    template<typename... Ts>
     auto get_host_access(Ts...);
 
-    template <typename Destination = std::nullptr_t>
+    template<typename Destination = std::nullptr_t>
     void set_final_data(Destination final_data = nullptr);
 
     void set_write_back(bool flag = true);
 
     bool is_sub_buffer() const;
 
-    template <typename ReinterpretT, int ReinterpretDim>
+    template<typename ReinterpretT, int ReinterpretDim>
     buffer<ReinterpretT, ReinterpretDim,
         typename std::allocator_traits<AllocatorT>::template rebind_alloc<ReinterpretT>>
     reinterpret(range<ReinterpretDim> reinterpret_range) const;
 
-    template <typename ReinterpretT, int ReinterpretDim = Dimensions>
+    template<typename ReinterpretT, int ReinterpretDim = Dimensions>
         requires(ReinterpretDim == 1 || (ReinterpretDim == Dimensions && sizeof(ReinterpretT) == sizeof(T)))
     buffer<ReinterpretT, ReinterpretDim,
         typename std::allocator_traits<AllocatorT>::template rebind_alloc<ReinterpretT>>
     reinterpret() const;
 
   private:
-    template <typename U, int D, typename A>
+    template<typename U, int D, typename A>
     friend U *simsycl::detail::get_buffer_data(sycl::buffer<U, D, A> &buf);
 
     using reference_type::state;
 };
 
 // Deduction guides
-template <class InputIterator, class AllocatorT>
+template<class InputIterator, class AllocatorT>
 buffer(InputIterator, InputIterator, AllocatorT, const property_list & = {})
     -> buffer<typename std::iterator_traits<InputIterator>::value_type, 1, AllocatorT>;
 
-template <class InputIterator>
+template<class InputIterator>
 buffer(InputIterator, InputIterator, const property_list & = {})
     -> buffer<typename std::iterator_traits<InputIterator>::value_type, 1>;
 
-template <class T, int Dimensions, class AllocatorT>
+template<class T, int Dimensions, class AllocatorT>
 buffer(const T *, const range<Dimensions> &, AllocatorT, const property_list & = {})
     -> buffer<T, Dimensions, AllocatorT>;
 
-template <class T, int Dimensions>
+template<class T, int Dimensions>
 buffer(const T *, const range<Dimensions> &, const property_list & = {}) -> buffer<T, Dimensions>;
 
-template <typename Container, typename AllocatorT>
+template<typename Container, typename AllocatorT>
     requires(detail::is_container_v<Container, typename Container::value_type>)
 buffer(Container &, AllocatorT, const property_list & = {}) -> buffer<typename Container::value_type, 1, AllocatorT>;
 
-template <typename Container>
+template<typename Container>
     requires(detail::is_container_v<Container, typename Container::value_type>)
 buffer(Container &, const property_list & = {}) -> buffer<typename Container::value_type, 1>;
 
 } // namespace simsycl::sycl
 
-template <typename T, int Dimensions, typename AllocatorT>
+template<typename T, int Dimensions, typename AllocatorT>
 class std::hash<simsycl::sycl::buffer<T, Dimensions, AllocatorT>>
     : std::hash<simsycl::detail::reference_type<simsycl::sycl::buffer<T, Dimensions, AllocatorT>,
           simsycl::detail::buffer_state<T, Dimensions, AllocatorT>>> {};
 
 namespace simsycl::detail {
 
-template <typename T, int Dimensions, typename AllocatorT>
+template<typename T, int Dimensions, typename AllocatorT>
 T *get_buffer_data(sycl::buffer<T, Dimensions, AllocatorT> &buf) {
     return buf.state().buffer;
 }

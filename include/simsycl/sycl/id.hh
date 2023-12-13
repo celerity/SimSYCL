@@ -5,7 +5,7 @@
 
 namespace simsycl::sycl {
 
-template <int Dimensions>
+template<int Dimensions>
 class id : public detail::coordinate<id<Dimensions>, Dimensions> {
   private:
     using coordinate = detail::coordinate<id<Dimensions>, Dimensions>;
@@ -13,7 +13,7 @@ class id : public detail::coordinate<id<Dimensions>, Dimensions> {
   public:
     id() = default;
 
-    template <typename... Values>
+    template<typename... Values>
         requires(sizeof...(Values) + 1 == Dimensions)
     id(const size_t dim_0, const Values... dim_n) : coordinate(dim_0, dim_n...) {}
 

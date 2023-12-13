@@ -4,19 +4,19 @@
 
 namespace simsycl::detail {
 
-template <typename Derived, typename State>
+template<typename Derived, typename State>
 class reference_type;
 
 }
 
-template <typename Derived, typename State>
+template<typename Derived, typename State>
 struct std::hash<simsycl::detail::reference_type<Derived, State>> {
     size_t operator()(const Derived &rt) { return static_cast<size_t>(reinterpret_cast<uintptr_t>(rt.m_state.get())); }
 };
 
 namespace simsycl::detail {
 
-template <typename Derived, typename State>
+template<typename Derived, typename State>
 class reference_type {
   public:
     friend bool operator==(const Derived &lhs, const Derived &rhs) { return lhs.m_state.get() == rhs.m_state.get(); }
@@ -27,7 +27,7 @@ class reference_type {
 
     reference_type() = default;
 
-    template <typename... CtorParams>
+    template<typename... CtorParams>
     explicit reference_type(std::in_place_t /* tag */, CtorParams &&...ctor_args)
         : m_state(std::make_shared<State>(std::forward<CtorParams>(ctor_args)...)) {
         static_assert(std::is_base_of_v<reference_type, Derived>);

@@ -17,7 +17,7 @@
 
 namespace simsycl::detail {
 
-template <typename T>
+template<typename T>
 constexpr auto unspecified = (T)(0xDEADBEEFull);
 
 enum class group_operation_id {
@@ -48,7 +48,7 @@ struct group_per_operation_data {
     virtual ~group_per_operation_data() = default;
 };
 
-template <typename T>
+template<typename T>
 struct group_broadcast_data : group_per_operation_data {
     size_t local_linear_id = 0;
     std::type_index type = std::type_index(typeid(void));
@@ -57,7 +57,7 @@ struct group_broadcast_data : group_per_operation_data {
 struct group_barrier_data : group_per_operation_data {
     sycl::memory_scope fence_scope;
 };
-template <typename T>
+template<typename T>
 struct group_joint_bool_op_data : group_per_operation_data {
     T *first;
     T *last;
@@ -68,24 +68,24 @@ struct group_bool_data : group_per_operation_data {
     std::vector<bool> values;
     group_bool_data(size_t num_work_items) : values(num_work_items) {}
 };
-template <typename T>
+template<typename T>
 struct group_shift_data : group_per_operation_data {
     std::vector<T> values;
     size_t delta;
     group_shift_data(size_t num_work_items, size_t delta) : values(num_work_items), delta(delta) {}
 };
-template <typename T>
+template<typename T>
 struct group_permute_data : group_per_operation_data {
     std::vector<T> values;
     size_t mask;
     group_permute_data(size_t num_work_items, size_t mask) : values(num_work_items), mask(mask) {}
 };
-template <typename T>
+template<typename T>
 struct group_select_data : group_per_operation_data {
     std::vector<T> values;
     group_select_data(size_t num_work_items) : values(num_work_items) {}
 };
-template <typename T>
+template<typename T>
 struct group_joint_reduce_data : group_per_operation_data {
     T *first;
     T *last;
@@ -94,13 +94,13 @@ struct group_joint_reduce_data : group_per_operation_data {
     group_joint_reduce_data(T *first, T *last, std::optional<T> init, T result)
         : first(first), last(last), init(init), result(result) {}
 };
-template <typename T>
+template<typename T>
 struct group_reduce_data : group_per_operation_data {
     std::optional<T> init;
     std::vector<T> values;
     group_reduce_data(size_t num_work_items, std::optional<T> init) : init(init), values(num_work_items) {}
 };
-template <typename T>
+template<typename T>
 struct group_joint_scan_data : group_per_operation_data {
     T *first;
     T *last;
@@ -109,7 +109,7 @@ struct group_joint_scan_data : group_per_operation_data {
     group_joint_scan_data(T *first, T *last, std::optional<T> init, const std::vector<T> &results)
         : first(first), last(last), init(init), results(results) {}
 };
-template <typename T>
+template<typename T>
 struct group_scan_data : group_per_operation_data {
     std::optional<T> init;
     std::vector<T> values;
@@ -131,7 +131,7 @@ struct group_impl {
     std::vector<group_operation_data> operations;
 };
 
-template <int Dimensions>
+template<int Dimensions>
 group_impl &get_group_impl(const sycl::group<Dimensions> &g) {
     return *g.m_impl;
 }
@@ -145,19 +145,19 @@ inline detail::sub_group_impl &get_group_impl(const sycl::sub_group &g) { return
 
 // group operation function template
 
-template <typename Func>
+template<typename Func>
 concept GroupOpInitFunction = std::is_invocable_r_v<std::unique_ptr<group_per_operation_data>, Func>;
 
 inline std::unique_ptr<group_per_operation_data> default_group_op_init_function() {
     return std::unique_ptr<group_per_operation_data>();
 }
 
-template <typename T>
+template<typename T>
 void default_group_op_function(T &per_group) {
     (void)per_group;
 }
 
-template <GroupOpInitFunction InitF = decltype(default_group_op_init_function),
+template<GroupOpInitFunction InitF = decltype(default_group_op_init_function),
     typename PerOpT = typename std::invoke_result_t<InitF>::element_type,
     typename ReachedF = decltype(default_group_op_function<PerOpT>),
     typename CompleteF = decltype(default_group_op_function<PerOpT>)>
@@ -170,7 +170,7 @@ struct group_operation_spec {
     const CompleteF &complete = default_group_op_function<PerOpT>;
 };
 
-template <sycl::Group G, typename Spec>
+template<sycl::Group G, typename Spec>
 auto perform_group_operation(G g, group_operation_id id, const Spec &spec) {
     auto &group_impl = detail::get_group_impl(g);
     const auto linear_id_in_group = g.get_local_linear_id();
@@ -211,7 +211,7 @@ auto perform_group_operation(G g, group_operation_id id, const Spec &spec) {
 
 // more specific helper functions for group operations
 
-template <sycl::Group G, sycl::Pointer Ptr, sycl::Fundamental T>
+template<sycl::Group G, sycl::Pointer Ptr, sycl::Fundamental T>
 void joint_reduce_impl(G g, Ptr first, Ptr last, std::optional<T> init, T result) {
     perform_group_operation(g, group_operation_id::joint_reduce,
         group_operation_spec{//
@@ -225,7 +225,7 @@ void joint_reduce_impl(G g, Ptr first, Ptr last, std::optional<T> init, T result
                 }});
 }
 
-template <sycl::Group G, sycl::Fundamental T, sycl::SyclFunctionObject Op>
+template<sycl::Group G, sycl::Fundamental T, sycl::SyclFunctionObject Op>
 T group_reduce_impl(G g, T x, std::optional<T> init, Op op) {
     return perform_group_operation(g, group_operation_id::reduce,
         group_operation_spec{//
@@ -254,7 +254,7 @@ T group_reduce_impl(G g, T x, std::optional<T> init, Op op) {
                 }});
 }
 
-template <sycl::Group G, sycl::Pointer Ptr, sycl::Fundamental T>
+template<sycl::Group G, sycl::Pointer Ptr, sycl::Fundamental T>
 void joint_scan_impl(
     G g, group_operation_id op_id, Ptr first, Ptr last, std::optional<T> init, const std::vector<T> &results) {
     perform_group_operation(g, op_id,
@@ -269,7 +269,7 @@ void joint_scan_impl(
                 }});
 }
 
-template <sycl::Group G, sycl::Fundamental T, sycl::SyclFunctionObject Op>
+template<sycl::Group G, sycl::Fundamental T, sycl::SyclFunctionObject Op>
 T group_scan_impl(G g, group_operation_id op_id, T x, std::optional<T> init, Op op) {
     return perform_group_operation(g, op_id,
         group_operation_spec{//

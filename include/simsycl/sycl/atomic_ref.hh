@@ -13,28 +13,28 @@ using sycl::memory_order;
 using sycl::memory_scope;
 
 // Exposition only
-template <memory_order ReadModifyWriteOrder>
+template<memory_order ReadModifyWriteOrder>
 struct memory_order_traits;
 
-template <>
+template<>
 struct memory_order_traits<sycl::memory_order::relaxed> {
     static constexpr memory_order read_order = memory_order::relaxed;
     static constexpr memory_order write_order = memory_order::relaxed;
 };
 
-template <>
+template<>
 struct memory_order_traits<sycl::memory_order::acq_rel> {
     static constexpr memory_order read_order = memory_order::acquire;
     static constexpr memory_order write_order = memory_order::release;
 };
 
-template <>
+template<>
 struct memory_order_traits<memory_order::seq_cst> {
     static constexpr memory_order read_order = memory_order::seq_cst;
     static constexpr memory_order write_order = memory_order::seq_cst;
 };
 
-template <typename T, memory_order DefaultOrder, memory_scope DefaultScope, sycl::access::address_space AddressSpace>
+template<typename T, memory_order DefaultOrder, memory_scope DefaultScope, sycl::access::address_space AddressSpace>
 class atomic_ref_base {
   public:
     using value_type = T;
@@ -129,7 +129,7 @@ class atomic_ref_base {
 
 namespace simsycl::sycl {
 
-template <typename T, memory_order DefaultOrder, memory_scope DefaultScope,
+template<typename T, memory_order DefaultOrder, memory_scope DefaultScope,
     access::address_space AddressSpace = access::address_space::generic_space>
 class atomic_ref : public detail::atomic_ref_base<T, DefaultOrder, DefaultScope, AddressSpace> {
   private:
@@ -141,7 +141,7 @@ class atomic_ref : public detail::atomic_ref_base<T, DefaultOrder, DefaultScope,
 };
 
 // Partial specialization for integral types
-template <std::integral Integral, memory_order DefaultOrder, memory_scope DefaultScope,
+template<std::integral Integral, memory_order DefaultOrder, memory_scope DefaultScope,
     access::address_space AddressSpace>
 class atomic_ref<Integral, DefaultOrder, DefaultScope, AddressSpace>
     : public detail::atomic_ref_base<Integral, DefaultOrder, DefaultScope, AddressSpace> {
@@ -233,7 +233,7 @@ class atomic_ref<Integral, DefaultOrder, DefaultScope, AddressSpace>
 };
 
 // Partial specialization for floating-point types
-template <std::floating_point Floating, memory_order DefaultOrder, memory_scope DefaultScope,
+template<std::floating_point Floating, memory_order DefaultOrder, memory_scope DefaultScope,
     access::address_space AddressSpace>
 class atomic_ref<Floating, DefaultOrder, DefaultScope, AddressSpace>
     : public detail::atomic_ref_base<Floating, DefaultOrder, DefaultScope, AddressSpace> {
@@ -291,7 +291,7 @@ class atomic_ref<Floating, DefaultOrder, DefaultScope, AddressSpace>
 };
 
 // Partial specialization for pointers
-template <typename T, memory_order DefaultOrder, memory_scope DefaultScope, access::address_space AddressSpace>
+template<typename T, memory_order DefaultOrder, memory_scope DefaultScope, access::address_space AddressSpace>
 class atomic_ref<T *, DefaultOrder, DefaultScope, AddressSpace>
     : public detail::atomic_ref_base<T *, DefaultOrder, DefaultScope, AddressSpace> {
   private:

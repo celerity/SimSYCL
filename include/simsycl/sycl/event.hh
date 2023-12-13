@@ -35,7 +35,7 @@ struct execution_status {
     [[nodiscard]] static sycl::event instant();
 };
 
-template <typename Clock, typename Dur>
+template<typename Clock, typename Dur>
 uint64_t nanoseconds_since_epoch(std::chrono::time_point<Clock, Dur> time_point) {
     return std::chrono::duration_cast<std::chrono::nanoseconds>(time_point.time_since_epoch()).count();
 }
@@ -60,7 +60,7 @@ class event : detail::reference_type<event, detail::execution_status> {
 
     static void wait_and_throw(const std::vector<event> & /* event_list */) {}
 
-    template <typename Param>
+    template<typename Param>
     typename Param::return_type get_info() const {
         if constexpr(std::is_same_v<Param, info::event::command_execution_status>) {
             return info::event_command_status::complete;
@@ -69,12 +69,12 @@ class event : detail::reference_type<event, detail::execution_status> {
         }
     }
 
-    template <typename Param>
+    template<typename Param>
     typename Param::return_type get_backend_info() const {
         static_assert(detail::always_false<Param>, "Unknown event::get_backend_info() parameter");
     }
 
-    template <typename Param>
+    template<typename Param>
     typename Param::return_type get_profiling_info() const {
         if constexpr(std::is_same_v<Param, info::event_profiling::command_submit>) {
             return detail::nanoseconds_since_epoch(state().t_submit);

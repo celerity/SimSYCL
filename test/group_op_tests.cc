@@ -5,7 +5,7 @@
 
 using namespace simsycl;
 
-template <sycl::Group G>
+template<sycl::Group G>
 void check_group_op_sequence(const G &g, const std::vector<detail::group_operation_id> &expected_ids) {
     CHECK(detail::get_group_impl(g).operations.size() == expected_ids.size());
     for(size_t i = 0; i < expected_ids.size(); ++i) {

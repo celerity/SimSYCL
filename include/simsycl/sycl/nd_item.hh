@@ -31,7 +31,7 @@ struct nd_item_impl {
     size_t sub_group_ops_reached = 0;
 };
 
-template <int Dimensions>
+template<int Dimensions>
 sycl::nd_item<Dimensions> make_nd_item(const sycl::item<Dimensions, false> &global_id,
     const sycl::item<Dimensions, false> &local_id, const sycl::group<Dimensions> &group,
     const sycl::sub_group &sub_group, nd_item_impl *impl) {
@@ -47,7 +47,7 @@ class device_event {
     void wait() noexcept {}
 };
 
-template <int Dimensions>
+template<int Dimensions>
 class nd_item {
   public:
     static constexpr int dimensions = Dimensions;
@@ -100,7 +100,7 @@ class nd_item {
         m_impl->barrier();
     }
 
-    template <access::mode AccessMode = access_mode::read_write>
+    template<access::mode AccessMode = access_mode::read_write>
     [[deprecated("use sycl::atomic_fence() free function instead")]] void mem_fence(
         typename std::enable_if_t<AccessMode == access_mode::read || AccessMode == access_mode::write
                 || AccessMode == access_mode::read_write,
@@ -111,46 +111,46 @@ class nd_item {
     }
 
     // Deprecated in SYCL 2020.
-    template <typename DataT>
+    template<typename DataT>
     [[deprecated]] device_event async_work_group_copy(
         local_ptr<DataT> dest, global_ptr<DataT> src, size_t num_elements) const;
 
     // Deprecated in SYCL 2020.
-    template <typename DataT>
+    template<typename DataT>
     [[deprecated]] device_event async_work_group_copy(
         global_ptr<DataT> dest, local_ptr<DataT> src, size_t num_elements) const;
 
     // Deprecated in SYCL 2020.
-    template <typename DataT>
+    template<typename DataT>
     [[deprecated]] device_event async_work_group_copy(
         local_ptr<DataT> dest, global_ptr<DataT> src, size_t num_elements, size_t src_stride) const;
 
     // Deprecated in SYCL 2020.
-    template <typename DataT>
+    template<typename DataT>
     [[deprecated]] device_event async_work_group_copy(
         global_ptr<DataT> dest, local_ptr<DataT> src, size_t num_elements, size_t dest_stride) const;
 
-    template <typename DestDataT, typename SrcDataT>
+    template<typename DestDataT, typename SrcDataT>
         requires(std::is_same_v<DestDataT, std::remove_const_t<SrcDataT>>)
     device_event async_work_group_copy(
         decorated_local_ptr<DestDataT> dest, decorated_global_ptr<SrcDataT> src, size_t num_elements) const;
 
-    template <typename DestDataT, typename SrcDataT>
+    template<typename DestDataT, typename SrcDataT>
         requires(std::is_same_v<DestDataT, std::remove_const_t<SrcDataT>>)
     device_event async_work_group_copy(
         decorated_global_ptr<DestDataT> dest, decorated_local_ptr<SrcDataT> src, size_t num_elements) const;
 
-    template <typename DestDataT, typename SrcDataT>
+    template<typename DestDataT, typename SrcDataT>
         requires(std::is_same_v<DestDataT, std::remove_const_t<SrcDataT>>)
     device_event async_work_group_copy(decorated_local_ptr<DestDataT> dest, decorated_global_ptr<SrcDataT> src,
         size_t num_elements, size_t src_stride) const;
 
-    template <typename DestDataT, typename SrcDataT>
+    template<typename DestDataT, typename SrcDataT>
         requires(std::is_same_v<DestDataT, std::remove_const_t<SrcDataT>>)
     device_event async_work_group_copy(decorated_global_ptr<DestDataT> dest, decorated_local_ptr<SrcDataT> src,
         size_t num_elements, size_t dest_stride) const;
 
-    template <typename... Events>
+    template<typename... Events>
     void wait_for(Events... events) const {
         m_group.wait_for(events...);
     }

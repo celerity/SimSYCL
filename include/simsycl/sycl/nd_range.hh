@@ -6,7 +6,7 @@
 
 namespace simsycl::sycl {
 
-template <int Dimensions>
+template<int Dimensions>
 class nd_range {
   public:
     static constexpr int dimensions = Dimensions;

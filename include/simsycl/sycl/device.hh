@@ -38,10 +38,10 @@ using accelerator_selector = detail::accelerator_selector;
 // Returns a selector that selects a device based on desired aspects
 auto aspect_selector(const std::vector<aspect> &aspect_list, const std::vector<aspect> &deny_list = {});
 
-template <class... AspectList>
+template<class... AspectList>
 auto aspect_selector(AspectList... aspect_list);
 
-template <aspect... AspectList>
+template<aspect... AspectList>
 auto aspect_selector();
 
 class device : public detail::reference_type<device, detail::device_state> {
@@ -51,7 +51,7 @@ class device : public detail::reference_type<device, detail::device_state> {
   public:
     device() : device(default_selector_v) {}
 
-    template <typename DeviceSelector>
+    template<typename DeviceSelector>
     explicit device(const DeviceSelector &device_selector) : reference_type(std::in_place) {
         (void)(device_selector);
     }
@@ -64,12 +64,12 @@ class device : public detail::reference_type<device, detail::device_state> {
 
     platform get_platform() const;
 
-    template <typename Param>
+    template<typename Param>
     typename Param::return_type get_info() const {
         return {};
     }
 
-    template <typename Param>
+    template<typename Param>
     typename Param::return_type get_backend_info() const {
         return {};
     }
@@ -78,29 +78,29 @@ class device : public detail::reference_type<device, detail::device_state> {
 
     [[deprecated]] bool has_extension(const std::string &extension) const;
 
-    template <info::partition_property Prop,
+    template<info::partition_property Prop,
         std::enable_if_t<Prop == info::partition_property::partition_equally, int> = 0>
     std::vector<device> create_sub_devices(size_t count) const;
 
-    template <info::partition_property Prop,
+    template<info::partition_property Prop,
         std::enable_if_t<Prop == info::partition_property::partition_by_counts, int> = 0>
     std::vector<device> create_sub_devices(const std::vector<size_t> &counts) const;
 
-    template <info::partition_property Prop,
+    template<info::partition_property Prop,
         std::enable_if_t<Prop == info::partition_property::partition_by_affinity_domain, int> = 0>
     std::vector<device> create_sub_devices(info::partition_affinity_domain affinity_domain) const;
 
     static std::vector<device> get_devices(info::device_type device_type = info::device_type::all);
 };
 
-template <aspect Aspect>
+template<aspect Aspect>
 struct any_device_has;
-template <aspect Aspect>
+template<aspect Aspect>
 struct all_devices_have;
 
-template <aspect A>
+template<aspect A>
 inline constexpr bool any_device_has_v = any_device_has<A>::value;
-template <aspect A>
+template<aspect A>
 inline constexpr bool all_devices_have_v = all_devices_have<A>::value;
 
 } // namespace simsycl::sycl

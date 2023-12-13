@@ -13,12 +13,12 @@
 
 namespace simsycl::sycl {
 
-template <Group G, TriviallyCopyable T>
+template<Group G, TriviallyCopyable T>
 T group_broadcast(G g, T x) {
     return group_broadcast(g, x, 0);
 }
 
-template <Group G, TriviallyCopyable T>
+template<Group G, TriviallyCopyable T>
 T group_broadcast(G g, T x, typename G::linear_id_type local_linear_id) {
     SIMSYCL_CHECK(local_linear_id < g.get_local_range().size());
 
@@ -43,13 +43,13 @@ T group_broadcast(G g, T x, typename G::linear_id_type local_linear_id) {
             .complete = [&](const detail::group_broadcast_data<T> &per_op) { return per_op.values[local_linear_id]; }});
 }
 
-template <Group G, TriviallyCopyable T>
+template<Group G, TriviallyCopyable T>
 T group_broadcast(G g, T x, typename G::id_type local_id) {
     SIMSYCL_CHECK(local_id < g.get_local_range());
     group_broadcast(g, x, local_id.get_linear_id());
 }
 
-template <Group G>
+template<Group G>
 void group_barrier(G g, memory_scope fence_scope = G::fence_scope) {
     perform_group_operation(g, detail::group_operation_id::barrier,
         detail::group_operation_spec{//

@@ -5,14 +5,14 @@
 
 namespace simsycl::sycl {
 
-template <int Dimensions>
+template<int Dimensions>
 class range : public detail::coordinate<range<Dimensions>, Dimensions> {
   public:
     constexpr range() {
         for(int d = 0; d < Dimensions; ++d) { (*this)[d] = 0; }
     }
 
-    template <typename... Values>
+    template<typename... Values>
         requires(sizeof...(Values) == Dimensions)
     constexpr range(const Values... dims) : detail::coordinate<range<Dimensions>, Dimensions>(dims...) {}
 

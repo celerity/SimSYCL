@@ -26,7 +26,7 @@ class platform : public detail::reference_type<platform, detail::platform_state>
   public:
     platform() : platform(default_selector_v) {}
 
-    template <typename DeviceSelector>
+    template<typename DeviceSelector>
     explicit platform(const DeviceSelector &device_selector) : reference_type(std::in_place) {
         (void)(device_selector);
     }
@@ -35,12 +35,12 @@ class platform : public detail::reference_type<platform, detail::platform_state>
 
     std::vector<device> get_devices(info::device_type = info::device_type::all) const;
 
-    template <typename Param>
+    template<typename Param>
     typename Param::return_type get_info() const {
         return {};
     }
 
-    template <typename Param>
+    template<typename Param>
     typename Param::return_type get_backend_info() const {
         return {};
     }

@@ -42,40 +42,40 @@ class sub_group {
     }
 
     // deprecated collective functions
-    template <typename T>
+    template<typename T>
     [[deprecated("use freestanding function group_broadcast instead")]] T broadcast(T x, id<1> local_id) const {
         SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(x, local_id);
     }
 
-    template <typename T, class BinaryOperation>
+    template<typename T, class BinaryOperation>
     [[deprecated("use freestanding function group_reduce instead")]] T reduce(T x, BinaryOperation op) const {
         SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(x, op);
     }
 
-    template <typename T, class BinaryOperation>
+    template<typename T, class BinaryOperation>
     [[deprecated("use freestanding function group_reduce instead")]] T reduce(T x, T init, BinaryOperation op) const {
         SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(x, init, op);
     }
 
-    template <typename T, class BinaryOperation>
+    template<typename T, class BinaryOperation>
     [[deprecated("use freestanding function exclusive_scan_over_group instead")]] T exclusive_scan(
         T x, BinaryOperation op) const {
         SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(x, op);
     }
 
-    template <typename T, class BinaryOperation>
+    template<typename T, class BinaryOperation>
     [[deprecated("use freestanding function exclusive_scan_over_group instead")]] T exclusive_scan(
         T x, T init, BinaryOperation op) const {
         SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(x, init, op);
     }
 
-    template <typename T, class BinaryOperation>
+    template<typename T, class BinaryOperation>
     [[deprecated("use freestanding function inclusive_scan_over_group instead")]] T inclusive_scan(
         T x, BinaryOperation op) const {
         SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(x, op);
     }
 
-    template <typename T, class BinaryOperation>
+    template<typename T, class BinaryOperation>
     [[deprecated("use freestanding function inclusive_scan_over_group instead")]] T inclusive_scan(
         T x, T init, BinaryOperation op) const {
         SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(x, init, op);
@@ -112,14 +112,14 @@ class sub_group {
     friend detail::sub_group_impl &detail::get_group_impl(const sycl::sub_group &g);
 };
 
-template <>
+template<>
 struct is_group<sub_group> : std::true_type {};
 
 } // namespace simsycl::sycl
 
 namespace simsycl::detail {
 
-template <>
+template<>
 struct is_sub_group<sycl::sub_group> : std::true_type {};
 
 inline sycl::sub_group make_sub_group(const sycl::id<1> &local_id, const sycl::range<1> &local_range,

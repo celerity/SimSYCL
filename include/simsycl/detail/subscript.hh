@@ -6,10 +6,10 @@
 
 namespace simsycl::detail {
 
-template <int TargetDimensions, typename Target, int SubscriptDimension = 0>
+template<int TargetDimensions, typename Target, int SubscriptDimension = 0>
 class subscript_proxy;
 
-template <int TargetDimensions, typename Target, int SubscriptDimension>
+template<int TargetDimensions, typename Target, int SubscriptDimension>
 inline decltype(auto) subscript(Target &tgt, sycl::id<TargetDimensions> id, const size_t index) {
     static_assert(SubscriptDimension < TargetDimensions);
     id[SubscriptDimension] = index;
@@ -20,12 +20,12 @@ inline decltype(auto) subscript(Target &tgt, sycl::id<TargetDimensions> id, cons
     }
 }
 
-template <int TargetDims, typename Target>
+template<int TargetDims, typename Target>
 inline decltype(auto) subscript(Target &tgt, const size_t index) {
     return subscript<TargetDims, Target, 0>(tgt, sycl::id<TargetDims>{}, index);
 }
 
-template <int TargetDimensions, typename Target, int SubscriptDim>
+template<int TargetDimensions, typename Target, int SubscriptDim>
 class subscript_proxy {
   public:
     subscript_proxy(Target &tgt, const sycl::id<TargetDimensions> id) : m_tgt(tgt), m_id(id) {}

@@ -13,7 +13,7 @@ namespace simsycl::sycl {
 
 // any_of
 
-template <Group G, Pointer Ptr, typename Predicate, typename T = std::remove_pointer_t<Ptr>>
+template<Group G, Pointer Ptr, typename Predicate, typename T = std::remove_pointer_t<Ptr>>
     requires std::predicate<Predicate, T>
 bool joint_any_of(G g, Ptr first, Ptr last, Predicate pred) {
     // approach: perform the operation sequentially on all work items, confirm that they compute the same result
@@ -36,7 +36,7 @@ bool joint_any_of(G g, Ptr first, Ptr last, Predicate pred) {
     return result;
 }
 
-template <Group G, typename T, typename Predicate>
+template<Group G, typename T, typename Predicate>
     requires std::predicate<Predicate, T>
 bool any_of_group(G g, T x, Predicate pred) {
     return detail::perform_group_operation(g, detail::group_operation_id::any_of,
@@ -54,14 +54,14 @@ bool any_of_group(G g, T x, Predicate pred) {
                 }});
 }
 
-template <Group G>
+template<Group G>
 bool any_of_group(G g, bool pred) {
     return any_of_group(g, pred, [](bool x) { return x; });
 }
 
 // all_of
 
-template <Group G, Pointer Ptr, typename Predicate, typename T = std::remove_pointer_t<Ptr>>
+template<Group G, Pointer Ptr, typename Predicate, typename T = std::remove_pointer_t<Ptr>>
     requires std::predicate<Predicate, T>
 bool joint_all_of(G g, Ptr first, Ptr last, Predicate pred) {
     bool result = true;
@@ -78,7 +78,7 @@ bool joint_all_of(G g, Ptr first, Ptr last, Predicate pred) {
     return result;
 }
 
-template <Group G, typename T, typename Predicate>
+template<Group G, typename T, typename Predicate>
     requires std::predicate<Predicate, T>
 bool all_of_group(G g, T x, Predicate pred) {
     return detail::perform_group_operation(g, detail::group_operation_id::all_of,
@@ -96,14 +96,14 @@ bool all_of_group(G g, T x, Predicate pred) {
                 }});
 }
 
-template <Group G>
+template<Group G>
 bool all_of_group(G g, bool pred) {
     return all_of_group(g, pred, [](bool x) { return x; });
 }
 
 // none_of
 
-template <Group G, Pointer Ptr, typename Predicate, typename T = std::remove_pointer_t<Ptr>>
+template<Group G, Pointer Ptr, typename Predicate, typename T = std::remove_pointer_t<Ptr>>
     requires std::predicate<Predicate, T>
 bool joint_none_of(G g, Ptr first, Ptr last, Predicate pred) {
     bool result = true;
@@ -120,7 +120,7 @@ bool joint_none_of(G g, Ptr first, Ptr last, Predicate pred) {
     return result;
 }
 
-template <Group G, typename T, typename Predicate>
+template<Group G, typename T, typename Predicate>
     requires std::predicate<Predicate, T>
 bool none_of_group(G g, T x, Predicate pred) {
     return detail::perform_group_operation(g, detail::group_operation_id::none_of,
@@ -138,14 +138,14 @@ bool none_of_group(G g, T x, Predicate pred) {
                 }});
 }
 
-template <Group G>
+template<Group G>
 bool none_of_group(G g, bool pred) {
     return none_of_group(g, pred, [](bool x) { return x; });
 }
 
 // shift
 
-template <SubGroup G, TriviallyCopyable T>
+template<SubGroup G, TriviallyCopyable T>
 T shift_group_left(G g, T x, typename G::linear_id_type delta = 1) {
     return detail::perform_group_operation(g, detail::group_operation_id::shift_left,
         detail::group_operation_spec{//
@@ -168,7 +168,7 @@ T shift_group_left(G g, T x, typename G::linear_id_type delta = 1) {
                 }});
 }
 
-template <SubGroup G, TriviallyCopyable T>
+template<SubGroup G, TriviallyCopyable T>
 T shift_group_right(G g, T x, typename G::linear_id_type delta = 1) {
     return detail::perform_group_operation(g, detail::group_operation_id::shift_right,
         detail::group_operation_spec{//
@@ -192,7 +192,7 @@ T shift_group_right(G g, T x, typename G::linear_id_type delta = 1) {
 
 // permute
 
-template <SubGroup G, TriviallyCopyable T>
+template<SubGroup G, TriviallyCopyable T>
 T permute_group(G g, T x, typename G::linear_id_type mask) {
     return detail::perform_group_operation(g, detail::group_operation_id::permute,
         detail::group_operation_spec{//
@@ -216,13 +216,13 @@ T permute_group(G g, T x, typename G::linear_id_type mask) {
                 }});
 }
 
-template <typename Group, typename T>
+template<typename Group, typename T>
 T permute_group_by_xor(Group g, T x, typename Group::linear_id_type mask); // TODO
 
 
 // select
 
-template <SubGroup G, TriviallyCopyable T>
+template<SubGroup G, TriviallyCopyable T>
 T select_from_group(G g, T x, typename G::id_type remote_local_id) {
     return detail::perform_group_operation(g, detail::group_operation_id::select,
         detail::group_operation_spec{//
@@ -243,7 +243,7 @@ T select_from_group(G g, T x, typename G::id_type remote_local_id) {
 // reduce
 
 
-template <Group G, Pointer Ptr, SyclFunctionObject Op, typename T = typename std::iterator_traits<Ptr>::value_type>
+template<Group G, Pointer Ptr, SyclFunctionObject Op, typename T = typename std::iterator_traits<Ptr>::value_type>
 T joint_reduce(G g, Ptr first, Ptr last, Op binary_op) {
     T result = *first;
     for(auto i = first + 1; first != last && i != last; ++i) { result = binary_op(result, *i); }
@@ -251,7 +251,7 @@ T joint_reduce(G g, Ptr first, Ptr last, Op binary_op) {
     return result;
 }
 
-template <Group G, Pointer Ptr, Fundamental T, SyclFunctionObject Op>
+template<Group G, Pointer Ptr, Fundamental T, SyclFunctionObject Op>
 T joint_reduce(G g, Ptr first, Ptr last, T init, Op binary_op) {
     T result = init;
     for(auto i = first; i != last; ++i) { result = binary_op(result, *i); }
@@ -259,19 +259,19 @@ T joint_reduce(G g, Ptr first, Ptr last, T init, Op binary_op) {
     return result;
 }
 
-template <Group G, Fundamental T, SyclFunctionObject Op>
+template<Group G, Fundamental T, SyclFunctionObject Op>
 T reduce_over_group(G g, T x, Op binary_op) {
     return simsycl::detail::group_reduce_impl(g, x, {}, binary_op);
 }
 
-template <Group G, Fundamental V, Fundamental T, SyclFunctionObject Op>
+template<Group G, Fundamental V, Fundamental T, SyclFunctionObject Op>
 T reduce_over_group(G g, V x, T init, Op binary_op) {
     return simsycl::detail::group_reduce_impl(g, x, {init}, binary_op);
 }
 
 // exclusive_scan
 
-template <Group G, PointerToFundamental InPtr, PointerToFundamental OutPtr, SyclFunctionObject Op,
+template<Group G, PointerToFundamental InPtr, PointerToFundamental OutPtr, SyclFunctionObject Op,
     typename T = typename std::iterator_traits<InPtr>::value_type>
 OutPtr joint_exclusive_scan(G g, InPtr first, InPtr last, OutPtr result, Op binary_op) {
     std::vector<T> results(std::distance(first, last));
@@ -283,7 +283,7 @@ OutPtr joint_exclusive_scan(G g, InPtr first, InPtr last, OutPtr result, Op bina
     return result;
 }
 
-template <Group G, PointerToFundamental InPtr, PointerToFundamental OutPtr, Fundamental T, SyclFunctionObject Op>
+template<Group G, PointerToFundamental InPtr, PointerToFundamental OutPtr, Fundamental T, SyclFunctionObject Op>
 OutPtr joint_exclusive_scan(G g, InPtr first, InPtr last, OutPtr result, T init, Op binary_op) {
     std::vector<T> results(std::distance(first, last));
     results[0] = init;
@@ -294,12 +294,12 @@ OutPtr joint_exclusive_scan(G g, InPtr first, InPtr last, OutPtr result, T init,
     return result;
 }
 
-template <Group G, Fundamental T, SyclFunctionObject Op>
+template<Group G, Fundamental T, SyclFunctionObject Op>
 T exclusive_scan_over_group(G g, T x, Op binary_op) {
     return simsycl::detail::group_scan_impl(g, simsycl::detail::group_operation_id::exclusive_scan, x, {}, binary_op);
 }
 
-template <Group G, Fundamental V, Fundamental T, SyclFunctionObject Op>
+template<Group G, Fundamental V, Fundamental T, SyclFunctionObject Op>
 T exclusive_scan_over_group(G g, V x, T init, Op binary_op) {
     return simsycl::detail::group_scan_impl(
         g, simsycl::detail::group_operation_id::exclusive_scan, x, {init}, binary_op);
@@ -307,7 +307,7 @@ T exclusive_scan_over_group(G g, V x, T init, Op binary_op) {
 
 // inclusive_scan
 
-template <Group G, PointerToFundamental InPtr, PointerToFundamental OutPtr, SyclFunctionObject Op,
+template<Group G, PointerToFundamental InPtr, PointerToFundamental OutPtr, SyclFunctionObject Op,
     typename T = typename std::iterator_traits<InPtr>::value_type>
 OutPtr joint_inclusive_scan(G g, InPtr first, InPtr last, OutPtr result, Op binary_op) {
     std::vector<T> results(std::distance(first, last));
@@ -319,7 +319,7 @@ OutPtr joint_inclusive_scan(G g, InPtr first, InPtr last, OutPtr result, Op bina
     return result;
 }
 
-template <Group G, PointerToFundamental InPtr, PointerToFundamental OutPtr, Fundamental T, SyclFunctionObject Op>
+template<Group G, PointerToFundamental InPtr, PointerToFundamental OutPtr, Fundamental T, SyclFunctionObject Op>
 OutPtr joint_inclusive_scan(G g, InPtr first, InPtr last, OutPtr result, T init, Op binary_op) {
     std::vector<T> results(std::distance(first, last));
     results[0] = binary_op(init, *first);
@@ -330,12 +330,12 @@ OutPtr joint_inclusive_scan(G g, InPtr first, InPtr last, OutPtr result, T init,
     return result;
 }
 
-template <Group G, Fundamental T, SyclFunctionObject Op>
+template<Group G, Fundamental T, SyclFunctionObject Op>
 T inclusive_scan_over_group(G g, T x, Op binary_op) {
     return simsycl::detail::group_scan_impl(g, simsycl::detail::group_operation_id::inclusive_scan, x, {}, binary_op);
 }
 
-template <Group G, Fundamental V, Fundamental T, SyclFunctionObject Op>
+template<Group G, Fundamental V, Fundamental T, SyclFunctionObject Op>
 T inclusive_scan_over_group(G g, V x, T init, Op binary_op) {
     return simsycl::detail::group_scan_impl(
         g, simsycl::detail::group_operation_id::inclusive_scan, x, {init}, binary_op);

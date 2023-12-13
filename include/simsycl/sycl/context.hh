@@ -41,12 +41,12 @@ class context : public detail::reference_type<context, detail::context_state>, p
 
     std::vector<device> get_devices() const;
 
-    template <typename Param>
+    template<typename Param>
     typename Param::return_type get_info() const {
         return {};
     }
 
-    template <typename Param>
+    template<typename Param>
     typename Param::return_type get_backend_info() const {
         return {};
     }

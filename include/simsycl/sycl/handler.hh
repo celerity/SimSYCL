@@ -21,7 +21,7 @@
 
 namespace simsycl::detail {
 
-template <typename Func, typename... Params>
+template<typename Func, typename... Params>
 void sequential_for(const sycl::range<1> &range, const sycl::id<1> &offset, Func &&func, Params &&...args) {
     sycl::id<1> id;
     for(id[0] = offset[0]; id[0] < offset[0] + range[0]; ++id[0]) { //
@@ -29,7 +29,7 @@ void sequential_for(const sycl::range<1> &range, const sycl::id<1> &offset, Func
     }
 }
 
-template <typename Func, typename... Params>
+template<typename Func, typename... Params>
 void sequential_for(const sycl::range<2> &range, const sycl::id<2> &offset, Func &&func, Params &&...args) {
     sycl::id<2> id;
     for(id[0] = offset[0]; id[0] < offset[0] + range[0]; ++id[0]) {
@@ -39,7 +39,7 @@ void sequential_for(const sycl::range<2> &range, const sycl::id<2> &offset, Func
     }
 }
 
-template <typename Func, typename... Params>
+template<typename Func, typename... Params>
 void sequential_for(const sycl::range<3> &range, const sycl::id<3> &offset, Func &&func, Params &&...args) {
     sycl::id<3> id;
     for(id[0] = offset[0]; id[0] < offset[0] + range[0]; ++id[0]) {
@@ -52,7 +52,7 @@ void sequential_for(const sycl::range<3> &range, const sycl::id<3> &offset, Func
 }
 
 
-template <int Dimensions>
+template<int Dimensions>
 sycl::id<Dimensions> linear_index_to_id(const sycl::range<Dimensions> &range, size_t linear_index) {
     sycl::id<Dimensions> id;
     for(int d = Dimensions - 1; d >= 0; --d) {
@@ -70,7 +70,7 @@ struct local_memory_requirement {
 };
 
 
-template <int Dimensions, typename Func, typename... Params>
+template<int Dimensions, typename Func, typename... Params>
 void dispatch_for_nd_range(const sycl::nd_range<Dimensions> &range,
     const std::vector<local_memory_requirement> &local_memory, Func &&func, Params &&...args) {
     const auto &global_range = range.get_global_range();
@@ -168,7 +168,7 @@ void dispatch_for_nd_range(const sycl::nd_range<Dimensions> &range,
     }
 }
 
-template <int Dimensions, typename ParamTuple, size_t... ReductionIndices, size_t KernelIndex>
+template<int Dimensions, typename ParamTuple, size_t... ReductionIndices, size_t KernelIndex>
 void dispatch_for(const sycl::range<Dimensions> &range, ParamTuple &&params,
     std::index_sequence<ReductionIndices...> /* reduction_indices */,
     std::index_sequence<KernelIndex> /* kernel_index */) {
@@ -177,7 +177,7 @@ void dispatch_for(const sycl::range<Dimensions> &range, ParamTuple &&params,
     detail::sequential_for(range, offset, kernel_func, std::get<ReductionIndices>(params)...);
 }
 
-template <int Dimensions, typename ParamTuple, size_t... ReductionIndices, size_t KernelIndex>
+template<int Dimensions, typename ParamTuple, size_t... ReductionIndices, size_t KernelIndex>
 void dispatch_for(const sycl::nd_range<Dimensions> &range, const std::vector<local_memory_requirement> &local_memory,
     ParamTuple &&params, std::index_sequence<ReductionIndices...> /* reduction_indices */,
     std::index_sequence<KernelIndex> /* kernel_index */) {
@@ -185,19 +185,19 @@ void dispatch_for(const sycl::nd_range<Dimensions> &range, const std::vector<loc
     detail::dispatch_for_nd_range(range, local_memory, kernel_func, std::get<ReductionIndices>(params)...);
 }
 
-template <int Dimensions, typename... Rest, std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
+template<int Dimensions, typename... Rest, std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
 void parallel_for(sycl::range<Dimensions> num_work_items, Rest &&...rest) {
     dispatch_for(num_work_items, std::forward_as_tuple(std::forward<Rest>(rest)...),
         std::make_index_sequence<sizeof...(Rest) - 1>(), std::index_sequence<sizeof...(Rest) - 1>());
 }
 
-template <typename KernelType, int Dimensions>
+template<typename KernelType, int Dimensions>
 void parallel_for(
     sycl::range<Dimensions> num_work_items, sycl::id<Dimensions> work_item_offset, KernelType &&kernel_func) {
     detail::sequential_for(num_work_items, work_item_offset, kernel_func);
 }
 
-template <typename KernelName = unnamed_kernel, int Dimensions, typename... Rest,
+template<typename KernelName = unnamed_kernel, int Dimensions, typename... Rest,
     std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
 void parallel_for(sycl::nd_range<Dimensions> execution_range, const std::vector<local_memory_requirement> &local_memory,
     Rest &&...rest) {
@@ -214,7 +214,7 @@ class handler {
     handler(const handler &) = delete;
     handler &operator=(const handler &) = delete;
 
-    template <typename DataT, int Dimensions, access_mode AccessMode, target AccessTarget,
+    template<typename DataT, int Dimensions, access_mode AccessMode, target AccessTarget,
         access::placeholder IsPlaceholder>
     void require(accessor<DataT, Dimensions, AccessMode, AccessTarget, IsPlaceholder> acc);
 
@@ -224,15 +224,15 @@ class handler {
 
     //----- Backend interoperability interface
 
-    template <typename T>
+    template<typename T>
     void set_arg(int arg_index, T &&arg);
 
-    template <typename... Ts>
+    template<typename... Ts>
     void set_args(Ts &&...args);
 
     //------ Host tasks
 
-    template <typename T>
+    template<typename T>
     void host_task(T &&host_task_callable) {
         // TODO pass interop_handle if possible
         host_task_callable();
@@ -240,56 +240,56 @@ class handler {
 
     //------ Kernel dispatch API
 
-    template <typename KernelName = simsycl::detail::unnamed_kernel, typename KernelType>
+    template<typename KernelName = simsycl::detail::unnamed_kernel, typename KernelType>
     void single_task(const KernelType &kernel_func) {
         kernel_func();
     }
 
-    template <typename KernelName = simsycl::detail::unnamed_kernel, int Dimensions, typename... Rest,
+    template<typename KernelName = simsycl::detail::unnamed_kernel, int Dimensions, typename... Rest,
         std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
     void parallel_for(range<Dimensions> num_work_items, Rest &&...rest) {
         simsycl::detail::parallel_for(num_work_items, std::forward<Rest>(rest)...);
     }
 
-    template <typename KernelName = simsycl::detail::unnamed_kernel, typename KernelType, int Dimensions>
+    template<typename KernelName = simsycl::detail::unnamed_kernel, typename KernelType, int Dimensions>
     [[deprecated("Deprecated in SYCL 2020")]] void parallel_for(
         range<Dimensions> num_work_items, id<Dimensions> work_item_offset, KernelType &&kernel_func) {
         simsycl::detail::parallel_for(num_work_items, work_item_offset, kernel_func);
     }
 
-    template <typename KernelName = simsycl::detail::unnamed_kernel, int Dimensions, typename... Rest,
+    template<typename KernelName = simsycl::detail::unnamed_kernel, int Dimensions, typename... Rest,
         std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
     void parallel_for(nd_range<Dimensions> execution_range, Rest &&...rest) {
         simsycl::detail::parallel_for(execution_range, m_local_memory, std::forward<Rest>(rest)...);
     }
 
-    template <typename KernelName = simsycl::detail::unnamed_kernel, typename WorkgroupFunctionType, int Dimensions>
+    template<typename KernelName = simsycl::detail::unnamed_kernel, typename WorkgroupFunctionType, int Dimensions>
     void parallel_for_work_group(range<Dimensions> num_work_groups, const WorkgroupFunctionType &kernel_func);
 
-    template <typename KernelName = simsycl::detail::unnamed_kernel, typename WorkgroupFunctionType, int Dimensions>
+    template<typename KernelName = simsycl::detail::unnamed_kernel, typename WorkgroupFunctionType, int Dimensions>
     void parallel_for_work_group(
         range<Dimensions> num_work_groups, range<Dimensions> work_group_size, const WorkgroupFunctionType &kernel_func);
 
     void single_task(const kernel &kernel_object);
 
-    template <int Dimensions>
+    template<int Dimensions>
     void parallel_for(range<Dimensions> num_work_items, const kernel &kernel_object);
 
-    template <int Dimensions>
+    template<int Dimensions>
     void parallel_for(nd_range<Dimensions> nd_range, const kernel &kernel_object);
 
     //------ USM functions
 
     void memcpy(void *dest, const void *src, size_t num_bytes) { ::memcpy(dest, src, num_bytes); }
 
-    template <typename T>
+    template<typename T>
     void copy(const T *src, T *dest, size_t count) {
         std::copy_n(src, count, dest);
     }
 
     void memset(void *ptr, int value, size_t num_bytes) { ::memset(ptr, value, num_bytes); }
 
-    template <typename T>
+    template<typename T>
     void fill(void *ptr, const T &pattern, size_t count) {
         std::fill_n(ptr, count, pattern);
     }
@@ -300,39 +300,39 @@ class handler {
 
     //------ Explicit memory operation APIs
     //
-    template <typename SrcT, int SrcDim, access_mode SrcMode, target SrcTgt, access::placeholder IsPlaceholder,
+    template<typename SrcT, int SrcDim, access_mode SrcMode, target SrcTgt, access::placeholder IsPlaceholder,
         typename DestT>
     void copy(accessor<SrcT, SrcDim, SrcMode, SrcTgt, IsPlaceholder> src, std::shared_ptr<DestT> dest);
 
-    template <typename SrcT, typename DestT, int DestDim, access_mode DestMode, target DestTgt,
+    template<typename SrcT, typename DestT, int DestDim, access_mode DestMode, target DestTgt,
         access::placeholder IsPlaceholder>
     void copy(std::shared_ptr<SrcT> src, accessor<DestT, DestDim, DestMode, DestTgt, IsPlaceholder> dest);
 
-    template <typename SrcT, int SrcDim, access_mode SrcMode, target SrcTgt, access::placeholder IsPlaceholder,
+    template<typename SrcT, int SrcDim, access_mode SrcMode, target SrcTgt, access::placeholder IsPlaceholder,
         typename DestT>
     void copy(accessor<SrcT, SrcDim, SrcMode, SrcTgt, IsPlaceholder> src, DestT *dest);
 
-    template <typename SrcT, typename DestT, int DestDim, access_mode DestMode, target DestTgt,
+    template<typename SrcT, typename DestT, int DestDim, access_mode DestMode, target DestTgt,
         access::placeholder IsPlaceholder>
     void copy(const SrcT *src, accessor<DestT, DestDim, DestMode, DestTgt, IsPlaceholder> dest);
 
-    template <typename SrcT, int SrcDim, access_mode SrcMode, target SrcTgt, access::placeholder SrcIsPlaceholder,
+    template<typename SrcT, int SrcDim, access_mode SrcMode, target SrcTgt, access::placeholder SrcIsPlaceholder,
         typename DestT, int DestDim, access_mode DestMode, target DestTgt, access::placeholder DestIsPlaceholder>
     void copy(accessor<SrcT, SrcDim, SrcMode, SrcTgt, SrcIsPlaceholder> src,
         accessor<DestT, DestDim, DestMode, DestTgt, DestIsPlaceholder> dest);
 
-    template <typename T, int Dim, access_mode Mode, target Tgt, access::placeholder IsPlaceholder>
+    template<typename T, int Dim, access_mode Mode, target Tgt, access::placeholder IsPlaceholder>
     void update_host(accessor<T, Dim, Mode, Tgt, IsPlaceholder> acc);
 
-    template <typename T, int Dim, access_mode Mode, target Tgt, access::placeholder IsPlaceholder>
+    template<typename T, int Dim, access_mode Mode, target Tgt, access::placeholder IsPlaceholder>
     void fill(accessor<T, Dim, Mode, Tgt, IsPlaceholder> dest, const T &src);
 
     void use_kernel_bundle(const kernel_bundle<bundle_state::executable> &exec_bundle);
 
-    template <auto &SpecName>
+    template<auto &SpecName>
     void set_specialization_constant(typename std::remove_reference_t<decltype(SpecName)>::value_type value);
 
-    template <auto &SpecName>
+    template<auto &SpecName>
     typename std::remove_reference_t<decltype(SpecName)>::value_type get_specialization_constant();
 
   private:

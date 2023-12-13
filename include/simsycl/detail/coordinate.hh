@@ -8,14 +8,14 @@
 
 namespace simsycl::detail {
 
-template <typename Interface, int Dimensions>
+template<typename Interface, int Dimensions>
 class coordinate {
   public:
     constexpr static int dimensions = Dimensions;
 
     coordinate() = default;
 
-    template <typename... Values,
+    template<typename... Values,
         typename
         = std::enable_if_t<sizeof...(Values) + 1 == Dimensions && (... && std::is_convertible_v<Values, size_t>)>>
     constexpr coordinate(const size_t dim_0, const Values... dim_n) : m_values{dim_0, static_cast<size_t>(dim_n)...} {}

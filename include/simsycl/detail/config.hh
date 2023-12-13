@@ -9,7 +9,7 @@ class config {
     inline static uint32_t max_sub_group_size = 32;
 };
 
-template <typename T>
+template<typename T>
 class configure_temporarily {
   public:
     configure_temporarily(T &to_configure, T new_value) : m_to_configure(to_configure) {

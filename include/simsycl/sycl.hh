@@ -3,8 +3,8 @@
 #include <simsycl/config.hh>
 
 #include "sycl/accessor.hh"
-#include "sycl/atomic_ref.hh"
 #include "sycl/allocator.hh"
+#include "sycl/atomic_ref.hh"
 #include "sycl/backend.hh"
 #include "sycl/buffer.hh"
 #include "sycl/context.hh"

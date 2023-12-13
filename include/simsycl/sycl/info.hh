@@ -8,7 +8,7 @@
 
 namespace simsycl::detail {
 
-template <typename Result>
+template<typename Result>
 struct info_descriptor {
     using return_type = Result;
 };
@@ -77,7 +77,7 @@ struct device_type : detail::info_descriptor<info::device_type> {};
 struct vendor_id : detail::info_descriptor<uint32_t> {};
 struct max_compute_units : detail::info_descriptor<uint32_t> {};
 struct max_work_item_dimensions : detail::info_descriptor<uint32_t> {};
-template <int Dimensions = 3>
+template<int Dimensions = 3>
 struct max_work_item_sizes : detail::info_descriptor<range<Dimensions>> {};
 struct max_work_group_size : detail::info_descriptor<size_t> {};
 struct max_num_sub_groups : detail::info_descriptor<uint32_t> {};
