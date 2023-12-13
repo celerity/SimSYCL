@@ -27,7 +27,9 @@ class platform : public detail::reference_type<platform, detail::platform_state>
     platform() : platform(default_selector_v) {}
 
     template <typename DeviceSelector>
-    explicit platform(const DeviceSelector &device_selector) : reference_type(std::in_place) {}
+    explicit platform(const DeviceSelector &device_selector) : reference_type(std::in_place) {
+        (void)(device_selector);
+    }
 
     backend get_backend() const noexcept;
 

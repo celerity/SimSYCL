@@ -1,7 +1,7 @@
 # Clang-format coding style definitions for simSYCL
 #
 # Due to some inconsistencies between releases we currently
-# use clang-format 14 as the authoritative version.
+# use clang-format 16 as the authoritative version.
 
 BasedOnStyle: llvm
 
@@ -20,6 +20,7 @@ BreakBeforeBinaryOperators: All
 BreakBeforeBraces: Attach
 ColumnLimit: 120
 Cpp11BracedListStyle: true
+FixNamespaceComments: true
 IndentCaseLabels: true
 IndentWidth: 4
 KeepEmptyLinesAtTheStartOfBlocks: false
@@ -28,6 +29,7 @@ NamespaceIndentation: None
 PointerAlignment: Right
 QualifierAlignment: Left
 SpaceAfterCStyleCast: false
+SpaceAfterTemplateKeyword : false
 SpaceBeforeParens: Never
 SpaceInEmptyParentheses: false
 SpacesBeforeTrailingComments: 1

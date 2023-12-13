@@ -52,7 +52,9 @@ class device : public detail::reference_type<device, detail::device_state> {
     device() : device(default_selector_v) {}
 
     template <typename DeviceSelector>
-    explicit device(const DeviceSelector &device_selector) : reference_type(std::in_place) {}
+    explicit device(const DeviceSelector &device_selector) : reference_type(std::in_place) {
+        (void)(device_selector);
+    }
 
     bool is_cpu() const;
 
