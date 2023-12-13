@@ -58,7 +58,7 @@ add_library(simsycl
     include/simsycl/sycl/multi_ptr.hh
     include/simsycl/sycl/nd_item.hh
     include/simsycl/sycl/nd_range.hh
-    include/simsycl/sycl/ops.hh
+    include/simsycl/sycl/binary_ops.hh
     include/simsycl/sycl/platform.hh
     include/simsycl/sycl/property.hh
     include/simsycl/sycl/queue.hh
