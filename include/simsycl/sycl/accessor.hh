@@ -97,7 +97,7 @@ template <typename Accessor, typename DataT>
 class accessor_iterator<Accessor, DataT, 0> {
   public:
     using value_type = DataT;
-    using difference_type = ssize_t;
+    using difference_type = long int;
     using reference = value_type &;
     using pointer = value_type *;
     using iterator_category = std::forward_iterator_tag;
@@ -589,7 +589,8 @@ class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> : public simsy
 template <typename DataT, int Dimensions>
 class local_accessor final : public simsycl::detail::property_interface {
   private:
-    using property_compatibility = detail::property_compatibility_with<local_accessor<DataT, Dimensions>, property::no_init>;
+    using property_compatibility
+        = detail::property_compatibility_with<local_accessor<DataT, Dimensions>, property::no_init>;
 
   public:
     using value_type = DataT;

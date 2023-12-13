@@ -1,8 +1,8 @@
 #pragma once
 
+#include "binary_ops.hh"
 #include "forward.hh"
 #include "handler.hh"
-#include "ops.hh"
 #include "property.hh"
 
 #include "../detail/check.hh"

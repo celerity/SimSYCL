@@ -7,6 +7,25 @@
 
 namespace simsycl::detail {
 
+// aligned allocation wrapper for cross-platform support
+// NOTE: returned pointers must be freed with aligned_free
+inline void *aligned_alloc(size_t alignment, size_t size) {
+#if defined(_MSC_VER)
+    return _aligned_malloc(size, alignment);
+#else
+    return std::aligned_alloc(alignment, size);
+#endif
+}
+
+inline void aligned_free(void *ptr) {
+#if defined(_MSC_VER)
+    _aligned_free(ptr);
+#else
+    std::free(ptr);
+#endif
+}
+
+
 // floats and doubles filled with this pattern show up as "-nan"
 inline constexpr std::byte uninitialized_memory_pattern = std::byte(0xff);
 
@@ -14,7 +33,7 @@ class allocation {
   public:
     allocation() = default;
     allocation(const size_t size_bytes, const size_t alignment_bytes)
-        : m_size(size_bytes), m_alignment(alignment_bytes), m_ptr(std::aligned_alloc(alignment_bytes, size_bytes)) {
+        : m_size(size_bytes), m_alignment(alignment_bytes), m_ptr(aligned_alloc(alignment_bytes, size_bytes)) {
         memset(m_ptr, static_cast<int>(uninitialized_memory_pattern), size_bytes);
     }
 
@@ -46,7 +65,7 @@ class allocation {
 
     void reset() {
         if(m_ptr != nullptr) {
-            free(m_ptr);
+            aligned_free(m_ptr);
             m_size = 0;
             m_alignment = 1;
             m_ptr = nullptr;

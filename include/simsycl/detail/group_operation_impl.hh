@@ -9,10 +9,10 @@
 
 #include "simsycl/detail/allocation.hh"
 #include "simsycl/detail/check.hh"
+#include "simsycl/sycl/binary_ops.hh"
 #include "simsycl/sycl/concepts.hh"
 #include "simsycl/sycl/enums.hh"
 #include "simsycl/sycl/group.hh"
-#include "simsycl/sycl/ops.hh"
 #include "simsycl/sycl/sub_group.hh"
 
 namespace simsycl::detail {

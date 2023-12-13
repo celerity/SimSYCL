@@ -4,6 +4,7 @@
 #include "forward.hh"
 #include "property.hh"
 
+#include "simsycl/detail/allocation.hh"
 
 namespace simsycl::sycl {
 
@@ -44,12 +45,12 @@ class usm_allocator {
     usm_allocator &operator=(usm_allocator &&) = default;
 
     /// Allocate memory
-    T *allocate(size_t count) { return static_cast<T *>(std::aligned_alloc(Alignment, count * sizeof(T))); }
+    T *allocate(size_t count) { return static_cast<T *>(detail::aligned_alloc(Alignment, count * sizeof(T))); }
 
     /// Deallocate memory
     void deallocate(T *ptr, size_t count) {
         (void)count;
-        std::free(ptr);
+        detail::aligned_free(ptr);
     }
 
     /// Equality Comparison
@@ -72,7 +73,7 @@ inline void *malloc_device(
     (void)sycl_device;
     (void)sycl_context;
     (void)prop_list;
-    return std::malloc(num_bytes);
+    return detail::aligned_alloc(1, num_bytes);
 }
 
 template <typename T>
@@ -81,20 +82,20 @@ T *malloc_device(
     (void)sycl_device;
     (void)sycl_context;
     (void)prop_list;
-    return static_cast<T *>(std::aligned_alloc(alignof(T), count * sizeof(T)));
+    return static_cast<T *>(detail::aligned_alloc(alignof(T), count * sizeof(T)));
 }
 
 inline void *malloc_device(size_t num_bytes, const queue &sycl_queue, const property_list &prop_list = {}) {
     (void)sycl_queue;
     (void)prop_list;
-    return std::malloc(num_bytes);
+    return detail::aligned_alloc(1, num_bytes);
 }
 
 template <typename T>
 T *malloc_device(size_t count, const queue &sycl_queue, const property_list &prop_list = {}) {
     (void)sycl_queue;
     (void)prop_list;
-    return static_cast<T *>(std::aligned_alloc(alignof(T), count * sizeof(T)));
+    return static_cast<T *>(detail::aligned_alloc(alignof(T), count * sizeof(T)));
 }
 
 inline void *aligned_alloc_device(size_t alignment, size_t num_bytes, const device &sycl_device,
@@ -102,7 +103,7 @@ inline void *aligned_alloc_device(size_t alignment, size_t num_bytes, const devi
     (void)sycl_device;
     (void)sycl_context;
     (void)prop_list;
-    return std::aligned_alloc(alignment, num_bytes);
+    return detail::aligned_alloc(alignment, num_bytes);
 }
 
 template <typename T>
@@ -111,54 +112,54 @@ T *aligned_alloc_device(size_t alignment, size_t count, const device &sycl_devic
     (void)sycl_device;
     (void)sycl_context;
     (void)prop_list;
-    return static_cast<T *>(std::aligned_alloc(alignment, count * sizeof(T)));
+    return static_cast<T *>(detail::aligned_alloc(alignment, count * sizeof(T)));
 }
 
 inline void *aligned_alloc_device(
     size_t alignment, size_t num_bytes, const queue &sycl_queue, const property_list &prop_list = {}) {
     (void)sycl_queue;
     (void)prop_list;
-    return std::aligned_alloc(alignment, num_bytes);
+    return detail::aligned_alloc(alignment, num_bytes);
 }
 
 template <typename T>
 T *aligned_alloc_device(size_t alignment, size_t count, const queue &sycl_queue, const property_list &prop_list = {}) {
     (void)sycl_queue;
     (void)prop_list;
-    return static_cast<T *>(std::aligned_alloc(alignment, count * sizeof(T)));
+    return static_cast<T *>(detail::aligned_alloc(alignment, count * sizeof(T)));
 };
 
 inline void *malloc_host(size_t num_bytes, const context &sycl_context, const property_list &prop_list = {}) {
     (void)sycl_context;
     (void)prop_list;
-    return std::malloc(num_bytes);
+    return detail::aligned_alloc(1, num_bytes);
 }
 
 template <typename T>
 T *malloc_host(size_t count, const context &sycl_context, const property_list &prop_list = {}) {
     (void)sycl_context;
     (void)prop_list;
-    return static_cast<T *>(std::aligned_alloc(alignof(T), count * sizeof(T)));
+    return static_cast<T *>(detail::aligned_alloc(alignof(T), count * sizeof(T)));
 }
 
 inline void *malloc_host(size_t num_bytes, const queue &sycl_queue, const property_list &prop_list = {}) {
     (void)sycl_queue;
     (void)prop_list;
-    return std::malloc(num_bytes);
+    return detail::aligned_alloc(1, num_bytes);
 }
 
 template <typename T>
 T *malloc_host(size_t count, const queue &sycl_queue, const property_list &prop_list = {}) {
     (void)sycl_queue;
     (void)prop_list;
-    return static_cast<T *>(std::aligned_alloc(alignof(T), count * sizeof(T)));
+    return static_cast<T *>(detail::aligned_alloc(alignof(T), count * sizeof(T)));
 }
 
 inline void *aligned_alloc_host(
     size_t alignment, size_t num_bytes, const context &sycl_context, const property_list &prop_list = {}) {
     (void)sycl_context;
     (void)prop_list;
-    return std::aligned_alloc(alignment, num_bytes);
+    return detail::aligned_alloc(alignment, num_bytes);
 }
 
 template <typename T>
@@ -166,21 +167,21 @@ T *aligned_alloc_host(
     size_t alignment, size_t count, const context &sycl_context, const property_list &prop_list = {}) {
     (void)sycl_context;
     (void)prop_list;
-    return static_cast<T *>(std::aligned_alloc(alignment, count * sizeof(T)));
+    return static_cast<T *>(detail::aligned_alloc(alignment, count * sizeof(T)));
 }
 
 inline void *aligned_alloc_host(
     size_t alignment, size_t num_bytes, const queue &sycl_queue, const property_list &prop_list = {}) {
     (void)sycl_queue;
     (void)prop_list;
-    return std::aligned_alloc(alignment, num_bytes);
+    return detail::aligned_alloc(alignment, num_bytes);
 }
 
 template <typename T>
 void *aligned_alloc_host(size_t alignment, size_t count, const queue &sycl_queue, const property_list &prop_list = {}) {
     (void)sycl_queue;
     (void)prop_list;
-    return static_cast<T *>(std::aligned_alloc(alignment, count * sizeof(T)));
+    return static_cast<T *>(detail::aligned_alloc(alignment, count * sizeof(T)));
 }
 
 inline void *malloc_shared(
@@ -188,7 +189,7 @@ inline void *malloc_shared(
     (void)sycl_device;
     (void)sycl_context;
     (void)prop_list;
-    return std::malloc(num_bytes);
+    return detail::aligned_alloc(1, num_bytes);
 }
 
 template <typename T>
@@ -197,20 +198,20 @@ T *malloc_shared(
     (void)sycl_device;
     (void)sycl_context;
     (void)prop_list;
-    return static_cast<T *>(std::aligned_alloc(alignof(T), count * sizeof(T)));
+    return static_cast<T *>(detail::aligned_alloc(alignof(T), count * sizeof(T)));
 }
 
 inline void *malloc_shared(size_t num_bytes, const queue &sycl_queue, const property_list &prop_list = {}) {
     (void)sycl_queue;
     (void)prop_list;
-    return std::malloc(num_bytes);
+    return detail::aligned_alloc(1, num_bytes);
 }
 
 template <typename T>
 T *malloc_shared(size_t count, const queue &sycl_queue, const property_list &prop_list = {}) {
     (void)sycl_queue;
     (void)prop_list;
-    return static_cast<T *>(std::aligned_alloc(alignof(T), count * sizeof(T)));
+    return static_cast<T *>(detail::aligned_alloc(alignof(T), count * sizeof(T)));
 }
 
 inline void *aligned_alloc_shared(size_t alignment, size_t num_bytes, const device &sycl_device,
@@ -218,7 +219,7 @@ inline void *aligned_alloc_shared(size_t alignment, size_t num_bytes, const devi
     (void)sycl_device;
     (void)sycl_context;
     (void)prop_list;
-    return std::aligned_alloc(alignment, num_bytes);
+    return detail::aligned_alloc(alignment, num_bytes);
 }
 
 template <typename T>
@@ -227,21 +228,21 @@ T *aligned_alloc_shared(size_t alignment, size_t count, const device &sycl_devic
     (void)sycl_device;
     (void)sycl_context;
     (void)prop_list;
-    return static_cast<T *>(std::aligned_alloc(alignment, count * sizeof(T)));
+    return static_cast<T *>(detail::aligned_alloc(alignment, count * sizeof(T)));
 }
 
 inline void *aligned_alloc_shared(
     size_t alignment, size_t num_bytes, const queue &sycl_queue, const property_list &prop_list = {}) {
     (void)sycl_queue;
     (void)prop_list;
-    return std::aligned_alloc(alignment, num_bytes);
+    return detail::aligned_alloc(alignment, num_bytes);
 }
 
 template <typename T>
 T *aligned_alloc_shared(size_t alignment, size_t count, const queue &sycl_queue, const property_list &prop_list = {}) {
     (void)sycl_queue;
     (void)prop_list;
-    return static_cast<T *>(std::aligned_alloc(alignment, count * sizeof(T)));
+    return static_cast<T *>(detail::aligned_alloc(alignment, count * sizeof(T)));
 }
 
 inline void *malloc(size_t num_bytes, const device &sycl_device, const context &sycl_context, usm::alloc kind,
@@ -250,7 +251,7 @@ inline void *malloc(size_t num_bytes, const device &sycl_device, const context &
     (void)sycl_context;
     (void)kind;
     (void)prop_list;
-    return std::malloc(num_bytes);
+    return detail::aligned_alloc(1, num_bytes);
 }
 
 template <typename T>
@@ -260,14 +261,14 @@ T *malloc(size_t count, const device &sycl_device, const context &sycl_context, 
     (void)sycl_context;
     (void)kind;
     (void)prop_list;
-    return static_cast<T *>(std::aligned_alloc(alignof(T), count * sizeof(T)));
+    return static_cast<T *>(detail::aligned_alloc(alignof(T), count * sizeof(T)));
 }
 
 inline void *malloc(size_t num_bytes, const queue &sycl_queue, usm::alloc kind, const property_list &prop_list = {}) {
     (void)sycl_queue;
     (void)kind;
     (void)prop_list;
-    return std::malloc(num_bytes);
+    return detail::aligned_alloc(1, num_bytes);
 }
 
 template <typename T>
@@ -275,7 +276,7 @@ T *malloc(size_t count, const queue &sycl_queue, usm::alloc kind, const property
     (void)sycl_queue;
     (void)kind;
     (void)prop_list;
-    return static_cast<T *>(std::aligned_alloc(alignof(T), count * sizeof(T)));
+    return static_cast<T *>(detail::aligned_alloc(alignof(T), count * sizeof(T)));
 }
 
 inline void *aligned_alloc(size_t alignment, size_t num_bytes, const device &sycl_device, const context &sycl_context,
@@ -284,7 +285,7 @@ inline void *aligned_alloc(size_t alignment, size_t num_bytes, const device &syc
     (void)sycl_context;
     (void)kind;
     (void)prop_list;
-    return std::aligned_alloc(alignment, num_bytes);
+    return detail::aligned_alloc(alignment, num_bytes);
 }
 
 template <typename T>
@@ -294,7 +295,7 @@ T *aligned_alloc(size_t alignment, size_t count, const device &sycl_device, cons
     (void)sycl_context;
     (void)kind;
     (void)prop_list;
-    return static_cast<T *>(std::aligned_alloc(alignment, count * sizeof(T)));
+    return static_cast<T *>(detail::aligned_alloc(alignment, count * sizeof(T)));
 }
 
 inline void *aligned_alloc(
@@ -302,7 +303,7 @@ inline void *aligned_alloc(
     (void)sycl_queue;
     (void)kind;
     (void)prop_list;
-    return std::aligned_alloc(alignment, num_bytes);
+    return detail::aligned_alloc(alignment, num_bytes);
 }
 
 template <typename T>
@@ -311,17 +312,17 @@ T *aligned_alloc(
     (void)sycl_queue;
     (void)kind;
     (void)prop_list;
-    return static_cast<T *>(std::aligned_alloc(alignment, count * sizeof(T)));
+    return static_cast<T *>(detail::aligned_alloc(alignment, count * sizeof(T)));
 }
 
 inline void free(void *ptr, const context &sycl_context) {
     (void)sycl_context;
-    std::free(ptr);
+    detail::aligned_free(ptr);
 }
 
 inline void free(void *ptr, const queue &sycl_queue) {
     (void)sycl_queue;
-    std::free(ptr);
+    detail::aligned_free(ptr);
 }
 
 usm::alloc get_pointer_type(const void *ptr, const context &sycl_context);
