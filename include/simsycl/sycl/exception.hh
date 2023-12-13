@@ -52,4 +52,15 @@ class exception_list : private std::vector<std::exception_ptr> {
 
 using async_handler = std::function<void(sycl::exception_list)>;
 
+std::error_code make_error_code(errc e) noexcept;
+
+const std::error_category &sycl_category() noexcept;
+
 } // namespace simsycl::sycl
+
+namespace std {
+
+template<>
+struct is_error_code_enum<simsycl::sycl::errc> : true_type {};
+
+} // namespace std

@@ -47,11 +47,11 @@ TEMPLATE_TEST_CASE(
                 [=](auto item, auto &plus, auto &mult, auto &bit_and, auto &bit_or, auto &bit_xor, auto &min,
                     auto &max) {
                     const auto linear_id = TestType::get_linear_id(item);
-                    plus[0] += linear_id;
+                    plus += linear_id;
                     mult *= 1 + linear_id;
-                    bit_and[0][0] &= 16 + linear_id;
+                    bit_and &= 16 + linear_id;
                     bit_or |= linear_id;
-                    bit_xor[0][0][0] ^= linear_id;
+                    bit_xor ^= linear_id;
                     min.combine(5.0f - static_cast<float>(linear_id));
                     max.combine(linear_id);
                 });

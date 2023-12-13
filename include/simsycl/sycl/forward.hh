@@ -32,6 +32,10 @@ class handler;
 
 struct half; // TODO
 
+template<typename DataT, int Dimensions = 1,
+    access_mode AccessMode = (std::is_const_v<DataT> ? access_mode::read : access_mode::read_write)>
+class host_accessor;
+
 template<typename DataT, int Dimensions>
 class host_sampled_image_accessor;
 

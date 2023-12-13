@@ -164,7 +164,7 @@ auto reduction(buffer<T, Dimensions, AllocatorT> &vars, handler &cgh, BinaryOper
     SIMSYCL_CHECK(vars.get_range().size() == 1);
     T *value = detail::get_buffer_data(vars);
     detail::begin_reduction(value, combiner, nullptr, prop_list);
-    return detail::reducer<T, BinaryOperation, Dimensions>(value, combiner);
+    return detail::reducer<T, BinaryOperation, 0>(value, combiner);
 }
 
 template<typename T, typename BinaryOperation>
@@ -185,7 +185,7 @@ auto reduction(buffer<T, Dimensions, AllocatorT> &vars, handler &cgh, const T &i
     SIMSYCL_CHECK(vars.get_range().size() == 1);
     T *value = detail::get_buffer_data(vars);
     detail::begin_reduction(value, combiner, &identity, prop_list);
-    return detail::reducer<T, BinaryOperation, Dimensions>(value, combiner);
+    return detail::reducer<T, BinaryOperation, 0>(value, combiner);
 }
 
 template<typename T, typename BinaryOperation>

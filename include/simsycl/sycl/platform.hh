@@ -1,6 +1,5 @@
 #pragma once
 
-#include "device.hh"
 #include "enums.hh"
 #include "forward.hh"
 #include "info.hh"
@@ -15,6 +14,12 @@ namespace simsycl::detail {
 
 struct platform_state {};
 
+// forward
+void setup();
+
+template<typename DeviceSelector>
+sycl::device select_device(const DeviceSelector &selector);
+
 } // namespace simsycl::detail
 
 namespace simsycl::sycl {
@@ -24,12 +29,11 @@ class platform : public detail::reference_type<platform, detail::platform_state>
     using reference_type = detail::reference_type<platform, detail::platform_state>;
 
   public:
-    platform() : platform(default_selector_v) {}
+    platform() /* TODO : platform(default_selector_v) */ {}
 
     template<typename DeviceSelector>
-    explicit platform(const DeviceSelector &device_selector) : reference_type(std::in_place) {
-        (void)(device_selector);
-    }
+    explicit platform(const DeviceSelector &device_selector)
+        : platform(select_device(device_selector).get_platform()) {}
 
     backend get_backend() const noexcept;
 
@@ -50,6 +54,11 @@ class platform : public detail::reference_type<platform, detail::platform_state>
     [[deprecated]] bool has_extension(const std::string &extension) const;
 
     static std::vector<platform> get_platforms();
+
+  private:
+    friend void detail::setup();
+
+    platform(detail::platform_state state) : reference_type(std::in_place, std::move(state)) {}
 };
 
 } // namespace simsycl::sycl

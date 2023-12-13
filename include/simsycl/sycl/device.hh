@@ -3,6 +3,7 @@
 #include "enums.hh"
 #include "forward.hh"
 #include "info.hh"
+#include "platform.hh"
 
 #include "../detail/reference_type.hh"
 
@@ -12,12 +13,22 @@
 
 namespace simsycl::detail {
 
-struct default_selector {};
-struct cpu_selector {};
-struct gpu_selector {};
-struct accelerator_selector {};
+// forward
+void setup();
 
-struct device_state {};
+template<typename DeviceSelector>
+sycl::device select_device(const DeviceSelector &selector);
+
+struct default_selector {
+    int operator()(const sycl::device & /* TODO */) const { return 0; }
+};
+struct cpu_selector : public default_selector {};         // TODO
+struct gpu_selector : public default_selector {};         // TODO
+struct accelerator_selector : public default_selector {}; // TODO
+
+struct device_state {
+    sycl::platform platform;
+};
 
 } // namespace simsycl::detail
 
@@ -52,9 +63,7 @@ class device : public detail::reference_type<device, detail::device_state> {
     device() : device(default_selector_v) {}
 
     template<typename DeviceSelector>
-    explicit device(const DeviceSelector &device_selector) : reference_type(std::in_place) {
-        (void)(device_selector);
-    }
+    explicit device(const DeviceSelector &device_selector) : device(select_device(device_selector)) {}
 
     bool is_cpu() const;
 
@@ -62,7 +71,7 @@ class device : public detail::reference_type<device, detail::device_state> {
 
     bool is_accelerator() const;
 
-    platform get_platform() const;
+    platform get_platform() const { return state().platform; }
 
     template<typename Param>
     typename Param::return_type get_info() const {
@@ -91,6 +100,11 @@ class device : public detail::reference_type<device, detail::device_state> {
     std::vector<device> create_sub_devices(info::partition_affinity_domain affinity_domain) const;
 
     static std::vector<device> get_devices(info::device_type device_type = info::device_type::all);
+
+  private:
+    friend void detail::setup();
+
+    device(detail::device_state state) : reference_type(std::in_place, std::move(state)) {}
 };
 
 template<aspect Aspect>

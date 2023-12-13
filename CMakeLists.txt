@@ -83,7 +83,7 @@ add_library(simsycl
     include/simsycl/sycl/usm.hh
     include/simsycl/sycl/vec.hh
     "${CMAKE_CURRENT_BINARY_DIR}/include/simsycl/config.hh"
-    src/simsycl/dummy.cc
+    src/simsycl/simsycl.cc
 )
 target_link_libraries(simsycl Boost::context)
 target_include_directories(simsycl PUBLIC
