@@ -53,6 +53,8 @@ class kernel;
 template <bundle_state State>
 class kernel_bundle;
 
+class kernel_id;
+
 template <typename DataT, int Dimensions = 1>
 class local_accessor;
 

@@ -3,6 +3,7 @@
 #include "event.hh"
 #include "exception.hh"
 #include "handler.hh"
+#include "info.hh"
 #include "property.hh"
 
 #include "../detail/reference_type.hh"
@@ -31,7 +32,12 @@ struct is_property_of<property::queue::in_order, queue> : std::true_type {};
 
 namespace simsycl::detail {
 
-struct queue_state {};
+struct queue_state {
+    sycl::async_handler async_handler;
+
+    queue_state() : async_handler([](sycl::exception_list) {}) {}
+    queue_state(sycl::async_handler async_handler) : async_handler(std::move(async_handler)) {}
+};
 
 } // namespace simsycl::detail
 
@@ -48,8 +54,7 @@ class queue : public detail::reference_type<queue, detail::queue_state>, public 
         : reference_type(std::in_place), property_interface(prop_list, property_compatibility()) {}
 
     explicit queue(const async_handler &async_handler, const property_list &prop_list = {})
-        : reference_type(std::in_place), property_interface(prop_list, property_compatibility()),
-          m_async_handler(async_handler) {}
+        : reference_type(std::in_place, async_handler), property_interface(prop_list, property_compatibility()) {}
 
     template <typename DeviceSelector>
     explicit queue(const DeviceSelector &device_selector, const property_list &prop_list = {});
@@ -84,10 +89,14 @@ class queue : public detail::reference_type<queue, detail::queue_state>, public 
     bool is_in_order() const { return has_property<property::queue::in_order>(); }
 
     template <typename Param>
-    typename Param::return_type get_info() const;
+    typename Param::return_type get_info() const {
+        return {};
+    }
 
     template <typename Param>
-    typename Param::return_type get_backend_info() const;
+    typename Param::return_type get_backend_info() const {
+        return {};
+    }
 
     template <typename T>
     event submit(T cgf) {
@@ -308,9 +317,6 @@ class queue : public detail::reference_type<queue, detail::queue_state>, public 
 
     template <typename T, int Dims, access_mode Mode, target Tgt, access::placeholder IsPlaceholder>
     event fill(accessor<T, Dims, Mode, Tgt, IsPlaceholder> dest, const T &src);
-
-  private:
-    async_handler m_async_handler = [](sycl::exception_list) {};
 };
 
 } // namespace simsycl::sycl

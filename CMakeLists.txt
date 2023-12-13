@@ -1,7 +1,11 @@
 cmake_minimum_required(VERSION 3.13)
 
-set(SimSYCL_VERSION 0.1)
-project(SimSYCL VERSION "${SimSYCL_VERSION}" LANGUAGES CXX)
+set(SIMSYCL_VERSION 0.1)
+set(SIMSYCL_VERSION_MAJOR 0)
+set(SIMSYCL_VERSION_MINOR 1)
+set(SIMSYCL_VERSION_PATCH 0)
+
+project(SimSYCL VERSION "${SIMSYCL_VERSION}" LANGUAGES CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -12,6 +16,7 @@ if(CMAKE_GENERATOR STREQUAL "Ninja")
 endif()
 
 find_package(Boost 1.70 COMPONENTS context REQUIRED)
+
 
 # Function to set properties, compile options, and link options for all simsycl targets
 function(set_simsycl_target_options target)
@@ -26,6 +31,12 @@ function(set_simsycl_target_options target)
     )
 endfunction()
 
+configure_file(
+  "${PROJECT_SOURCE_DIR}/include/simsycl/config.hh.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/include/simsycl/config.hh"
+  @ONLY
+)
+
 add_library(simsycl
     include/sycl/sycl.hpp
     include/CL/sycl.hpp
@@ -39,6 +50,7 @@ add_library(simsycl
     include/simsycl/detail/utils.hh
     include/simsycl/sycl/accessor.hh
     include/simsycl/sycl/allocator.hh
+    include/simsycl/sycl/atomic_ref.hh
     include/simsycl/sycl/backend.hh
     include/simsycl/sycl/buffer.hh
     include/simsycl/sycl/concepts.hh
@@ -53,8 +65,10 @@ add_library(simsycl
     include/simsycl/sycl/group.hh
     include/simsycl/sycl/handler.hh
     include/simsycl/sycl/id.hh
+    include/simsycl/sycl/info.hh
     include/simsycl/sycl/image.hh
     include/simsycl/sycl/item.hh
+    include/simsycl/sycl/math.hh
     include/simsycl/sycl/multi_ptr.hh
     include/simsycl/sycl/nd_item.hh
     include/simsycl/sycl/nd_range.hh
@@ -66,11 +80,13 @@ add_library(simsycl
     include/simsycl/sycl/reduction.hh
     include/simsycl/sycl/sub_group.hh
     include/simsycl/sycl/type_traits.hh
+    "${CMAKE_CURRENT_BINARY_DIR}/include/simsycl/config.hh"
     src/simsycl/dummy.cc
 )
 target_link_libraries(simsycl Boost::context)
 target_include_directories(simsycl PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
 set_simsycl_target_options(simsycl)
@@ -90,6 +106,10 @@ install(
   DESTINATION include
 )
 install(
+  DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include/
+  DESTINATION include
+)
+install(
   TARGETS simsycl
   EXPORT install_exports
   LIBRARY DESTINATION lib
@@ -97,7 +117,7 @@ install(
 )
 write_basic_package_version_file(
   "${CMAKE_CURRENT_BINARY_DIR}/simsycl-config-version.cmake"
-  VERSION "${SimSYCL_VERSION}"
+  VERSION "${SIMSYCL_VERSION}"
   COMPATIBILITY SameMajorVersion
 )
 install(

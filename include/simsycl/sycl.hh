@@ -1,6 +1,9 @@
 #pragma once
 
+#include <simsycl/config.hh>
+
 #include "sycl/accessor.hh"
+#include "sycl/atomic_ref.hh"
 #include "sycl/allocator.hh"
 #include "sycl/backend.hh"
 #include "sycl/buffer.hh"
@@ -17,6 +20,7 @@
 #include "sycl/id.hh"
 #include "sycl/image.hh"
 #include "sycl/item.hh"
+#include "sycl/math.hh"
 #include "sycl/multi_ptr.hh"
 #include "sycl/nd_item.hh"
 #include "sycl/nd_range.hh"

@@ -2,9 +2,13 @@
 
 #include "enums.hh"
 #include "forward.hh"
+#include "info.hh"
+
+#include "../detail/reference_type.hh"
 
 #include <string>
 #include <vector>
+
 
 namespace simsycl::detail {
 
@@ -12,6 +16,8 @@ struct default_selector {};
 struct cpu_selector {};
 struct gpu_selector {};
 struct accelerator_selector {};
+
+struct device_state {};
 
 } // namespace simsycl::detail
 
@@ -38,16 +44,15 @@ auto aspect_selector(AspectList... aspect_list);
 template <aspect... AspectList>
 auto aspect_selector();
 
-class device {
+class device : public detail::reference_type<device, detail::device_state> {
+  private:
+    using reference_type = detail::reference_type<device, detail::device_state>;
+
   public:
-    device();
+    device() : device(default_selector_v) {}
 
     template <typename DeviceSelector>
-    explicit device(const DeviceSelector &device_selector);
-
-    /* -- common interface members -- */
-
-    backend get_backend() const noexcept;
+    explicit device(const DeviceSelector &device_selector) : reference_type(std::in_place) {}
 
     bool is_cpu() const;
 
@@ -58,10 +63,14 @@ class device {
     platform get_platform() const;
 
     template <typename Param>
-    typename Param::return_type get_info() const;
+    typename Param::return_type get_info() const {
+        return {};
+    }
 
     template <typename Param>
-    typename Param::return_type get_backend_info() const;
+    typename Param::return_type get_backend_info() const {
+        return {};
+    }
 
     bool has(aspect asp) const;
 
