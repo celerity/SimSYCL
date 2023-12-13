@@ -33,11 +33,16 @@ struct is_function_object : std::false_type {};
 template<class Fn>
 inline constexpr bool is_function_object_v = is_function_object<Fn>::value;
 
-// TODO: Add sycl::half when we have that type
 template<typename T>
-struct is_arithmetic : std::bool_constant<std::is_arithmetic_v<T>> {};
+struct is_arithmetic : std::bool_constant<std::is_arithmetic_v<T> || std::is_same_v<T, sycl::half>> {};
 template<class T>
 inline constexpr bool is_arithmetic_v = is_arithmetic<T>::value;
+
+template<typename T>
+struct is_floating_point
+    : std::bool_constant<std::is_same_v<T, sycl::half> || std::is_same_v<T, float> || std::is_same_v<T, double>> {};
+template<class T>
+inline constexpr bool is_floating_point_v = is_floating_point<T>::value;
 
 template<typename...>
 constexpr bool always_false = false;

@@ -80,6 +80,8 @@ add_library(simsycl
     include/simsycl/sycl/reduction.hh
     include/simsycl/sycl/sub_group.hh
     include/simsycl/sycl/type_traits.hh
+    include/simsycl/sycl/usm.hh
+    include/simsycl/sycl/vec.hh
     "${CMAKE_CURRENT_BINARY_DIR}/include/simsycl/config.hh"
     src/simsycl/dummy.cc
 )

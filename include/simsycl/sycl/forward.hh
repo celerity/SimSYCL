@@ -88,6 +88,9 @@ class unsampled_image_accessor;
 template<int Dimensions = 1, typename AllocatorT = image_allocator>
 class unsampled_image;
 
+template <typename DataT, int NumElements>
+class vec;
+
 } // namespace simsycl::sycl
 
 namespace simsycl::detail {

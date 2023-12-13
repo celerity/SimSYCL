@@ -2,7 +2,8 @@
 
 #include "enums.hh"
 
-#include <algorithm>
+#include "../detail/utils.hh"
+
 #include <cstdlib>
 #include <utility>
 
@@ -155,6 +156,9 @@ class atomic_ref<Integral, DefaultOrder, DefaultScope, AddressSpace>
     using base::default_read_modify_write_order;
     using base::default_scope;
 
+    using base::base;
+    using base::operator=;
+
     Integral fetch_add(Integral operand, memory_order order = default_read_modify_write_order,
         memory_scope scope = default_scope) const noexcept {
         (void)order;
@@ -205,7 +209,7 @@ class atomic_ref<Integral, DefaultOrder, DefaultScope, AddressSpace>
         (void)order;
         (void)scope;
         const auto original = m_ref;
-        m_ref = std::min(m_ref, operand);
+        m_ref = detail::min(m_ref, operand);
         return original;
     }
 
@@ -214,7 +218,7 @@ class atomic_ref<Integral, DefaultOrder, DefaultScope, AddressSpace>
         (void)order;
         (void)scope;
         const auto original = m_ref;
-        m_ref = std::max(m_ref, operand);
+        m_ref = detail::max(m_ref, operand);
         return original;
     }
 
@@ -247,6 +251,9 @@ class atomic_ref<Floating, DefaultOrder, DefaultScope, AddressSpace>
     using base::default_read_modify_write_order;
     using base::default_scope;
 
+    using base::base;
+    using base::operator=;
+
     Floating fetch_add(Floating operand, memory_order order = default_read_modify_write_order,
         memory_scope scope = default_scope) const noexcept {
         (void)order;
@@ -270,7 +277,7 @@ class atomic_ref<Floating, DefaultOrder, DefaultScope, AddressSpace>
         (void)order;
         (void)scope;
         const auto original = m_ref;
-        m_ref = std::min(m_ref, operand);
+        m_ref = detail::min(m_ref, operand);
         return original;
     }
 
@@ -279,7 +286,7 @@ class atomic_ref<Floating, DefaultOrder, DefaultScope, AddressSpace>
         (void)order;
         (void)scope;
         const auto original = m_ref;
-        m_ref = std::max(m_ref, operand);
+        m_ref = detail::max(m_ref, operand);
         return original;
     }
 
@@ -303,6 +310,9 @@ class atomic_ref<T *, DefaultOrder, DefaultScope, AddressSpace>
 
     using base::default_read_modify_write_order;
     using base::default_scope;
+
+    using base::base;
+    using base::operator=;
 
     T *fetch_add(difference_type operand, memory_order order = default_read_modify_write_order,
         memory_scope scope = default_scope) const noexcept {
