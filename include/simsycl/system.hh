@@ -79,7 +79,6 @@ struct device_config {
     bool queue_profiling{};
     std::vector<std::string> built_in_kernels{};
     std::vector<sycl::kernel_id> built_in_kernel_ids{};
-    sycl::platform platform{};
     std::string name{};
     std::string vendor{};
     std::string driver_version{};
@@ -90,7 +89,7 @@ struct device_config {
     std::vector<std::string> extensions{};
     size_t printf_buffer_size{};
     bool preferred_interop_user_sync{};
-    sycl::device parent_device{};
+    std::optional<sycl::device> parent_device{};
     uint32_t partition_max_sub_devices{};
     std::vector<sycl::info::partition_property> partition_properties{};
     std::vector<sycl::info::partition_affinity_domain> partition_affinity_domains{};
@@ -110,24 +109,13 @@ struct system_config {
     std::vector<sycl::device> devices{};
 };
 
-extern system_config system;
+const system_config &get_system();
+void set_system(system_config system);
 
 } // namespace simsycl
 
 namespace simsycl::detail {
 
-template<typename DeviceSelector>
-sycl::device select_device(const DeviceSelector &selector) {
-    SIMSYCL_CHECK(!system.devices.empty());
-    int max_rating = INT_MIN;
-    for(const auto &device : system.devices) {
-        if(int rating = selector(device); rating > max_rating) { max_rating = rating; }
-    }
-    if(max_rating < 0) { throw sycl::exception(sycl::errc::runtime, "No suitable device found"); }
-    const auto device = std::find_if(system.devices.begin(), system.devices.end(),
-        [&](const auto &device) { return selector(device) == max_rating; });
-    assert(device != system.devices.end());
-    return *device;
-}
+sycl::device select_device(const device_selector &selector);
 
 } // namespace simsycl::detail

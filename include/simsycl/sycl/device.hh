@@ -6,6 +6,7 @@
 
 #include "../detail/reference_type.hh"
 
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -16,16 +17,25 @@ struct device_config;
 
 sycl::device create_device(sycl::platform &platform, const device_config &config);
 
-}
+} // namespace simsycl
 
 namespace simsycl::detail {
 
 struct default_selector {
-    int operator()(const sycl::device & /* TODO */) const { return 0; }
+    int operator()(const sycl::device &device) const;
 };
-struct cpu_selector : public default_selector {};         // TODO
-struct gpu_selector : public default_selector {};         // TODO
-struct accelerator_selector : public default_selector {}; // TODO
+
+struct cpu_selector {
+    int operator()(const sycl::device &device) const;
+};
+
+struct gpu_selector {
+    int operator()(const sycl::device &device) const;
+};
+
+struct accelerator_selector {
+    int operator()(const sycl::device &device) const;
+};
 
 struct device_state;
 
@@ -62,7 +72,7 @@ class device final : public detail::reference_type<device, detail::device_state>
     device();
 
     template<typename DeviceSelector>
-    explicit device(const DeviceSelector &device_selector);
+    explicit device(const DeviceSelector &device_selector) : device(detail::device_selector(device_selector)) {}
 
     bool is_cpu() const { return has(aspect::cpu); }
 
@@ -100,6 +110,7 @@ class device final : public detail::reference_type<device, detail::device_state>
     friend device simsycl::create_device(sycl::platform &platform, const device_config &config);
 
     device(detail::device_state state);
+    device(const detail::device_selector &selector);
 };
 
 template<aspect Aspect>

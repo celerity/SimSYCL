@@ -18,9 +18,9 @@ enum class access_mode {
     read,
     write,
     read_write,
-    discard_write,      // Deprecated in SYCL 2020
-    discard_read_write, // Deprecated in SYCL 2020
-    atomic              // Deprecated in SYCL 2020
+    discard_write [[deprecated]],
+    discard_read_write [[deprecated]],
+    atomic [[deprecated]]
 };
 
 enum class aspect {
@@ -42,7 +42,7 @@ enum class aspect {
     usm_atomic_host_allocations,
     usm_shared_allocations,
     usm_atomic_shared_allocations,
-    usm_system_allocations
+    usm_system_allocations,
 };
 
 enum class backend { simsycl };
@@ -64,7 +64,7 @@ enum class errc {
     profiling,
     feature_not_supported,
     kernel_not_supported,
-    backend_mismatch
+    backend_mismatch,
 };
 
 enum class image_format {
@@ -114,42 +114,31 @@ enum class stream_manipulator {
     fixed,
     scientific,
     hexfloat,
-    defaultfloat
+    defaultfloat,
 };
 
 enum class target {
     device,
     host_task,
-    constant_buffer,       // Deprecated
-    local,                 // Deprecated
-    host_buffer,           // Deprecated
-    global_buffer = device // Deprecated
+    constant_buffer [[deprecated]],
+    local [[deprecated]],
+    host_buffer [[deprecated]],
+    global_buffer [[deprecated]] = device,
 };
 
 } // namespace simsycl::sycl
 
 namespace simsycl::sycl::access {
 
-enum class address_space {
-    global_space,
-    local_space,
-    constant_space, // Deprecated in SYCL 2020
-    private_space,
-    generic_space
-};
+enum class address_space { global_space, local_space, constant_space [[deprecated]], private_space, generic_space };
 
 enum class decorated { no, yes, legacy };
 
-// The legacy type "access::mode" is deprecated.
-using mode = sycl::access_mode;
+using mode [[deprecated]] = sycl::access_mode;
 
-// The legacy type "access::target" is deprecated.
-using sycl::target;
+using target [[deprecated]] = sycl::target;
 
-enum class placeholder { // Deprecated
-    false_t,
-    true_t
-};
+enum class [[deprecated]] placeholder { false_t, true_t };
 
 enum class fence_space { local_space, global_space, global_and_local };
 

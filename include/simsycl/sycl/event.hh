@@ -1,6 +1,7 @@
 #pragma once
 
 #include "forward.hh"
+#include "info.hh"
 #include "type_traits.hh"
 
 #include "../detail/reference_type.hh"

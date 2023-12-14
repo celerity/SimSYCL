@@ -42,7 +42,6 @@ add_library(simsycl
     include/CL/sycl.hpp
     include/simsycl/sycl.hh
     include/simsycl/detail/allocation.hh
-    include/simsycl/detail/async_handler.hh
     include/simsycl/detail/check.hh
     include/simsycl/detail/config.hh
     include/simsycl/detail/coordinate.hh
@@ -51,6 +50,7 @@ add_library(simsycl
     include/simsycl/detail/utils.hh
     include/simsycl/sycl/accessor.hh
     include/simsycl/sycl/allocator.hh
+    include/simsycl/sycl/async_handler.hh
     include/simsycl/sycl/atomic_ref.hh
     include/simsycl/sycl/backend.hh
     include/simsycl/sycl/buffer.hh
@@ -90,6 +90,7 @@ add_library(simsycl
     src/simsycl/context.cc
     src/simsycl/device.cc
     src/simsycl/platform.cc
+    src/simsycl/queue.cc
     src/simsycl/system.cc
     src/simsycl/templates.cc
 )

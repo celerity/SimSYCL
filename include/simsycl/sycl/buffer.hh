@@ -198,18 +198,21 @@ class buffer final
     template<access_mode Mode = access_mode::read_write, target Targ = target::device>
     accessor<T, Dimensions, Mode, Targ> get_access(handler &command_group_handler);
 
-    // Deprecated
-    template<access_mode Mode>
-    accessor<T, Dimensions, Mode, target::host_buffer> get_access();
-
     template<access_mode Mode = access_mode::read_write, target Targ = target::device>
     accessor<T, Dimensions, Mode, Targ> get_access(
         handler &command_group_handler, range<Dimensions> access_range, id<Dimensions> access_offset = {});
 
-    // Deprecated
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
     template<access_mode Mode>
-    accessor<T, Dimensions, Mode, target::host_buffer> get_access(
+    [[deprecated]] accessor<T, Dimensions, Mode, target::host_buffer> get_access();
+
+    template<access_mode Mode>
+    [[deprecated]] accessor<T, Dimensions, Mode, target::host_buffer> get_access(
         range<Dimensions> access_range, id<Dimensions> access_offset = {});
+
+#pragma GCC diagnostic pop
 
     template<typename... Ts>
     auto get_access(Ts...);

@@ -1,4 +1,5 @@
 #include "simsycl/sycl/platform.hh"
+#include "simsycl/sycl/device.hh"
 #include "simsycl/system.hh"
 
 #include <algorithm>
@@ -19,8 +20,10 @@ platform::platform(detail::platform_state state) : reference_type(std::in_place,
 
 platform::platform() : platform(default_selector_v) {}
 
-template<typename DeviceSelector>
-platform::platform(const DeviceSelector &device_selector) : platform(select_device(device_selector).get_platform()) {}
+platform::platform(const detail::device_selector &selector)
+    : platform(detail::select_device(selector).get_platform()) {}
+
+platform::platform(std::shared_ptr<detail::platform_state> &&state) : reference_type(std::move(state)) {}
 
 std::vector<device> platform::get_devices(info::device_type type) const {
     std::vector<device> result;
@@ -62,7 +65,7 @@ bool platform::has_extension(const std::string &extension) const {
         != state().config.extensions.end();
 }
 
-std::vector<platform> platform::get_platforms() { return system.platforms; }
+std::vector<platform> platform::get_platforms() { return get_system().platforms; }
 
 void platform::add_device(const device &dev) { state().devices.push_back(dev); }
 

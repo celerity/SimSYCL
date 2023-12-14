@@ -1,9 +1,8 @@
 #pragma once
 
+#include "async_handler.hh"
 #include "event.hh"
-#include "exception.hh"
 #include "handler.hh"
-#include "info.hh"
 #include "property.hh"
 
 #include "../detail/reference_type.hh"
@@ -32,12 +31,7 @@ struct is_property_of<property::queue::in_order, queue> : std::true_type {};
 
 namespace simsycl::detail {
 
-struct queue_state {
-    sycl::async_handler async_handler;
-
-    queue_state() : async_handler([](sycl::exception_list) {}) {}
-    queue_state(sycl::async_handler async_handler) : async_handler(std::move(async_handler)) {}
-};
+struct queue_state;
 
 } // namespace simsycl::detail
 
@@ -51,18 +45,18 @@ class queue final : public detail::reference_type<queue, detail::queue_state>,
         property::queue::enable_profiling, property::queue::in_order>;
 
   public:
-    explicit queue(const property_list &prop_list = {})
-        : reference_type(std::in_place), property_interface(prop_list, property_compatibility()) {}
+    explicit queue(const property_list &prop_list = {});
 
-    explicit queue(const async_handler &async_handler, const property_list &prop_list = {})
-        : reference_type(std::in_place, async_handler), property_interface(prop_list, property_compatibility()) {}
+    explicit queue(const async_handler &async_handler, const property_list &prop_list = {});
 
     template<typename DeviceSelector>
-    explicit queue(const DeviceSelector &device_selector, const property_list &prop_list = {});
+    explicit queue(const DeviceSelector &device_selector, const property_list &prop_list = {})
+        : queue(internal, detail::device_selector(device_selector), async_handler{}, prop_list) {}
 
     template<typename DeviceSelector>
     explicit queue(
-        const DeviceSelector &device_selector, const async_handler &async_handler, const property_list &prop_list = {});
+        const DeviceSelector &device_selector, const async_handler &async_handler, const property_list &prop_list = {})
+        : queue(internal, detail::device_selector(device_selector), async_handler, prop_list) {}
 
     explicit queue(const device &sycl_device, const property_list &prop_list = {});
 
@@ -90,14 +84,10 @@ class queue final : public detail::reference_type<queue, detail::queue_state>,
     bool is_in_order() const { return has_property<property::queue::in_order>(); }
 
     template<typename Param>
-    typename Param::return_type get_info() const {
-        return {};
-    }
+    typename Param::return_type get_info() const;
 
     template<typename Param>
-    typename Param::return_type get_backend_info() const {
-        return {};
-    }
+    typename Param::return_type get_backend_info() const;
 
     template<typename T>
     event submit(T cgf) {
@@ -292,6 +282,9 @@ class queue final : public detail::reference_type<queue, detail::queue_state>,
 
     // Explicit copy functions
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations" // access::placeholder
+
     template<typename SrcT, int SrcDims, access_mode SrcMode, target SrcTgt, access::placeholder IsPlaceholder,
         typename DestT>
     event copy(accessor<SrcT, SrcDims, SrcMode, SrcTgt, IsPlaceholder> src, std::shared_ptr<DestT> dest);
@@ -318,6 +311,21 @@ class queue final : public detail::reference_type<queue, detail::queue_state>,
 
     template<typename T, int Dims, access_mode Mode, target Tgt, access::placeholder IsPlaceholder>
     event fill(accessor<T, Dims, Mode, Tgt, IsPlaceholder> dest, const T &src);
+
+#pragma GCC diagnostic pop
+
+  private:
+    struct internal_t {
+    } inline static constexpr internal{};
+
+    explicit queue(internal_t /* tag */, const detail::device_selector &selector, const async_handler &async_handler,
+        const property_list &prop_list);
+
+    explicit queue(internal_t /* tag */, const device &sycl_device,
+        const async_handler &async_handler, const property_list &prop_list);
+
+    explicit queue(internal_t /* tag */, const context &sycl_context, const device &sycl_device,
+        const async_handler &async_handler, const property_list &prop_list);
 };
 
 } // namespace simsycl::sycl

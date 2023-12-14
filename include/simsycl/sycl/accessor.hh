@@ -16,6 +16,10 @@
 #include <limits>
 
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations" // access::placeholder, access_mode::atomic
+
+
 namespace simsycl::detail {
 
 template<simsycl::sycl::access_mode AccessMode, simsycl::sycl::target Target>
@@ -311,11 +315,8 @@ class accessor : public simsycl::detail::property_interface {
         return m_buffer[detail::get_linear_index(m_access_range, index)];
     }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
     [[deprecated]] atomic<DataT, access::address_space::global_space> operator[](id<Dimensions> index) const
         requires(AccessMode == access_mode::atomic);
-#pragma GCC diagnostic pop
 
     decltype(auto) operator[](size_t index) const
         requires(Dimensions > 1)
@@ -535,11 +536,8 @@ class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> : public simsy
         return *this;
     }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
     [[deprecated]] operator atomic<DataT, access::address_space::global_space>() const
         requires(AccessMode == access_mode::atomic);
-#pragma GCC diagnostic pop
 
     std::add_pointer_t<value_type> get_pointer() const noexcept {
         SIMSYCL_CHECK(m_buffer != nullptr);
@@ -932,6 +930,9 @@ class host_accessor<DataT, 0, AccessMode> : public simsycl::detail::property_int
 
     bool empty() const noexcept { return false; }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations" // access_mode::atomic
+
     operator reference() const
         requires(AccessMode != access_mode::atomic)
     {
@@ -954,6 +955,8 @@ class host_accessor<DataT, 0, AccessMode> : public simsycl::detail::property_int
         *m_buffer = std::move(other);
         return *this;
     }
+
+#pragma GCC diagnostic pop
 
     std::add_pointer_t<value_type> get_pointer() const noexcept {
         SIMSYCL_CHECK(m_buffer != nullptr);
@@ -981,5 +984,7 @@ class host_accessor<DataT, 0, AccessMode> : public simsycl::detail::property_int
 
     DataT *m_buffer = nullptr;
 };
+
+#pragma GCC diagnostic pop
 
 } // namespace simsycl::sycl

@@ -19,6 +19,19 @@ struct std::hash<simsycl::detail::reference_type<Derived, State>> {
 namespace simsycl::detail {
 
 template<typename Derived, typename State>
+class weak_ref {
+  public:
+    weak_ref() = default;
+
+    weak_ref(std::weak_ptr<State> &&state) : m_state(std::move(state)) {}
+
+    Derived lock() const { return Derived(m_state.lock()); }
+
+  private:
+    std::weak_ptr<State> m_state;
+};
+
+template<typename Derived, typename State>
 class reference_type {
   public:
     friend bool operator==(const Derived &lhs, const Derived &rhs) { return lhs.m_state.get() == rhs.m_state.get(); }
@@ -28,6 +41,10 @@ class reference_type {
     using state_type = State;
 
     reference_type() = default;
+
+    reference_type(std::shared_ptr<state_type> &&state) : m_state(std::move(state)) {
+        SIMSYCL_CHECK(m_state != nullptr);
+    }
 
     template<typename... CtorParams>
     explicit reference_type(std::in_place_t /* tag */, CtorParams &&...ctor_args)
@@ -45,8 +62,17 @@ class reference_type {
         return *m_state;
     }
 
+    detail::weak_ref<Derived, State> weak_ref() {
+        SIMSYCL_CHECK(m_state != nullptr);
+        return detail::weak_ref<Derived, State>(std::weak_ptr<state_type>(m_state));
+    }
+
   private:
     friend struct std::hash<reference_type<Derived, State>>;
+
+    template<typename, typename>
+    friend class weak_ref;
+
     std::shared_ptr<state_type> m_state;
 };
 

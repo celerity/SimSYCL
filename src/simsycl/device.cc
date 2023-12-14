@@ -7,7 +7,18 @@ namespace simsycl::detail {
 
 struct device_state {
     device_config config;
+    weak_ref<sycl::platform, platform_state> platform;
 };
+
+int default_selector::operator()(const sycl::device &device) const {
+    return device.is_gpu() || device.is_accelerator() ? 1 : 0;
+}
+
+int cpu_selector::operator()(const sycl::device &device) const { return device.is_cpu() ? 0 : -1; }
+
+int gpu_selector ::operator()(const sycl::device &device) const { return device.is_gpu() ? 0 : -1; }
+
+int accelerator_selector::operator()(const sycl::device &device) const { return device.is_accelerator() ? 0 : -1; }
 
 } // namespace simsycl::detail
 
@@ -17,8 +28,7 @@ device::device(detail::device_state state) : reference_type(std::in_place, std::
 
 device::device() : device(default_selector_v) {}
 
-template<typename DeviceSelector>
-device::device(const DeviceSelector &device_selector) : device(detail::select_device(device_selector)) {}
+device::device(const detail::device_selector &device_selector) : device(detail::select_device(device_selector)) {}
 
 template<>
 info::device_type device::get_info<info::device::device_type>() const {
@@ -365,7 +375,7 @@ std::vector<sycl::kernel_id> device::get_info<info::device::built_in_kernel_ids>
 
 template<>
 sycl::platform device::get_info<info::device::platform>() const {
-    return state().config.platform;
+    return state().platform.lock();
 }
 
 template<>
@@ -423,7 +433,7 @@ bool device::get_info<info::device::preferred_interop_user_sync>() const {
 
 template<>
 sycl::device device::get_info<info::device::parent_device>() const {
-    return state().config.parent_device;
+    return state().config.parent_device.value();
 }
 
 template<>
@@ -463,6 +473,7 @@ bool device::has(aspect asp) const {
 }
 
 std::vector<device> device::get_devices(info::device_type type) {
+    auto &system = get_system();
     std::vector<device> result;
     std::copy_if(system.devices.begin(), system.devices.end(), std::back_inserter(result),
         [type](const device &dev) { return dev.get_info<info::device::device_type>() == type; });
@@ -477,7 +488,7 @@ namespace simsycl {
 sycl::device create_device(sycl::platform &platform, const device_config &config) {
     detail::device_state state;
     state.config = config;
-    state.config.platform = platform;
+    state.platform = platform.weak_ref();
     sycl::device device(state);
     platform.add_device(device);
     return device;

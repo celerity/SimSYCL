@@ -207,7 +207,11 @@ void parallel_for(sycl::nd_range<Dimensions> execution_range, const std::vector<
 
 } // namespace simsycl::detail
 
+
 namespace simsycl::sycl {
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations" // placeholder
 
 class handler {
   public:
@@ -299,7 +303,7 @@ class handler {
     void mem_advise(void * /* ptr */, size_t /* num_bytes */, int /* advice */) {}
 
     //------ Explicit memory operation APIs
-    //
+
     template<typename SrcT, int SrcDim, access_mode SrcMode, target SrcTgt, access::placeholder IsPlaceholder,
         typename DestT>
     void copy(accessor<SrcT, SrcDim, SrcMode, SrcTgt, IsPlaceholder> src, std::shared_ptr<DestT> dest);
@@ -327,6 +331,8 @@ class handler {
     template<typename T, int Dim, access_mode Mode, target Tgt, access::placeholder IsPlaceholder>
     void fill(accessor<T, Dim, Mode, Tgt, IsPlaceholder> dest, const T &src);
 
+#pragma GCC diagnostic pop
+
     void use_kernel_bundle(const kernel_bundle<bundle_state::executable> &exec_bundle);
 
     template<auto &SpecName>
@@ -343,6 +349,8 @@ class handler {
 
     handler() = default;
 };
+
+#pragma GCC diagnostic pop
 
 } // namespace simsycl::sycl
 

@@ -16,10 +16,15 @@ struct system_config;
 
 namespace simsycl::sycl {
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations" // access::placeholder
+
 template<typename DataT, int Dimensions = 1,
     access_mode AccessMode = (std::is_const_v<DataT> ? access_mode::read : access_mode::read_write),
     target AccessTarget = target::device, access::placeholder IsPlaceholder = access::placeholder::false_t>
 class accessor;
+
+#pragma GCC diagnostic pop
 
 template<typename T, access::address_space AddressSpace = access::address_space::global_space>
 class atomic;
@@ -116,6 +121,8 @@ struct nd_item_impl;
 struct group_impl;
 struct sub_group_impl;
 
+using device_selector = std::function<int(const sycl::device &)>;
+
 sycl::sub_group make_sub_group(
     const sycl::id<1> &, const sycl::range<1> &, const sycl::id<1> &, const sycl::range<1> &, sub_group_impl *);
 
@@ -133,7 +140,5 @@ void **require_local_memory(sycl::handler &cgh, size_t size, size_t align);
 struct execution_status;
 
 sycl::event make_event(const execution_status &status);
-
-void setup();
 
 } // namespace simsycl::detail

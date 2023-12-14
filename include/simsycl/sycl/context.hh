@@ -6,6 +6,8 @@
 
 #include "../detail/reference_type.hh"
 
+#include <vector>
+
 
 namespace simsycl::detail {
 
@@ -18,7 +20,7 @@ namespace simsycl::sycl {
 class context final : public detail::reference_type<context, detail::context_state>, public detail::property_interface {
   private:
     using reference_type = detail::reference_type<context, detail::context_state>;
-    using property_compatibilty
+    using property_compatibility
         = detail::property_compatibility_with<context /* apparently no compatible properties? */>;
 
   public:
@@ -35,21 +37,23 @@ class context final : public detail::reference_type<context, detail::context_sta
     explicit context(
         const std::vector<device> &device_list, async_handler async_handler, const property_list &prop_list = {});
 
-    backend get_backend() const noexcept;
+    backend get_backend() const noexcept { return backend::simsycl; }
 
     platform get_platform() const;
 
     std::vector<device> get_devices() const;
 
     template<typename Param>
-    typename Param::return_type get_info() const {
-        return {};
-    }
+    typename Param::return_type get_info() const;
 
     template<typename Param>
-    typename Param::return_type get_backend_info() const {
-        return {};
-    }
+    typename Param::return_type get_backend_info() const;
+
+  private:
+    struct internal_t {
+    } inline static constexpr internal{};
+
+    explicit context(internal_t, const std::vector<device> &devices, const async_handler &async_handler, const property_list &prop_list);
 };
 
 } // namespace simsycl::sycl

@@ -89,7 +89,7 @@ class group {
         SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(flexible_range, func);
     }
 
-    template<access::mode AccessMode = access_mode::read_write>
+    template<access_mode AccessMode = access_mode::read_write>
     void mem_fence(typename std::enable_if_t<AccessMode == access_mode::read || AccessMode == access_mode::write
                            || AccessMode == access_mode::read_write,
                        access::fence_space>

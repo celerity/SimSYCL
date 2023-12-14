@@ -6,6 +6,7 @@
 
 #include "../detail/reference_type.hh"
 
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -35,7 +36,7 @@ class platform final : public detail::reference_type<platform, detail::platform_
     platform();
 
     template<typename DeviceSelector>
-    explicit platform(const DeviceSelector &device_selector);
+    explicit platform(const DeviceSelector &device_selector) : platform(detail::device_selector(device_selector)) {}
 
     backend get_backend() const noexcept { return backend::simsycl; }
 
@@ -54,10 +55,15 @@ class platform final : public detail::reference_type<platform, detail::platform_
     static std::vector<platform> get_platforms();
 
   private:
+    template<typename, typename>
+    friend class detail::weak_ref;
+
     friend sycl::platform simsycl::create_platform(const platform_config &config);
     friend device simsycl::create_device(platform &platform, const device_config &config);
 
     platform(detail::platform_state state);
+    platform(const detail::device_selector &selector);
+    platform(std::shared_ptr<detail::platform_state> &&state);
 
     void add_device(const device &dev);
 };

@@ -86,12 +86,15 @@ class nd_item {
 
     size_t get_local_range(int dimension) const { return m_local_item.get_range(dimension); }
 
-    [[deprecated("offsets are deprecated in SYCL 2020")]] id<Dimensions> get_offset() const {
-        return m_global_item.get_offset();
-    }
-
     nd_range<Dimensions> get_nd_range() const {
         return nd_range<Dimensions>(get_global_range(), get_local_range(), m_global_item.get_offset());
+    }
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
+    [[deprecated("offsets are deprecated in SYCL 2020")]] id<Dimensions> get_offset() const {
+        return m_global_item.get_offset();
     }
 
     [[deprecated("use sycl::group_barrier() free function instead")]] void barrier(
@@ -110,25 +113,23 @@ class nd_item {
         SIMSYCL_NOT_IMPLEMENTED(access_space);
     }
 
-    // Deprecated in SYCL 2020.
     template<typename DataT>
     [[deprecated]] device_event async_work_group_copy(
         local_ptr<DataT> dest, global_ptr<DataT> src, size_t num_elements) const;
 
-    // Deprecated in SYCL 2020.
     template<typename DataT>
     [[deprecated]] device_event async_work_group_copy(
         global_ptr<DataT> dest, local_ptr<DataT> src, size_t num_elements) const;
 
-    // Deprecated in SYCL 2020.
     template<typename DataT>
     [[deprecated]] device_event async_work_group_copy(
         local_ptr<DataT> dest, global_ptr<DataT> src, size_t num_elements, size_t src_stride) const;
 
-    // Deprecated in SYCL 2020.
     template<typename DataT>
     [[deprecated]] device_event async_work_group_copy(
         global_ptr<DataT> dest, local_ptr<DataT> src, size_t num_elements, size_t dest_stride) const;
+
+        #pragma GCC diagnostic pop
 
     template<typename DestDataT, typename SrcDataT>
         requires(std::is_same_v<DestDataT, std::remove_const_t<SrcDataT>>)
