@@ -42,6 +42,7 @@ add_library(simsycl
     include/CL/sycl.hpp
     include/simsycl/sycl.hh
     include/simsycl/detail/allocation.hh
+    include/simsycl/detail/async_handler.hh
     include/simsycl/detail/check.hh
     include/simsycl/detail/config.hh
     include/simsycl/detail/coordinate.hh
@@ -53,6 +54,7 @@ add_library(simsycl
     include/simsycl/sycl/atomic_ref.hh
     include/simsycl/sycl/backend.hh
     include/simsycl/sycl/buffer.hh
+    include/simsycl/sycl/bundle.hh
     include/simsycl/sycl/concepts.hh
     include/simsycl/sycl/context.hh
     include/simsycl/sycl/device.hh
@@ -82,8 +84,14 @@ add_library(simsycl
     include/simsycl/sycl/type_traits.hh
     include/simsycl/sycl/usm.hh
     include/simsycl/sycl/vec.hh
+    include/simsycl/system.hh
+    include/simsycl/templates.hh
     "${CMAKE_CURRENT_BINARY_DIR}/include/simsycl/config.hh"
-    src/simsycl/simsycl.cc
+    src/simsycl/context.cc
+    src/simsycl/device.cc
+    src/simsycl/platform.cc
+    src/simsycl/system.cc
+    src/simsycl/templates.cc
 )
 target_link_libraries(simsycl Boost::context)
 target_include_directories(simsycl PUBLIC

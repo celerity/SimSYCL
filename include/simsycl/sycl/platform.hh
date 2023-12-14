@@ -9,45 +9,43 @@
 #include <string>
 #include <vector>
 
+namespace simsycl {
+
+// forward
+struct platform_config;
+
+sycl::platform create_platform(const platform_config &config);
+sycl::device create_device(sycl::platform &platform, const device_config &config);
+
+} // namespace simsycl
 
 namespace simsycl::detail {
 
-struct platform_state {};
-
-// forward
-void setup();
-
-template<typename DeviceSelector>
-sycl::device select_device(const DeviceSelector &selector);
+struct platform_state;
 
 } // namespace simsycl::detail
 
 namespace simsycl::sycl {
 
-class platform : public detail::reference_type<platform, detail::platform_state> {
+class platform final : public detail::reference_type<platform, detail::platform_state> {
   private:
     using reference_type = detail::reference_type<platform, detail::platform_state>;
 
   public:
-    platform() /* TODO : platform(default_selector_v) */ {}
+    platform();
 
     template<typename DeviceSelector>
-    explicit platform(const DeviceSelector &device_selector)
-        : platform(select_device(device_selector).get_platform()) {}
+    explicit platform(const DeviceSelector &device_selector);
 
-    backend get_backend() const noexcept;
+    backend get_backend() const noexcept { return backend::simsycl; }
 
-    std::vector<device> get_devices(info::device_type = info::device_type::all) const;
-
-    template<typename Param>
-    typename Param::return_type get_info() const {
-        return {};
-    }
+    std::vector<device> get_devices(info::device_type type = info::device_type::all) const;
 
     template<typename Param>
-    typename Param::return_type get_backend_info() const {
-        return {};
-    }
+    typename Param::return_type get_info() const;
+
+    template<typename Param>
+    typename Param::return_type get_backend_info() const;
 
     bool has(aspect asp) const;
 
@@ -56,9 +54,12 @@ class platform : public detail::reference_type<platform, detail::platform_state>
     static std::vector<platform> get_platforms();
 
   private:
-    friend void detail::setup();
+    friend sycl::platform simsycl::create_platform(const platform_config &config);
+    friend device simsycl::create_device(platform &platform, const device_config &config);
 
-    platform(detail::platform_state state) : reference_type(std::in_place, std::move(state)) {}
+    platform(detail::platform_state state);
+
+    void add_device(const device &dev);
 };
 
 } // namespace simsycl::sycl

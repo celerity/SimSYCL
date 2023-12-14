@@ -43,7 +43,8 @@ struct queue_state {
 
 namespace simsycl::sycl {
 
-class queue : public detail::reference_type<queue, detail::queue_state>, public simsycl::detail::property_interface {
+class queue final : public detail::reference_type<queue, detail::queue_state>,
+                    public simsycl::detail::property_interface {
   private:
     using reference_type = detail::reference_type<queue, detail::queue_state>;
     using property_compatibility = simsycl::detail::property_compatibility_with<queue,

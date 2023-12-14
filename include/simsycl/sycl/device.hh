@@ -3,7 +3,6 @@
 #include "enums.hh"
 #include "forward.hh"
 #include "info.hh"
-#include "platform.hh"
 
 #include "../detail/reference_type.hh"
 
@@ -11,13 +10,15 @@
 #include <vector>
 
 
+namespace simsycl {
+
+struct device_config;
+
+sycl::device create_device(sycl::platform &platform, const device_config &config);
+
+}
+
 namespace simsycl::detail {
-
-// forward
-void setup();
-
-template<typename DeviceSelector>
-sycl::device select_device(const DeviceSelector &selector);
 
 struct default_selector {
     int operator()(const sycl::device & /* TODO */) const { return 0; }
@@ -26,9 +27,7 @@ struct cpu_selector : public default_selector {};         // TODO
 struct gpu_selector : public default_selector {};         // TODO
 struct accelerator_selector : public default_selector {}; // TODO
 
-struct device_state {
-    sycl::platform platform;
-};
+struct device_state;
 
 } // namespace simsycl::detail
 
@@ -55,33 +54,29 @@ auto aspect_selector(AspectList... aspect_list);
 template<aspect... AspectList>
 auto aspect_selector();
 
-class device : public detail::reference_type<device, detail::device_state> {
+class device final : public detail::reference_type<device, detail::device_state> {
   private:
     using reference_type = detail::reference_type<device, detail::device_state>;
 
   public:
-    device() : device(default_selector_v) {}
+    device();
 
     template<typename DeviceSelector>
-    explicit device(const DeviceSelector &device_selector) : device(select_device(device_selector)) {}
+    explicit device(const DeviceSelector &device_selector);
 
-    bool is_cpu() const;
+    bool is_cpu() const { return has(aspect::cpu); }
 
-    bool is_gpu() const;
+    bool is_gpu() const { return has(aspect::gpu); }
 
-    bool is_accelerator() const;
+    bool is_accelerator() const { return has(aspect::accelerator); }
 
-    platform get_platform() const { return state().platform; }
-
-    template<typename Param>
-    typename Param::return_type get_info() const {
-        return {};
-    }
+    platform get_platform() const;
 
     template<typename Param>
-    typename Param::return_type get_backend_info() const {
-        return {};
-    }
+    typename Param::return_type get_info() const;
+
+    template<typename Param>
+    typename Param::return_type get_backend_info() const;
 
     bool has(aspect asp) const;
 
@@ -102,9 +97,9 @@ class device : public detail::reference_type<device, detail::device_state> {
     static std::vector<device> get_devices(info::device_type device_type = info::device_type::all);
 
   private:
-    friend void detail::setup();
+    friend device simsycl::create_device(sycl::platform &platform, const device_config &config);
 
-    device(detail::device_state state) : reference_type(std::in_place, std::move(state)) {}
+    device(detail::device_state state);
 };
 
 template<aspect Aspect>

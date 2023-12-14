@@ -45,7 +45,7 @@ enum class aspect {
     usm_system_allocations
 };
 
-enum class backend {};
+enum class backend { simsycl };
 
 enum class bundle_state { input, object, executable };
 

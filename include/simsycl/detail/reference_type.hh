@@ -1,5 +1,7 @@
 #pragma once
 
+#include "check.hh"
+
 #include <memory>
 
 namespace simsycl::detail {

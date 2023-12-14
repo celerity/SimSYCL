@@ -1,6 +1,6 @@
 #pragma once
 
-#include "exception.hh"
+#include "async_handler.hh"
 #include "forward.hh"
 #include "property.hh"
 
@@ -9,13 +9,13 @@
 
 namespace simsycl::detail {
 
-struct context_state {};
+struct context_state;
 
 } // namespace simsycl::detail
 
 namespace simsycl::sycl {
 
-class context : public detail::reference_type<context, detail::context_state>, public detail::property_interface {
+class context final : public detail::reference_type<context, detail::context_state>, public detail::property_interface {
   private:
     using reference_type = detail::reference_type<context, detail::context_state>;
     using property_compatibilty

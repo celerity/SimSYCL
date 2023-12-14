@@ -3,7 +3,16 @@
 #include "allocator.hh"
 #include "enums.hh"
 
+#include <functional>
 #include <type_traits>
+
+namespace simsycl {
+
+struct platform_config;
+struct device_config;
+struct system_config;
+
+} // namespace simsycl
 
 namespace simsycl::sycl {
 
@@ -75,6 +84,8 @@ class sub_group;
 
 class platform;
 
+class property_list;
+
 class queue;
 
 template<int Dimensions = 1>
@@ -92,7 +103,7 @@ class unsampled_image_accessor;
 template<int Dimensions = 1, typename AllocatorT = image_allocator>
 class unsampled_image;
 
-template <typename DataT, int NumElements>
+template<typename DataT, int NumElements>
 class vec;
 
 } // namespace simsycl::sycl
@@ -122,5 +133,7 @@ void **require_local_memory(sycl::handler &cgh, size_t size, size_t align);
 struct execution_status;
 
 sycl::event make_event(const execution_status &status);
+
+void setup();
 
 } // namespace simsycl::detail

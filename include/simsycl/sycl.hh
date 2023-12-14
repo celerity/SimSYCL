@@ -7,6 +7,7 @@
 #include "sycl/atomic_ref.hh"
 #include "sycl/backend.hh"
 #include "sycl/buffer.hh"
+#include "sycl/bundle.hh"
 #include "sycl/context.hh"
 #include "sycl/device.hh"
 #include "sycl/enums.hh"
