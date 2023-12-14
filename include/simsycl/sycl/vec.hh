@@ -14,13 +14,13 @@
 
 namespace simsycl::detail {
 
-template <typename DataT, int NumElements>
+template<typename DataT, int NumElements>
 constexpr size_t vec_alignment_v = std::min(size_t{64}, sizeof(DataT) * NumElements);
 
-template <typename DataT>
+template<typename DataT>
 constexpr size_t vec_alignment_v<DataT, 3> = std::min(size_t{64}, sizeof(DataT) * 4);
 
-template <typename DataT, int... Indices>
+template<typename DataT, int... Indices>
 class swizzled_vec {
     static_assert(!std::is_volatile_v<DataT>);
     static_assert(sizeof...(Indices) > 0);
@@ -46,7 +46,7 @@ class swizzled_vec {
         return *this;
     }
 
-    template <int... OtherIndices>
+    template<int... OtherIndices>
     swizzled_vec &operator=(const swizzled_vec<DataT, OtherIndices...> &rhs)
         requires(sizeof...(Indices) == sizeof...(OtherIndices))
     // TODO requires(no-repeat-indices)
@@ -70,19 +70,19 @@ class swizzled_vec {
     // TODO all the operatorOP from vec
 
   private:
-    template <typename T, int NumElements>
+    template<typename T, int NumElements>
     friend class sycl::vec;
 
-    template <typename T, int... Is>
+    template<typename T, int... Is>
     friend class swizzled_vec;
 
     inline static constexpr int indices[] = {Indices...};
 
-    template <int NumElements>
+    template<int NumElements>
         requires(!std::is_const_v<DataT> && NumElements > detail::max(Indices...))
     swizzled_vec(sycl::vec<DataT, NumElements> &vec) : m_elems(vec.m_elems) {}
 
-    template <int NumElements>
+    template<int NumElements>
         requires(std::is_const_v<DataT> && NumElements > detail::max(Indices...))
     swizzled_vec(const sycl::vec<std::remove_const_t<DataT>, NumElements> &vec) : m_elems(vec.m_elems) {}
 
@@ -120,7 +120,7 @@ struct elem {
     static constexpr int sF = 15;
 };
 
-template <typename DataT, int NumElements>
+template<typename DataT, int NumElements>
 class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
     static_assert(!std::is_const_v<DataT> && !std::is_volatile_v<DataT>);
 
@@ -130,14 +130,16 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
 
     using vector_t = vec; // __SYCL_DEVICE_ONLY__
 
-    vec();
+    vec() = default;
 
     explicit constexpr vec(const DataT &arg) {
         for(int i = 0; i < NumElements; ++i) { m_elems[i] = arg; }
     }
 
-    template <typename... ArgTN>
-    constexpr vec(const ArgTN &...args);
+    template<typename... ArgTN>
+    constexpr vec(const ArgTN &...args) {
+        init_with_offset<0>(args...);
+    }
 
     vec &operator=(const vec &rhs) = default;
 
@@ -160,20 +162,25 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
 
     [[deprecated]] size_t get_count() const { return size(); }
 
-    template <typename ConvertT, rounding_mode RoundingMode = rounding_mode::automatic>
-    vec<ConvertT, NumElements> convert() const;
+    template<typename ConvertT, rounding_mode RoundingMode = rounding_mode::automatic>
+    vec<ConvertT, NumElements> convert() const {
+        static_assert(RoundingMode == rounding_mode::automatic, "other rounding modes not yet implemented");
+        vec<ConvertT, NumElements> result;
+        for(int i = 0; i < NumElements; ++i) { result[i] = m_elems[i]; }
+        return result;
+    }
 
-    template <typename AsT>
+    template<typename AsT>
     AsT as() const;
 
 
-    template <int... SwizzleIndexes>
+    template<int... SwizzleIndexes>
         requires(NumElements > detail::max(SwizzleIndexes...))
     auto swizzle() {
         return detail::swizzled_vec<DataT, SwizzleIndexes...>(*this);
     }
 
-    template <int... SwizzleIndexes>
+    template<int... SwizzleIndexes>
         requires(NumElements > detail::max(SwizzleIndexes...))
     auto swizzle() const {
         return detail::swizzled_vec<const DataT, SwizzleIndexes...>(*this);
@@ -243,10 +250,10 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
 #endif
 
     // load and store member functions
-    template <access::address_space AddressSpace, access::decorated IsDecorated>
+    template<access::address_space AddressSpace, access::decorated IsDecorated>
     void load(size_t offset, multi_ptr<const DataT, AddressSpace, IsDecorated> ptr);
 
-    template <access::address_space AddressSpace, access::decorated IsDecorated>
+    template<access::address_space AddressSpace, access::decorated IsDecorated>
     void store(size_t offset, multi_ptr<DataT, AddressSpace, IsDecorated> ptr) const;
 
     DataT &operator[](int index) {
@@ -386,8 +393,27 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
 #undef SIMSYCL_DETAIL_DEFINE_VEC_COMPARISON_OPERATOR
 
   private:
-    template <typename T, int... Indices>
+    template<typename T, int... Indices>
     friend class detail::swizzled_vec;
+
+    template<int Offset, typename... ArgTN>
+        requires(Offset + 1 <= NumElements)
+    constexpr void init_with_offset(const DataT &arg, const ArgTN &...args) {
+        m_elems[Offset] = arg;
+        init_with_offset<Offset + 1>(args...);
+    }
+
+    template<int Offset, int ArgNumElements, typename... ArgTN>
+        requires(Offset + ArgNumElements <= NumElements)
+    constexpr void init_with_offset(const vec<DataT, ArgNumElements> &arg, const ArgTN &...args) {
+        for(int i = 0; i < ArgNumElements; ++i) { m_elems[Offset + i] = arg[i]; }
+        m_elems[Offset] = arg;
+        init_with_offset<Offset + ArgNumElements>(args...);
+    }
+
+    template<int Offset>
+        requires(Offset == NumElements)
+    constexpr void init_with_offset() {}
 
     constexpr static int num_storage_elems = NumElements == 3 ? 4 : NumElements;
 
@@ -396,7 +422,7 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
 
 
 // Deduction guides
-template <class T, class... U>
+template<class T, class... U>
     requires(std::is_same_v<T, U> && ...)
 vec(T, U...) -> vec<T, sizeof...(U) + 1>;
 

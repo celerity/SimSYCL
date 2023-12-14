@@ -13,7 +13,7 @@ class id : public detail::coordinate<id<Dimensions>, Dimensions> {
   public:
     id() = default;
 
-    template<typename... Values>
+    template<std::convertible_to<size_t>... Values>
         requires(sizeof...(Values) + 1 == Dimensions)
     id(const size_t dim_0, const Values... dim_n) : coordinate(dim_0, dim_n...) {}
 

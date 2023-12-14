@@ -235,8 +235,9 @@ T select_from_group(G g, T x, typename G::id_type remote_local_id) {
             .reached = [&](detail::group_select_data<T> &per_op) { per_op.values[g.get_local_linear_id()] = x; },
             .complete =
                 [&](detail::group_select_data<T> &per_op) {
-                    if(remote_local_id >= per_op.values.size()) { return detail::unspecified<T>; }
-                    return per_op.values[remote_local_id];
+                    const auto remote_local_linear_id = detail::get_linear_index(g.get_local_range(), remote_local_id);
+                    if(remote_local_linear_id >= per_op.values.size()) { return detail::unspecified<T>; }
+                    return per_op.values[remote_local_linear_id];
                 }});
 }
 

@@ -196,29 +196,41 @@ class buffer final
     AllocatorT get_allocator() const { return state().allocator; }
 
     template<access_mode Mode = access_mode::read_write, target Targ = target::device>
-    accessor<T, Dimensions, Mode, Targ> get_access(handler &command_group_handler);
+    accessor<T, Dimensions, Mode, Targ> get_access(handler &command_group_handler) {
+        return accessor<T, Dimensions, Mode, Targ>(*this, command_group_handler);
+    }
 
     template<access_mode Mode = access_mode::read_write, target Targ = target::device>
     accessor<T, Dimensions, Mode, Targ> get_access(
-        handler &command_group_handler, range<Dimensions> access_range, id<Dimensions> access_offset = {});
+        handler &command_group_handler, range<Dimensions> access_range, id<Dimensions> access_offset = {}) {
+        return accessor<T, Dimensions, Mode, Targ>(*this, command_group_handler, access_range, access_offset);
+    }
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
     template<access_mode Mode>
-    [[deprecated]] accessor<T, Dimensions, Mode, target::host_buffer> get_access();
+    [[deprecated]] accessor<T, Dimensions, Mode, target::host_buffer> get_access() {
+        accessor<T, Dimensions, Mode, target::host_buffer>(*this);
+    }
 
     template<access_mode Mode>
     [[deprecated]] accessor<T, Dimensions, Mode, target::host_buffer> get_access(
-        range<Dimensions> access_range, id<Dimensions> access_offset = {});
+        range<Dimensions> access_range, id<Dimensions> access_offset = {}) {
+        accessor<T, Dimensions, Mode, target::host_buffer>(*this, access_range, access_offset);
+    }
 
 #pragma GCC diagnostic pop
 
     template<typename... Ts>
-    auto get_access(Ts...);
+    auto get_access(Ts... args) {
+        return accessor(*this, args...);
+    }
 
     template<typename... Ts>
-    auto get_host_access(Ts...);
+    auto get_host_access(Ts... args) {
+        return host_accessor(*this, args...);
+    }
 
     template<typename Destination = std::nullptr_t>
     void set_final_data(Destination final_data = nullptr);

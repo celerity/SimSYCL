@@ -190,7 +190,7 @@ auto reduction(buffer<T, Dimensions, AllocatorT> &vars, handler &cgh, const T &i
 
 template<typename T, typename BinaryOperation>
 auto reduction(T *var, const T &identity, BinaryOperation combiner, const property_list &prop_list = {}) {
-    detail::begin_reduction(var, combiner, identity, prop_list);
+    detail::begin_reduction(var, combiner, &identity, prop_list);
     return detail::reducer<T, BinaryOperation, 0>(var, combiner);
 }
 
