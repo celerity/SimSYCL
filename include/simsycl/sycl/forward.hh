@@ -3,6 +3,8 @@
 #include "allocator.hh"
 #include "enums.hh"
 
+#include "../detail/preprocessor.hh"
+
 #include <functional>
 #include <type_traits>
 
@@ -16,15 +18,15 @@ struct system_config;
 
 namespace simsycl::sycl {
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations" // access::placeholder
+// access::placeholder
+SIMSYCL_START_IGNORING_DEPRECATIONS
 
 template<typename DataT, int Dimensions = 1,
     access_mode AccessMode = (std::is_const_v<DataT> ? access_mode::read : access_mode::read_write),
     target AccessTarget = target::device, access::placeholder IsPlaceholder = access::placeholder::false_t>
 class accessor;
 
-#pragma GCC diagnostic pop
+SIMSYCL_STOP_IGNORING_DEPRECATIONS
 
 template<typename T, access::address_space AddressSpace = access::address_space::global_space>
 class atomic;

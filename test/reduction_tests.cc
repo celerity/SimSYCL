@@ -46,14 +46,14 @@ TEMPLATE_TEST_CASE(
                 sycl::reduction(&max_var, sycl::maximum<>{}, sycl::property::reduction::initialize_to_identity{}),
                 [=](auto item, auto &plus, auto &mult, auto &bit_and, auto &bit_or, auto &bit_xor, auto &min,
                     auto &max) {
-                    const auto linear_id = TestType::get_linear_id(item);
+                    const int linear_id = static_cast<int>(TestType::get_linear_id(item));
                     plus += linear_id;
                     mult *= 1 + linear_id;
                     bit_and &= 16 + linear_id;
                     bit_or |= linear_id;
                     bit_xor ^= linear_id;
                     min.combine(5.0f - static_cast<float>(linear_id));
-                    max.combine(linear_id);
+                    max.combine(static_cast<float>(linear_id));
                 });
         })
         .wait();

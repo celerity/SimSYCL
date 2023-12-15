@@ -206,8 +206,7 @@ class buffer final
         return accessor<T, Dimensions, Mode, Targ>(*this, command_group_handler, access_range, access_offset);
     }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+    SIMSYCL_START_IGNORING_DEPRECATIONS
 
     template<access_mode Mode>
     [[deprecated]] accessor<T, Dimensions, Mode, target::host_buffer> get_access() {
@@ -220,7 +219,7 @@ class buffer final
         accessor<T, Dimensions, Mode, target::host_buffer>(*this, access_range, access_offset);
     }
 
-#pragma GCC diagnostic pop
+    SIMSYCL_STOP_IGNORING_DEPRECATIONS
 
     template<typename... Ts>
     auto get_access(Ts... args) {

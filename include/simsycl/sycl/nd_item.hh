@@ -90,8 +90,7 @@ class nd_item {
         return nd_range<Dimensions>(get_global_range(), get_local_range(), m_global_item.get_offset());
     }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+    SIMSYCL_START_IGNORING_DEPRECATIONS
 
     [[deprecated("offsets are deprecated in SYCL 2020")]] id<Dimensions> get_offset() const {
         return m_global_item.get_offset();
@@ -129,7 +128,7 @@ class nd_item {
     [[deprecated]] device_event async_work_group_copy(
         global_ptr<DataT> dest, local_ptr<DataT> src, size_t num_elements, size_t dest_stride) const;
 
-        #pragma GCC diagnostic pop
+    SIMSYCL_STOP_IGNORING_DEPRECATIONS
 
     template<typename DestDataT, typename SrcDataT>
         requires(std::is_same_v<DestDataT, std::remove_const_t<SrcDataT>>)

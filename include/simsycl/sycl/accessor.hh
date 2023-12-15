@@ -15,10 +15,8 @@
 #include <iterator>
 #include <limits>
 
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations" // access::placeholder, access_mode::atomic
-
+// access::placeholder, access_mode::atomic
+SIMSYCL_START_IGNORING_DEPRECATIONS
 
 namespace simsycl::detail {
 
@@ -930,9 +928,6 @@ class host_accessor<DataT, 0, AccessMode> : public simsycl::detail::property_int
 
     bool empty() const noexcept { return false; }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations" // access_mode::atomic
-
     operator reference() const
         requires(AccessMode != access_mode::atomic)
     {
@@ -955,8 +950,6 @@ class host_accessor<DataT, 0, AccessMode> : public simsycl::detail::property_int
         *m_buffer = std::move(other);
         return *this;
     }
-
-#pragma GCC diagnostic pop
 
     std::add_pointer_t<value_type> get_pointer() const noexcept {
         SIMSYCL_CHECK(m_buffer != nullptr);
@@ -985,6 +978,6 @@ class host_accessor<DataT, 0, AccessMode> : public simsycl::detail::property_int
     DataT *m_buffer = nullptr;
 };
 
-#pragma GCC diagnostic pop
+SIMSYCL_STOP_IGNORING_DEPRECATIONS
 
 } // namespace simsycl::sycl

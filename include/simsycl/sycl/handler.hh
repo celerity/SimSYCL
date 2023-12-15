@@ -210,8 +210,8 @@ void parallel_for(sycl::nd_range<Dimensions> execution_range, const std::vector<
 
 namespace simsycl::sycl {
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations" // placeholder
+// placeholder
+SIMSYCL_START_IGNORING_DEPRECATIONS
 
 class handler {
   public:
@@ -331,7 +331,7 @@ class handler {
     template<typename T, int Dim, access_mode Mode, target Tgt, access::placeholder IsPlaceholder>
     void fill(accessor<T, Dim, Mode, Tgt, IsPlaceholder> dest, const T &src);
 
-#pragma GCC diagnostic pop
+    SIMSYCL_STOP_IGNORING_DEPRECATIONS
 
     void use_kernel_bundle(const kernel_bundle<bundle_state::executable> &exec_bundle);
 
@@ -349,8 +349,6 @@ class handler {
 
     handler() = default;
 };
-
-#pragma GCC diagnostic pop
 
 } // namespace simsycl::sycl
 

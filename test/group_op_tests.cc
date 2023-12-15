@@ -89,7 +89,7 @@ TEST_CASE("Group broadcasts behave as expected", "[group_op][broadcast]") {
         sycl::queue().submit([&actual](sycl::handler &cgh) {
             cgh.parallel_for(sycl::nd_range<1>{8, 4}, [&actual](sycl::nd_item<1> it) {
                 actual[it.get_global_linear_id()]
-                    = sycl::group_broadcast(it.get_group(), 40 + it.get_global_linear_id(), 2);
+                    = sycl::group_broadcast(it.get_group(), 40 + (int)it.get_global_linear_id(), 2);
 
                 check_group_op_sequence(it.get_group(), {detail::group_operation_id::broadcast});
             });
@@ -111,7 +111,7 @@ TEST_CASE("Group broadcasts behave as expected", "[group_op][broadcast]") {
         sycl::queue().submit([&actual](sycl::handler &cgh) {
             cgh.parallel_for(sycl::nd_range<1>{8, 8}, [&actual](sycl::nd_item<1> it) {
                 actual[it.get_global_linear_id()]
-                    = sycl::group_broadcast(it.get_sub_group(), 40 + it.get_global_linear_id(), 2);
+                    = sycl::group_broadcast(it.get_sub_group(), 40 + (int)it.get_global_linear_id(), 2);
 
                 check_group_op_sequence(it.get_sub_group(), {detail::group_operation_id::broadcast});
             });

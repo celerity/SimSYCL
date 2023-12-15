@@ -23,7 +23,8 @@ function(set_simsycl_target_options target)
     set_target_properties(${target} PROPERTIES CXX_STANDARD 20)
     set_target_properties(${target} PROPERTIES CXX_STANDARD_REQUIRED ON)
     target_compile_options(${target} PRIVATE
-        $<$<CXX_COMPILER_ID:MSVC>:/W4>
+        # 4180 is a false positive in MSVC in group_operation_impl -- "fixing" it actually breaks the code
+        $<$<CXX_COMPILER_ID:MSVC>:/W4 /wd4180>
         $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic $<$<CONFIG:Debug>:-fsanitize=address>>
     )
     target_link_options(${target} PRIVATE

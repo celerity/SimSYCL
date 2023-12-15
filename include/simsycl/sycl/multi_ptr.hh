@@ -24,8 +24,8 @@ struct remove_decoration {
 template<typename T>
 using remove_decoration_t = typename remove_decoration<T>::type;
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations" // target::local, ...
+// target::local, ...
+SIMSYCL_START_IGNORING_DEPRECATIONS
 
 template<typename ElementType, access::address_space Space, access::decorated DecorateAddress>
 class multi_ptr {
@@ -340,6 +340,6 @@ using decorated_local_ptr = multi_ptr<ElementType, access::address_space::local_
 template<typename ElementType>
 using decorated_private_ptr = multi_ptr<ElementType, access::address_space::private_space, access::decorated::yes>;
 
-#pragma GCC diagnostic pop
+SIMSYCL_STOP_IGNORING_DEPRECATIONS
 
 } // namespace simsycl::sycl

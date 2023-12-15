@@ -282,8 +282,8 @@ class queue final : public detail::reference_type<queue, detail::queue_state>,
 
     // Explicit copy functions
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations" // access::placeholder
+    // access::placeholder
+    SIMSYCL_START_IGNORING_DEPRECATIONS
 
     template<typename SrcT, int SrcDims, access_mode SrcMode, target SrcTgt, access::placeholder IsPlaceholder,
         typename DestT>
@@ -312,7 +312,7 @@ class queue final : public detail::reference_type<queue, detail::queue_state>,
     template<typename T, int Dims, access_mode Mode, target Tgt, access::placeholder IsPlaceholder>
     event fill(accessor<T, Dims, Mode, Tgt, IsPlaceholder> dest, const T &src);
 
-#pragma GCC diagnostic pop
+    SIMSYCL_STOP_IGNORING_DEPRECATIONS
 
   private:
     struct internal_t {
@@ -321,8 +321,8 @@ class queue final : public detail::reference_type<queue, detail::queue_state>,
     explicit queue(internal_t /* tag */, const detail::device_selector &selector, const async_handler &async_handler,
         const property_list &prop_list);
 
-    explicit queue(internal_t /* tag */, const device &sycl_device,
-        const async_handler &async_handler, const property_list &prop_list);
+    explicit queue(internal_t /* tag */, const device &sycl_device, const async_handler &async_handler,
+        const property_list &prop_list);
 
     explicit queue(internal_t /* tag */, const context &sycl_context, const device &sycl_device,
         const async_handler &async_handler, const property_list &prop_list);

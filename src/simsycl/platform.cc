@@ -3,7 +3,7 @@
 #include "simsycl/system.hh"
 
 #include <algorithm>
-
+#include <iterator>
 
 namespace simsycl::detail {
 
@@ -47,13 +47,12 @@ std::string platform::get_info<info::platform::name>() const {
     return state().config.name;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+SIMSYCL_START_IGNORING_DEPRECATIONS
 template<>
 std::vector<std::string> platform::get_info<info::platform::extensions>() const {
     return state().config.extensions;
 }
-#pragma GCC diagnostic pop
+SIMSYCL_STOP_IGNORING_DEPRECATIONS
 
 bool platform::has(aspect asp) const {
     return std::all_of(

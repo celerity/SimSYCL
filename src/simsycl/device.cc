@@ -2,6 +2,7 @@
 #include "simsycl/sycl/range.hh"
 #include "simsycl/system.hh"
 
+#include <iterator>
 
 namespace simsycl::detail {
 
@@ -163,13 +164,12 @@ uint64_t device::get_info<info::device::max_mem_alloc_size>() const {
     return state().config.max_mem_alloc_size;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+SIMSYCL_START_IGNORING_DEPRECATIONS
 template<>
 bool device::get_info<info::device::image_support>() const {
     return state().config.image_support;
 }
-#pragma GCC diagnostic pop
+SIMSYCL_STOP_IGNORING_DEPRECATIONS
 
 template<>
 uint32_t device::get_info<info::device::max_read_image_args>() const {
@@ -260,21 +260,19 @@ uint64_t device::get_info<info::device::global_mem_size>() const {
     return state().config.global_mem_size;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+SIMSYCL_START_IGNORING_DEPRECATIONS
+
 template<>
 uint64_t device::get_info<info::device::max_constant_buffer_size>() const {
     return state().config.max_constant_buffer_size;
 }
-#pragma GCC diagnostic pop
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 template<>
 uint32_t device::get_info<info::device::max_constant_args>() const {
     return state().config.max_constant_args;
 }
-#pragma GCC diagnostic pop
+
+SIMSYCL_STOP_IGNORING_DEPRECATIONS
 
 template<>
 info::local_mem_type device::get_info<info::device::local_mem_type>() const {
@@ -331,42 +329,34 @@ bool device::get_info<info::device::is_available>() const {
     return state().config.is_available;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+SIMSYCL_START_IGNORING_DEPRECATIONS
+
 template<>
 bool device::get_info<info::device::is_compiler_available>() const {
     return state().config.is_compiler_available;
 }
-#pragma GCC diagnostic pop
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 template<>
 bool device::get_info<info::device::is_linker_available>() const {
     return state().config.is_linker_available;
 }
-#pragma GCC diagnostic pop
 
 template<>
 std::vector<info::execution_capability> device::get_info<info::device::execution_capabilities>() const {
     return state().config.execution_capabilities;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 template<>
 bool device::get_info<info::device::queue_profiling>() const {
     return state().config.queue_profiling;
 }
-#pragma GCC diagnostic pop
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 template<>
 std::vector<std::string> device::get_info<info::device::built_in_kernels>() const {
     return state().config.built_in_kernels;
 }
-#pragma GCC diagnostic pop
+
+SIMSYCL_STOP_IGNORING_DEPRECATIONS
 
 template<>
 std::vector<sycl::kernel_id> device::get_info<info::device::built_in_kernel_ids>() const {
@@ -413,13 +403,12 @@ std::vector<sycl::aspect> device::get_info<info::device::aspects>() const {
     return state().config.aspects;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+SIMSYCL_START_IGNORING_DEPRECATIONS
 template<>
 std::vector<std::string> device::get_info<info::device::extensions>() const {
     return state().config.extensions;
 }
-#pragma GCC diagnostic pop
+SIMSYCL_STOP_IGNORING_DEPRECATIONS
 
 template<>
 size_t device::get_info<info::device::printf_buffer_size>() const {
