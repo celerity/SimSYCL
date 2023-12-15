@@ -3,13 +3,14 @@
 #include "simsycl/sycl/platform.hh"
 #include "simsycl/templates.hh"
 
+#include <limits>
 
 namespace simsycl::detail {
 
 sycl::device select_device(const device_selector &selector) {
     auto &system = simsycl::get_system();
     SIMSYCL_CHECK(!system.devices.empty());
-    int max_rating = INT_MIN;
+    int max_rating = std::numeric_limits<int>::lowest();
     for(const auto &device : system.devices) {
         if(int rating = selector(device); rating > max_rating) { max_rating = rating; }
     }
@@ -93,8 +94,6 @@ const system_config &get_system() {
     return *detail::system;
 }
 
-void set_system(system_config system) {
-    detail::system = std::move(system);
-}
+void set_system(system_config system) { detail::system = std::move(system); }
 
 } // namespace simsycl
