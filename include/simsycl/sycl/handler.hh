@@ -5,6 +5,7 @@
 #include <memory>
 #include <vector>
 
+#include "accessor.hh"
 #include "enums.hh"
 #include "event.hh"
 #include "forward.hh"
@@ -306,24 +307,42 @@ class handler {
 
     template<typename SrcT, int SrcDim, access_mode SrcMode, target SrcTgt, access::placeholder IsPlaceholder,
         typename DestT>
-    void copy(accessor<SrcT, SrcDim, SrcMode, SrcTgt, IsPlaceholder> src, std::shared_ptr<DestT> dest);
+    void copy(accessor<SrcT, SrcDim, SrcMode, SrcTgt, IsPlaceholder> src, std::shared_ptr<DestT> dest) {
+        copy(src, dest.get());
+    }
 
     template<typename SrcT, typename DestT, int DestDim, access_mode DestMode, target DestTgt,
         access::placeholder IsPlaceholder>
-    void copy(std::shared_ptr<SrcT> src, accessor<DestT, DestDim, DestMode, DestTgt, IsPlaceholder> dest);
+    void copy(std::shared_ptr<SrcT> src, accessor<DestT, DestDim, DestMode, DestTgt, IsPlaceholder> dest) {
+        copy(src.get(), dest);
+    }
 
     template<typename SrcT, int SrcDim, access_mode SrcMode, target SrcTgt, access::placeholder IsPlaceholder,
         typename DestT>
-    void copy(accessor<SrcT, SrcDim, SrcMode, SrcTgt, IsPlaceholder> src, DestT *dest);
+    void copy(accessor<SrcT, SrcDim, SrcMode, SrcTgt, IsPlaceholder> src, DestT *dest) {
+        static_assert(sizeof(SrcT) == sizeof(DestT));
+        detail::memcpy_strided_host(src.get_pointer(), dest, sizeof(SrcT), src.get_buffer_range(), src.get_offset(),
+            src.get_range(), sycl::id<SrcDim>(), src.get_range());
+    }
 
     template<typename SrcT, typename DestT, int DestDim, access_mode DestMode, target DestTgt,
         access::placeholder IsPlaceholder>
-    void copy(const SrcT *src, accessor<DestT, DestDim, DestMode, DestTgt, IsPlaceholder> dest);
+    void copy(const SrcT *src, accessor<DestT, DestDim, DestMode, DestTgt, IsPlaceholder> dest) {
+        static_assert(sizeof(SrcT) == sizeof(DestT));
+        detail::memcpy_strided_host(src, dest.get_pointer(), sizeof(SrcT), dest.get_range(), sycl::id<DestDim>(),
+            dest.get_buffer_range(), dest.get_offset(), dest.get_range());
+    }
 
     template<typename SrcT, int SrcDim, access_mode SrcMode, target SrcTgt, access::placeholder SrcIsPlaceholder,
         typename DestT, int DestDim, access_mode DestMode, target DestTgt, access::placeholder DestIsPlaceholder>
     void copy(accessor<SrcT, SrcDim, SrcMode, SrcTgt, SrcIsPlaceholder> src,
-        accessor<DestT, DestDim, DestMode, DestTgt, DestIsPlaceholder> dest);
+        accessor<DestT, DestDim, DestMode, DestTgt, DestIsPlaceholder> dest) {
+        static_assert(sizeof(SrcT) == sizeof(DestT));
+        static_assert(SrcDim == DestDim, "copy between different accessor dimensions not implemented");
+        assert(src.get_range() == dest.get_range() && "copy between differently-ranged accessors not implemented");
+        detail::memcpy_strided_host(src.get_pointer(), dest.get_pointer(), sizeof(SrcT), src.get_buffer_range(),
+            src.get_offset(), dest.get_buffer_range(), dest.get_offset(), dest.get_range());
+    }
 
     template<typename T, int Dim, access_mode Mode, target Tgt, access::placeholder IsPlaceholder>
     void update_host(accessor<T, Dim, Mode, Tgt, IsPlaceholder> acc);

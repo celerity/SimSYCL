@@ -9,7 +9,6 @@
 #include "range.hh"
 
 #include "../detail/nd_memory.hh"
-#include "../detail/reference_type.hh"
 #include "../detail/subscript.hh"
 
 #include <iterator>
@@ -392,7 +391,7 @@ class accessor : public simsycl::detail::property_interface {
         m_required = true;
     }
 
-    const range<3> &get_buffer_range() const { return m_buffer_range; }
+    const range<Dimensions> &get_buffer_range() const { return m_buffer_range; }
 };
 
 template<typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
