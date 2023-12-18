@@ -183,29 +183,35 @@ auto perform_group_operation(G g, group_operation_id id, const Spec &spec) {
     new_op.num_work_items_participating = 1;
     new_op.per_op_data = spec.init();
 
-    if(ops_reached == group_impl.operations.size()) {
+    const size_t new_op_index = ops_reached;
+
+    if(new_op_index == group_impl.operations.size()) {
         // first item to reach this group op
-        ops_reached++;
         group_impl.operations.push_back(std::move(new_op));
-    } else if(ops_reached < group_impl.operations.size()) {
+    } else {
         // not first item to reach this group op
+        SIMSYCL_CHECK(new_op_index < group_impl.operations.size() && "group operation reached in unexpected order");
+
         auto &op = group_impl.operations[ops_reached];
         SIMSYCL_CHECK(op.id == new_op.id);
         SIMSYCL_CHECK(op.expected_num_work_items == new_op.expected_num_work_items);
         SIMSYCL_CHECK(op.num_work_items_participating < op.expected_num_work_items);
         spec.reached(dynamic_cast<typename Spec::per_op_t &>(*op.per_op_data));
-        ops_reached++;
 
         op.num_work_items_participating++;
-        if(op.num_work_items_participating == op.expected_num_work_items) {
-            // last item to reach this group op
-        }
-    } else {
-        SIMSYCL_CHECK(false && "group operation reached in unexpected order");
     }
-    this_nd_item_impl.barrier();
 
-    return spec.complete(dynamic_cast<typename Spec::per_op_t &>(*group_impl.operations[ops_reached - 1].per_op_data));
+    ops_reached++;
+
+    // wait for all work items to enter this group operation
+    for(;;) {
+        this_nd_item_impl.yield();
+        // we cannot preserve a reference into `operations` across a yield since it might be resized by another item
+        const auto &op = group_impl.operations[new_op_index];
+        if(op.num_work_items_participating == op.expected_num_work_items) break;
+    }
+
+    return spec.complete(dynamic_cast<typename Spec::per_op_t &>(*group_impl.operations[new_op_index].per_op_data));
 }
 
 // more specific helper functions for group operations

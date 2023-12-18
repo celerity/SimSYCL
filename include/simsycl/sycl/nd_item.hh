@@ -14,15 +14,11 @@
 
 namespace simsycl::detail {
 
-enum class nd_item_state { init, running, barrier, exit };
+enum class nd_item_state { init, running, exit };
 
 struct nd_item_impl {
   public:
-    void barrier() {
-        state = nd_item_state::barrier;
-        *continuation = continuation->resume();
-        state = nd_item_state::running;
-    }
+    void yield() { *continuation = continuation->resume(); } // NOLINT(readability-make-member-function-const)
 
     nd_item_state state = nd_item_state::init;
     group_impl *group = nullptr;
@@ -100,7 +96,7 @@ class nd_item {
     [[deprecated("use sycl::group_barrier() free function instead")]] void barrier(
         access::fence_space access_space = access::fence_space::global_and_local) const {
         (void)access_space;
-        m_impl->barrier();
+        m_impl->yield();
     }
 
     template<access::mode AccessMode = access_mode::read_write>
