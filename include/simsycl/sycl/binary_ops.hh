@@ -78,7 +78,7 @@ struct minimum {
 template<>
 struct minimum<void> {
     template<typename T, typename U>
-    decltype(auto) operator()(T &&x, U &&y) const {
+    decltype(auto) operator()(T && x, U && y) const {
         return x < y ? std::forward<T>(x) : std::forward<U>(y);
     }
 };
@@ -97,7 +97,7 @@ struct maximum {
 template<>
 struct maximum<void> {
     template<typename T, typename U>
-    decltype(auto) operator()(T &&x, U &&y) const {
+    decltype(auto) operator()(T && x, U && y) const {
         return x > y ? std::forward<T>(x) : std::forward<U>(y);
     }
 };

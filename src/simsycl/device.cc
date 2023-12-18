@@ -8,7 +8,7 @@ namespace simsycl::detail {
 
 struct device_state {
     device_config config;
-    weak_ref<sycl::platform, platform_state> platform;
+    weak_ref<sycl::platform> platform;
 };
 
 int default_selector::operator()(const sycl::device &device) const {
@@ -24,8 +24,6 @@ int accelerator_selector::operator()(const sycl::device &device) const { return 
 } // namespace simsycl::detail
 
 namespace simsycl::sycl {
-
-device::device(detail::device_state state) : reference_type(std::in_place, std::move(state)) {}
 
 device::device() : device(default_selector_v) {}
 
@@ -365,7 +363,7 @@ std::vector<sycl::kernel_id> device::get_info<info::device::built_in_kernel_ids>
 
 template<>
 sycl::platform device::get_info<info::device::platform>() const {
-    return state().platform.lock();
+    return state().platform.lock().value();
 }
 
 template<>
@@ -462,7 +460,7 @@ bool device::has(aspect asp) const {
 }
 
 std::vector<device> device::get_devices(info::device_type type) {
-    auto &system = get_system();
+    auto &system = get_system_config();
     std::vector<device> result;
     std::copy_if(system.devices.begin(), system.devices.end(), std::back_inserter(result),
         [type](const device &dev) { return dev.get_info<info::device::device_type>() == type; });
@@ -475,10 +473,10 @@ std::vector<device> device::get_devices(info::device_type type) {
 namespace simsycl {
 
 sycl::device create_device(sycl::platform &platform, const device_config &config) {
-    detail::device_state state;
-    state.config = config;
-    state.platform = platform.weak_ref();
-    sycl::device device(state);
+    auto state = std::make_shared<detail::device_state>();
+    state->config = config;
+    state->platform = detail::weak_ref(platform);
+    sycl::device device(std::move(state));
     platform.add_device(device);
     return device;
 }

@@ -3,6 +3,7 @@
 #include "check.hh"
 
 #include <memory>
+#include <optional>
 
 namespace simsycl::detail {
 
@@ -13,23 +14,15 @@ class reference_type;
 
 template<typename Derived, typename State>
 struct std::hash<simsycl::detail::reference_type<Derived, State>> {
-    size_t operator()(const Derived &rt) { return static_cast<size_t>(reinterpret_cast<uintptr_t>(rt.m_state.get())); }
+    size_t operator()(const Derived &rt) const {
+        return static_cast<size_t>(reinterpret_cast<uintptr_t>(rt.m_state.get()));
+    }
 };
 
 namespace simsycl::detail {
 
-template<typename Derived, typename State>
-class weak_ref {
-  public:
-    weak_ref() = default;
-
-    weak_ref(std::weak_ptr<State> &&state) : m_state(std::move(state)) {}
-
-    Derived lock() const { return Derived(m_state.lock()); }
-
-  private:
-    std::weak_ptr<State> m_state;
-};
+template<typename Derived>
+class weak_ref;
 
 template<typename Derived, typename State>
 class reference_type {
@@ -62,18 +55,34 @@ class reference_type {
         return *m_state;
     }
 
-    detail::weak_ref<Derived, State> weak_ref() {
-        SIMSYCL_CHECK(m_state != nullptr);
-        return detail::weak_ref<Derived, State>(std::weak_ptr<state_type>(m_state));
-    }
-
   private:
     friend struct std::hash<reference_type<Derived, State>>;
 
-    template<typename, typename>
+    template<typename>
     friend class weak_ref;
 
     std::shared_ptr<state_type> m_state;
+};
+
+template<typename Derived>
+class weak_ref {
+  private:
+    using state_type = typename Derived::state_type;
+
+  public:
+    weak_ref() = default;
+
+    explicit weak_ref(const Derived &ref) : m_state(ref.m_state) {
+        static_assert(std::is_base_of_v<reference_type<Derived, typename Derived::state_type>, Derived>);
+    }
+
+    std::optional<Derived> lock() const {
+        if(auto state = m_state.lock(); state != nullptr) { return Derived(std::move(state)); }
+        return std::nullopt;
+    }
+
+  private:
+    std::weak_ptr<state_type> m_state;
 };
 
 } // namespace simsycl::detail

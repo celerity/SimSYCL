@@ -107,10 +107,13 @@ class device final : public detail::reference_type<device, detail::device_state>
     static std::vector<device> get_devices(info::device_type device_type = info::device_type::all);
 
   private:
+    template<typename>
+    friend class detail::weak_ref;
+
     friend device simsycl::create_device(sycl::platform &platform, const device_config &config);
 
-    device(detail::device_state state);
     device(const detail::device_selector &selector);
+    device(std::shared_ptr<detail::device_state> &&state) : reference_type(std::move(state)) {}
 };
 
 template<aspect Aspect>
@@ -124,3 +127,7 @@ template<aspect A>
 inline constexpr bool all_devices_have_v = all_devices_have<A>::value;
 
 } // namespace simsycl::sycl
+
+template<>
+struct std::hash<simsycl::sycl::device>
+    : public std::hash<simsycl::detail::reference_type<simsycl::sycl::device, simsycl::detail::device_state>> {};

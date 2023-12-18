@@ -109,8 +109,8 @@ struct system_config {
     std::vector<sycl::device> devices{};
 };
 
-const system_config &get_system();
-void set_system(system_config system);
+const system_config &get_system_config();
+void configure_system(system_config system);
 
 } // namespace simsycl
 

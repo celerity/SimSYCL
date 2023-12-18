@@ -139,8 +139,8 @@ sycl::handler make_handler();
 
 void **require_local_memory(sycl::handler &cgh, size_t size, size_t align);
 
-struct execution_status;
+struct event_state;
 
-sycl::event make_event(const execution_status &status);
+sycl::event make_event(std::shared_ptr<event_state> &&state);
 
 } // namespace simsycl::detail

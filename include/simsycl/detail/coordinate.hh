@@ -2,9 +2,8 @@
 
 #include "check.hh"
 
+#include <concepts>
 #include <cstdlib>
-#include <functional>
-#include <type_traits>
 
 
 namespace simsycl::detail {
@@ -159,7 +158,7 @@ class coordinate {
 #undef SIMSYCL_DETAIL_DEFINE_COORDINATE_UNARY_POSTFIX_OPERATOR
 
   private:
-    size_t m_values[Dimensions];
+    size_t m_values[Dimensions]{};
 
     // interface type construction helper to use in friend operators
     // (because friendship is not transitive)

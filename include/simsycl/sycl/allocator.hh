@@ -3,8 +3,6 @@
 #include <cstdlib>
 #include <memory>
 
-namespace simsycl::detail {} // namespace simsycl::detail
-
 namespace simsycl::sycl {
 
 template<class T>

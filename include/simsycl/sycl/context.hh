@@ -50,10 +50,19 @@ class context final : public detail::reference_type<context, detail::context_sta
     typename Param::return_type get_backend_info() const;
 
   private:
+    template<typename>
+    friend class detail::weak_ref;
+
     struct internal_t {
     } inline static constexpr internal{};
 
-    explicit context(internal_t, const std::vector<device> &devices, const async_handler &async_handler, const property_list &prop_list);
+    explicit context(internal_t, const std::vector<device> &devices, const async_handler &async_handler,
+        const property_list &prop_list);
+    context(std::shared_ptr<detail::context_state> &&state) : reference_type(std::move(state)) {}
 };
 
 } // namespace simsycl::sycl
+
+template<>
+struct std::hash<simsycl::sycl::context>
+    : public std::hash<simsycl::detail::reference_type<simsycl::sycl::context, simsycl::detail::context_state>> {};

@@ -250,10 +250,15 @@ class buffer final
     reinterpret() const;
 
   private:
+    template<typename>
+    friend class detail::weak_ref;
+
     template<typename U, int D, typename A>
     friend U *simsycl::detail::get_buffer_data(sycl::buffer<U, D, A> &buf);
 
     using reference_type::state;
+
+    buffer(std::shared_ptr<state_type> &&state) : reference_type(std::move(state)) {}
 };
 
 // Deduction guides

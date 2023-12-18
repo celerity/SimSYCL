@@ -16,14 +16,10 @@ struct platform_state {
 
 namespace simsycl::sycl {
 
-platform::platform(detail::platform_state state) : reference_type(std::in_place, std::move(state)) {}
-
 platform::platform() : platform(default_selector_v) {}
 
 platform::platform(const detail::device_selector &selector)
     : platform(detail::select_device(selector).get_platform()) {}
-
-platform::platform(std::shared_ptr<detail::platform_state> &&state) : reference_type(std::move(state)) {}
 
 std::vector<device> platform::get_devices(info::device_type type) const {
     std::vector<device> result;
@@ -64,7 +60,7 @@ bool platform::has_extension(const std::string &extension) const {
         != state().config.extensions.end();
 }
 
-std::vector<platform> platform::get_platforms() { return get_system().platforms; }
+std::vector<platform> platform::get_platforms() { return get_system_config().platforms; }
 
 void platform::add_device(const device &dev) { state().devices.push_back(dev); }
 
@@ -73,8 +69,8 @@ void platform::add_device(const device &dev) { state().devices.push_back(dev); }
 namespace simsycl {
 
 sycl::platform create_platform(const platform_config &config) {
-    detail::platform_state state;
-    state.config = std::move(config);
+    auto state = std::make_shared<detail::platform_state>();
+    state->config = std::move(config);
     return sycl::platform(std::move(state));
 }
 

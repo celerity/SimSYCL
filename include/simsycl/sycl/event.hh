@@ -12,20 +12,20 @@
 
 namespace simsycl::detail {
 
-struct execution_status {
+struct event_state {
     std::chrono::steady_clock::time_point t_submit{};
     std::chrono::steady_clock::time_point t_start{};
     std::chrono::steady_clock::time_point t_end{};
 
     void start() { t_start = std::chrono::steady_clock::now(); }
 
-    [[nodiscard]] static execution_status submit() {
-        execution_status status;
+    [[nodiscard]] static event_state submit() {
+        event_state status;
         status.t_submit = std::chrono::steady_clock::now();
         return status;
     }
 
-    [[nodiscard]] static execution_status submit_and_start() {
+    [[nodiscard]] static event_state submit_and_start() {
         auto status = submit();
         status.start();
         return status;
@@ -45,7 +45,7 @@ uint64_t nanoseconds_since_epoch(std::chrono::time_point<Clock, Dur> time_point)
 
 namespace simsycl::sycl {
 
-class event : detail::reference_type<event, detail::execution_status> {
+class event : detail::reference_type<event, detail::event_state> {
   public:
     event() = default;
 
@@ -89,23 +89,32 @@ class event : detail::reference_type<event, detail::execution_status> {
     }
 
   private:
-    friend event detail::make_event(const detail::execution_status &status);
+    template<typename>
+    friend class detail::weak_ref;
 
-    explicit event(const detail::execution_status &status)
-        : detail::reference_type<event, detail::execution_status>(std::in_place, status) {}
+    friend event detail::make_event(std::shared_ptr<detail::event_state> &&state);
+
+    explicit event(std::shared_ptr<detail::event_state> &&state)
+        : detail::reference_type<event, detail::event_state>(std::move(state)) {}
 };
 
 } // namespace simsycl::sycl
 
+
+template<>
+struct std::hash<simsycl::sycl::event>
+    : public std::hash<simsycl::detail::reference_type<simsycl::sycl::event, simsycl::detail::event_state>> {};
+
 namespace simsycl::detail {
 
-inline sycl::event make_event(const execution_status &status) { return sycl::event(status); }
+inline sycl::event make_event(std::shared_ptr<event_state> &&state) { return sycl::event(std::move(state)); }
+inline sycl::event make_event(const event_state &state) { return make_event(std::make_shared<event_state>(state)); }
 
-inline sycl::event execution_status::end() {
+inline sycl::event event_state::end() {
     t_end = std::chrono::steady_clock::now();
     return make_event(*this);
 }
 
-inline sycl::event execution_status::instant() { return submit_and_start().end(); }
+inline sycl::event event_state::instant() { return submit_and_start().end(); }
 
 } // namespace simsycl::detail

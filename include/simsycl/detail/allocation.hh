@@ -1,7 +1,11 @@
 #pragma once
 
+#include "../sycl/enums.hh"
+#include "../sycl/forward.hh"
+
 #include <cstdlib>
 #include <cstring>
+#include <optional>
 #include <utility>
 
 
@@ -24,6 +28,10 @@ inline void aligned_free(void *ptr) {
     std::free(ptr);
 #endif
 }
+
+void *usm_alloc(const sycl::context &context, sycl::usm::alloc kind, std::optional<sycl::device> opt_device,
+    size_t size_bytes, size_t alignment_bytes);
+void usm_free(void *ptr, const sycl::context &context);
 
 
 // floats and doubles filled with this pattern show up as "-nan"
