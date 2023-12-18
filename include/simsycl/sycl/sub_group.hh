@@ -81,9 +81,9 @@ class sub_group {
         SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(x, init, op);
     }
 
-    linear_id_type get_group_linear_range() const { SIMSYCL_NOT_IMPLEMENTED; }
+    linear_id_type get_group_linear_range() const { return m_group_range.size(); }
 
-    linear_id_type get_local_linear_range() const { SIMSYCL_NOT_IMPLEMENTED; }
+    linear_id_type get_local_linear_range() const { return m_local_range.size(); }
 
     bool leader() const { return get_local_linear_id() == 0; }
 
@@ -99,7 +99,7 @@ class sub_group {
     id_type m_group_id;
     range_type m_group_range;
 
-    detail::sub_group_impl *m_impl;
+    detail::sub_group_impl *m_impl; // NOLINT
 
     sub_group(const id_type &local_id, const range_type &local_range, const id_type &group_id,
         const range_type &group_range, detail::sub_group_impl *impl)

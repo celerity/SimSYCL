@@ -1,7 +1,7 @@
 # Clang-format coding style definitions for simSYCL
 #
 # Due to some inconsistencies between releases we currently
-# use clang-format 16 as the authoritative version.
+# use clang-format 17 as the authoritative version.
 
 BasedOnStyle: llvm
 

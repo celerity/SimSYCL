@@ -1,6 +1,6 @@
 #pragma once
 
-#include <concepts>
+#include <concepts> // IWYU pragma: keep
 
 #include "type_traits.hh"
 

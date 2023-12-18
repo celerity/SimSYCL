@@ -1,16 +1,9 @@
 #pragma once
 
-#include "concepts.hh"
-#include "group.hh"
-#include "nd_item.hh"
-#include "sub_group.hh"
-#include "type_traits.hh"
-
 #include "simsycl/detail/check.hh"
 #include "simsycl/detail/group_operation_impl.hh"
 #include "simsycl/detail/nd_memory.hh"
 
-#include <cstddef>
 #include <memory>
 
 namespace simsycl::sycl {

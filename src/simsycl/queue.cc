@@ -54,12 +54,16 @@ queue::queue(const device &sycl_device, const async_handler &async_handler, cons
 
 template<typename DeviceSelector>
 queue::queue(const context &sycl_context, const DeviceSelector &device_selector, const property_list &prop_list)
-    : queue(internal, device_selector, async_handler{}, prop_list) {}
+    : queue(internal, device_selector, async_handler{}, prop_list) {
+    (void)(sycl_context);
+}
 
 template<typename DeviceSelector>
 queue::queue(const context &sycl_context, const DeviceSelector &device_selector, const async_handler &async_handler,
     const property_list &prop_list)
-    : queue(internal, device_selector, async_handler, prop_list) {}
+    : queue(internal, device_selector, async_handler, prop_list) {
+    (void)(sycl_context);
+}
 
 queue::queue(const context &sycl_context, const device &sycl_device, const property_list &prop_list)
     : queue(internal, sycl_context, sycl_device, async_handler{}, prop_list) {}

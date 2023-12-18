@@ -1,13 +1,41 @@
 #pragma once
 
+#include <simsycl/config.hh>
+
 #include <cassert>
+#include <source_location>
 
-#define SIMSYCL_CHECK(...) assert(__VA_ARGS__)
+#define SIMSYCL_CHECK_NONE 1
+#define SIMSYCL_CHECK_LOG 2
+#define SIMSYCL_CHECK_THROW 3
+#define SIMSYCL_CHECK_ABORT 4
 
-#define SIMSYCL_NOT_IMPLEMENTED SIMSYCL_CHECK(false && "Not implemented");
+namespace simsycl::detail {
+void check_log(bool condition, const char *cond_string, std::source_location location);
+void check_throw(bool condition, const char *cond_string, std::source_location location);
+void check_abort(bool condition, const char *cond_string, std::source_location location);
+} // namespace simsycl::detail
+
+#if SIMSYCL_CHECK_MODE == SIMSYCL_CHECK_NONE
+#define SIMSYCL_CHECK(CONDITION)                                                                                       \
+    do { (void)(CONDITION); } while(0)
+#elif SIMSYCL_CHECK_MODE == SIMSYCL_CHECK_LOG
+#define SIMSYCL_CHECK(CONDITION)                                                                                       \
+    do { simsycl::detail::check_log(CONDITION, #CONDITION, std::source_location::current()); } while(0)
+#elif SIMSYCL_CHECK_MODE == SIMSYCL_CHECK_THROW
+#define SIMSYCL_CHECK(CONDITION)                                                                                       \
+    do { simsycl::detail::check_throw(CONDITION, #CONDITION, std::source_location::current()); } while(0)
+#elif SIMSYCL_CHECK_MODE == SIMSYCL_CHECK_ABORT
+#define SIMSYCL_CHECK(CONDITION)                                                                                       \
+    do { simsycl::detail::check_abort(CONDITION, #CONDITION, std::source_location::current()); } while(0)
+#else
+#error "SIMSYCL_CHECK_MODE must be SIMSYCL_CHECK_NONE, SIMSYCL_CHECK_LOG, SIMSYCL_CHECK_THROW, or SIMSYCL_CHECK_ABORT"
+#endif
 
 extern void var_use_dummy(...);
 
+#define SIMSYCL_NOT_IMPLEMENTED assert(false && "Not implemented");
+
 #define SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(...)                                                                       \
     if(false) var_use_dummy(__VA_ARGS__);                                                                              \
-    SIMSYCL_CHECK(false && "Not implemented");
+    SIMSYCL_NOT_IMPLEMENTED

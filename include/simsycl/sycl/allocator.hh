@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstdlib>
 #include <memory>
 
 namespace simsycl::sycl {

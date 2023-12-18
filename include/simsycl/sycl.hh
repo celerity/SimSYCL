@@ -2,6 +2,7 @@
 
 #include <simsycl/config.hh>
 
+// IWYU pragma: begin_keep
 #include "sycl/accessor.hh"
 #include "sycl/allocator.hh"
 #include "sycl/atomic_ref.hh"
@@ -34,3 +35,4 @@
 #include "sycl/type_traits.hh"
 #include "sycl/usm.hh"
 #include "sycl/vec.hh"
+// IWYU pragma: end_keep

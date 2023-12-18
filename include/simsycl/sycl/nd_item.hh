@@ -29,6 +29,7 @@ struct nd_item_impl {
     boost::context::continuation *continuation = nullptr;
     size_t group_ops_reached = 0;
     size_t sub_group_ops_reached = 0;
+    std::exception_ptr exception = nullptr;
 };
 
 template<int Dimensions>

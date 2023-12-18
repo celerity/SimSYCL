@@ -4,7 +4,6 @@
 #include "id.hh"
 
 #include "range.hh"
-#include <type_traits>
 
 namespace simsycl::detail {
 

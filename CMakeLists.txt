@@ -17,6 +17,14 @@ endif()
 
 find_package(Boost 1.70 COMPONENTS context REQUIRED)
 
+set(SIMSYCL_CHECK_MODE "SIMSYCL_CHECK_ABORT" CACHE STRING "Check mode to use")
+
+set(CONFIG_PATH "${CMAKE_CURRENT_BINARY_DIR}/include/simsycl/config.hh")
+configure_file(
+  "${PROJECT_SOURCE_DIR}/include/simsycl/config.hh.in"
+  ${CONFIG_PATH}
+  @ONLY
+)
 
 # Function to set properties, compile options, and link options for all simsycl targets
 function(set_simsycl_target_options target)
@@ -31,12 +39,6 @@ function(set_simsycl_target_options target)
         $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:$<$<CONFIG:Debug>:-fsanitize=address>>
     )
 endfunction()
-
-configure_file(
-  "${PROJECT_SOURCE_DIR}/include/simsycl/config.hh.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/include/simsycl/config.hh"
-  @ONLY
-)
 
 add_library(simsycl
     include/sycl/sycl.hpp
@@ -87,7 +89,8 @@ add_library(simsycl
     include/simsycl/sycl/vec.hh
     include/simsycl/system.hh
     include/simsycl/templates.hh
-    "${CMAKE_CURRENT_BINARY_DIR}/include/simsycl/config.hh"
+    ${CONFIG_PATH}
+    src/simsycl/check.cc
     src/simsycl/context.cc
     src/simsycl/device.cc
     src/simsycl/platform.cc

@@ -144,7 +144,9 @@ void dispatch_for_nd_range(const sycl::nd_range<Dimensions> &range,
             boost::context::callcc([func, nd_item, nd_item_impl_ptr, &args...](boost::context::continuation &&cont) {
                 nd_item_impl_ptr->continuation = &cont;
                 nd_item_impl_ptr->state = detail::nd_item_state::running;
-                func(nd_item, std::forward<Params>(args)...);
+                try {
+                    func(nd_item, std::forward<Params>(args)...);
+                } catch(...) { nd_item_impl_ptr->exception = std::current_exception(); }
                 nd_item_impl_ptr->state = nd_item_state::exit;
                 return std::move(cont);
             }));
@@ -166,6 +168,11 @@ void dispatch_for_nd_range(const sycl::nd_range<Dimensions> &range,
 
             continuations[global_linear_id] = continuations[global_linear_id].resume();
         }
+    }
+
+    // rethrow encountered exceptions, if any
+    for(const auto &nd_item_impl : nd_item_impls) {
+        if(nd_item_impl.exception) std::rethrow_exception(nd_item_impl.exception);
     }
 }
 

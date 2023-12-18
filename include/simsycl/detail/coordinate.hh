@@ -2,7 +2,7 @@
 
 #include "check.hh"
 
-#include <concepts>
+#include <concepts> // IWYU pragma: keep
 #include <cstdlib>
 
 

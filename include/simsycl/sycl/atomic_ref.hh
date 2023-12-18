@@ -107,6 +107,7 @@ class atomic_ref_base {
 
     bool compare_exchange_strong(T &expected, T desired, memory_order order = default_read_modify_write_order,
         memory_scope scope = default_scope) const noexcept {
+        (void)order;
         (void)scope;
         return compare_exchange(expected, desired);
     }
@@ -119,10 +120,9 @@ class atomic_ref_base {
         if(m_ref == expected) {
             m_ref = desired;
             return true;
-        } else {
-            expected = m_ref;
-            return false;
         }
+        expected = m_ref;
+        return false;
     }
 };
 

@@ -5,6 +5,7 @@
 #include "simsycl/sycl/platform.hh"
 #include "simsycl/templates.hh"
 
+#include <assert.h>
 #include <limits>
 #include <set>
 #include <unordered_map>

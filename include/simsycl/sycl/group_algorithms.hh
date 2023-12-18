@@ -1,13 +1,8 @@
 #pragma once
 
-#include "binary_ops.hh"
-#include "concepts.hh"
-#include "group.hh"
-#include "group_functions.hh"
-#include "sub_group.hh"
-
 #include "simsycl/detail/check.hh"
 #include "simsycl/detail/group_operation_impl.hh"
+#include "simsycl/detail/nd_memory.hh"
 
 namespace simsycl::sycl {
 
