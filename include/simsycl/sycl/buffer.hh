@@ -134,7 +134,7 @@ class buffer final
     buffer(
         T *host_data, const range<Dimensions> &buffer_range, AllocatorT allocator, const property_list &prop_list = {})
         : property_interface(prop_list, property_compatibility()),
-          reference_type(std::in_place, buffer_range, allocator, prop_list, host_data) {
+          reference_type(std::in_place, buffer_range, allocator, host_data) {
         std::copy_n(host_data, state().range.size(), state().buffer);
     }
 
@@ -144,7 +144,7 @@ class buffer final
     buffer(const T *host_data, const range<Dimensions> &buffer_range, AllocatorT allocator,
         const property_list &prop_list = {})
         : property_interface(prop_list, property_compatibility()),
-          reference_type(std::in_place, buffer_range, allocator, prop_list) {
+          reference_type(std::in_place, buffer_range, allocator) {
         std::copy_n(host_data, state().range.size(), state().buffer);
     }
 

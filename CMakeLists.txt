@@ -104,6 +104,8 @@ target_include_directories(simsycl PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
+# Compile with -FPIC to make sure our `inline constexpr` variables work when used in a shared library
+set_target_properties(simsycl PROPERTIES POSITION_INDEPENDENT_CODE ON)
 set_simsycl_target_options(simsycl)
 
 add_executable(main src/test/main.cc)

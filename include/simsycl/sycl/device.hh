@@ -1,5 +1,6 @@
 #pragma once
 
+#include "concepts.hh"
 #include "enums.hh"
 #include "forward.hh"
 #include "info.hh"
@@ -71,8 +72,8 @@ class device final : public detail::reference_type<device, detail::device_state>
   public:
     device();
 
-    template<typename DeviceSelector>
-    explicit device(const DeviceSelector &device_selector) : device(detail::device_selector(device_selector)) {}
+    template<DeviceSelector Selector>
+    explicit device(const Selector &device_selector) : device(detail::device_selector(device_selector)) {}
 
     bool is_cpu() const { return has(aspect::cpu); }
 

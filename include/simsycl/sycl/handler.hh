@@ -228,7 +228,9 @@ class handler {
 
     template<typename DataT, int Dimensions, access_mode AccessMode, target AccessTarget,
         access::placeholder IsPlaceholder>
-    void require(accessor<DataT, Dimensions, AccessMode, AccessTarget, IsPlaceholder> acc);
+    void require(accessor<DataT, Dimensions, AccessMode, AccessTarget, IsPlaceholder> acc) {
+        acc.require();
+    }
 
     void depends_on(event dep_event) { (void)dep_event; }
 
@@ -355,7 +357,9 @@ class handler {
     void update_host(accessor<T, Dim, Mode, Tgt, IsPlaceholder> acc);
 
     template<typename T, int Dim, access_mode Mode, target Tgt, access::placeholder IsPlaceholder>
-    void fill(accessor<T, Dim, Mode, Tgt, IsPlaceholder> dest, const T &src);
+    void fill(accessor<T, Dim, Mode, Tgt, IsPlaceholder> dest, const T &src) {
+        detail::sequential_for(dest.get_range(), dest.get_offset(), [&](const item<Dim> &item) { dest[item] = src; });
+    }
 
     SIMSYCL_STOP_IGNORING_DEPRECATIONS
 

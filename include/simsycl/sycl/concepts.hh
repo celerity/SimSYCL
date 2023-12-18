@@ -40,4 +40,7 @@ concept SyclFunctionObject = detail::is_function_object_v<Fn>;
 template<typename T>
 concept Arithmetic = detail::is_arithmetic_v<T>;
 
+template<typename F>
+concept DeviceSelector = std::is_invocable_r_v<int, F, const device &>;
+
 } // namespace simsycl::sycl

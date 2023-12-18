@@ -52,18 +52,14 @@ queue::queue(const device &sycl_device, const property_list &prop_list)
 queue::queue(const device &sycl_device, const async_handler &async_handler, const property_list &prop_list)
     : queue(internal, sycl_device, async_handler, prop_list) {}
 
-template<typename DeviceSelector>
-queue::queue(const context &sycl_context, const DeviceSelector &device_selector, const property_list &prop_list)
-    : queue(internal, device_selector, async_handler{}, prop_list) {
-    (void)(sycl_context);
-}
+template<DeviceSelector Selector>
+queue::queue(const context &sycl_context, const Selector &device_selector, const property_list &prop_list)
+    : queue(internal, device_selector, sycl_context, async_handler{}, prop_list) {}
 
-template<typename DeviceSelector>
-queue::queue(const context &sycl_context, const DeviceSelector &device_selector, const async_handler &async_handler,
+template<DeviceSelector Selector>
+queue::queue(const context &sycl_context, const Selector &device_selector, const async_handler &async_handler,
     const property_list &prop_list)
-    : queue(internal, device_selector, async_handler, prop_list) {
-    (void)(sycl_context);
-}
+    : queue(internal, device_selector, sycl_context, async_handler, prop_list) {}
 
 queue::queue(const context &sycl_context, const device &sycl_device, const property_list &prop_list)
     : queue(internal, sycl_context, sycl_device, async_handler{}, prop_list) {}

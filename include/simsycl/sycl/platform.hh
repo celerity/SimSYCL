@@ -1,5 +1,6 @@
 #pragma once
 
+#include "concepts.hh"
 #include "enums.hh"
 #include "forward.hh"
 #include "info.hh"
@@ -35,8 +36,8 @@ class platform final : public detail::reference_type<platform, detail::platform_
   public:
     platform();
 
-    template<typename DeviceSelector>
-    explicit platform(const DeviceSelector &device_selector) : platform(detail::device_selector(device_selector)) {}
+    template<DeviceSelector Selector>
+    explicit platform(const Selector &device_selector) : platform(detail::device_selector(device_selector)) {}
 
     backend get_backend() const noexcept { return backend::simsycl; }
 

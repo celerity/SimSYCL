@@ -49,26 +49,25 @@ class queue final : public detail::reference_type<queue, detail::queue_state>,
 
     explicit queue(const async_handler &async_handler, const property_list &prop_list = {});
 
-    template<typename DeviceSelector>
-    explicit queue(const DeviceSelector &device_selector, const property_list &prop_list = {})
+    template<DeviceSelector Selector>
+    explicit queue(const Selector &device_selector, const property_list &prop_list = {})
         : queue(internal, detail::device_selector(device_selector), async_handler{}, prop_list) {}
 
-    template<typename DeviceSelector>
+    template<DeviceSelector Selector>
     explicit queue(
-        const DeviceSelector &device_selector, const async_handler &async_handler, const property_list &prop_list = {})
+        const Selector &device_selector, const async_handler &async_handler, const property_list &prop_list = {})
         : queue(internal, detail::device_selector(device_selector), async_handler, prop_list) {}
 
     explicit queue(const device &sycl_device, const property_list &prop_list = {});
 
     explicit queue(const device &sycl_device, const async_handler &async_handler, const property_list &prop_list = {});
 
-    template<typename DeviceSelector>
-    explicit queue(
-        const context &sycl_context, const DeviceSelector &device_selector, const property_list &prop_list = {});
+    template<DeviceSelector Selector>
+    explicit queue(const context &sycl_context, const Selector &device_selector, const property_list &prop_list = {});
 
-    template<typename DeviceSelector>
-    explicit queue(const context &sycl_context, const DeviceSelector &device_selector,
-        const async_handler &async_handler, const property_list &prop_list = {});
+    template<DeviceSelector Selector>
+    explicit queue(const context &sycl_context, const Selector &device_selector, const async_handler &async_handler,
+        const property_list &prop_list = {});
 
     explicit queue(const context &sycl_context, const device &sycl_device, const property_list &prop_list = {});
 
