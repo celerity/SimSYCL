@@ -2,7 +2,6 @@
 
 #include <simsycl/config.hh>
 
-#include <cassert>
 #include <source_location>
 
 #define SIMSYCL_CHECK_NONE 1
@@ -34,7 +33,9 @@ void check_abort(bool condition, const char *cond_string, std::source_location l
 
 extern void var_use_dummy(...);
 
-#define SIMSYCL_NOT_IMPLEMENTED assert(false && "Not implemented");
+#define SIMSYCL_NOT_IMPLEMENTED                                                                                        \
+    printf("SIMSYCL: Not implemented (%s:%d)\n", __FILE__, __LINE__);                                                  \
+    abort();
 
 #define SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(...)                                                                       \
     if(false) var_use_dummy(__VA_ARGS__);                                                                              \
