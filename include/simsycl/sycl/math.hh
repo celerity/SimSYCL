@@ -21,6 +21,8 @@
         return result;                                                                                                 \
     }
 
+#if SIMSYCL_FEATURE_HALF_TYPE
+
 #define SIMSYCL_DETAIL_MATH_DERIVE_UNARY_FUNCTION_FOR_HALF(name)                                                       \
     inline half name(const half x) { return static_cast<half>(name(static_cast<float>(x))); }
 
@@ -34,6 +36,13 @@
         return static_cast<half>(name(static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)));           \
     }
 
+#else
+
+#define SIMSYCL_DETAIL_MATH_DERIVE_UNARY_FUNCTION_FOR_HALF(name)
+#define SIMSYCL_DETAIL_MATH_DERIVE_BINARY_FUNCTION_FOR_HALF(name)
+#define SIMSYCL_DETAIL_MATH_DERIVE_TERNARY_FUNCTION_FOR_HALF(name)
+
+#endif
 
 namespace simsycl::sycl {
 

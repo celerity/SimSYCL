@@ -475,11 +475,13 @@ using ulong4 = vec<uint64_t, 4>;
 using ulong8 = vec<uint64_t, 8>;
 using ulong16 = vec<uint64_t, 16>;
 
+#if SIMSYCL_FEATURE_HALF_TYPE
 using half2 = vec<half, 2>;
 using half3 = vec<half, 3>;
 using half4 = vec<half, 4>;
 using half8 = vec<half, 8>;
 using half16 = vec<half, 16>;
+#endif
 
 using float2 = vec<float, 2>;
 using float3 = vec<float, 3>;

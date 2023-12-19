@@ -3,6 +3,7 @@
 #include "allocator.hh"
 #include "enums.hh"
 
+#include <simsycl/config.hh>
 #include "../detail/preprocessor.hh"
 
 #include <functional>
@@ -46,7 +47,9 @@ class exception_list;
 
 class handler;
 
+#if SIMSYCL_FEATURE_HALF_TYPE
 using half = _Float16; // currently requires a compiler that supports _Float16
+#endif
 
 template<typename DataT, int Dimensions = 1,
     access_mode AccessMode = (std::is_const_v<DataT> ? access_mode::read : access_mode::read_write)>
