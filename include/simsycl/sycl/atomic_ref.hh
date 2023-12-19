@@ -54,13 +54,13 @@ class atomic_ref_base {
     atomic_ref_base(const atomic_ref_base &) noexcept = default;
     atomic_ref_base &operator=(const atomic_ref_base &) = delete;
 
-    void store(T operand, memory_order order = default_write_order, memory_scope scope = default_scope) const noexcept {
-        m_ref = operand;
+    void store(T operand, memory_order order = default_write_order, memory_scope scope = default_scope) noexcept {
         (void)order;
         (void)scope;
+        m_ref = operand;
     }
 
-    T operator=(T desired) const noexcept {
+    T operator=(T desired) noexcept {
         m_ref = desired;
         return desired;
     }
@@ -74,7 +74,7 @@ class atomic_ref_base {
     operator T() const noexcept { return m_ref; }
 
     T exchange(T operand, memory_order order = default_read_modify_write_order,
-        memory_scope scope = default_scope) const noexcept {
+        memory_scope scope = default_scope) noexcept {
         using std::swap;
         (void)order;
         (void)scope;
@@ -83,7 +83,7 @@ class atomic_ref_base {
     }
 
     bool compare_exchange_weak(T &expected, T desired, memory_order success, memory_order failure,
-        memory_scope scope = default_scope) const noexcept {
+        memory_scope scope = default_scope) noexcept {
         (void)success;
         (void)failure;
         (void)scope;
@@ -91,14 +91,14 @@ class atomic_ref_base {
     }
 
     bool compare_exchange_weak(T &expected, T desired, memory_order order = default_read_modify_write_order,
-        memory_scope scope = default_scope) const noexcept {
+        memory_scope scope = default_scope) noexcept {
         (void)order;
         (void)scope;
         return compare_exchange(expected, desired);
     }
 
     bool compare_exchange_strong(T &expected, T desired, memory_order success, memory_order failure,
-        memory_scope scope = default_scope) const noexcept {
+        memory_scope scope = default_scope) noexcept {
         (void)success;
         (void)failure;
         (void)scope;
@@ -106,7 +106,7 @@ class atomic_ref_base {
     }
 
     bool compare_exchange_strong(T &expected, T desired, memory_order order = default_read_modify_write_order,
-        memory_scope scope = default_scope) const noexcept {
+        memory_scope scope = default_scope) noexcept {
         (void)order;
         (void)scope;
         return compare_exchange(expected, desired);
@@ -116,7 +116,7 @@ class atomic_ref_base {
     T &m_ref;
 
   private:
-    bool compare_exchange(T &expected, T desired) {
+    bool compare_exchange(T &expected, T desired) noexcept {
         if(m_ref == expected) {
             m_ref = desired;
             return true;
@@ -160,7 +160,7 @@ class atomic_ref<Integral, DefaultOrder, DefaultScope, AddressSpace>
     using base::operator=;
 
     Integral fetch_add(Integral operand, memory_order order = default_read_modify_write_order,
-        memory_scope scope = default_scope) const noexcept {
+        memory_scope scope = default_scope) noexcept {
         (void)order;
         (void)scope;
         const auto original = m_ref;
@@ -169,7 +169,7 @@ class atomic_ref<Integral, DefaultOrder, DefaultScope, AddressSpace>
     }
 
     Integral fetch_sub(Integral operand, memory_order order = default_read_modify_write_order,
-        memory_scope scope = default_scope) const noexcept {
+        memory_scope scope = default_scope) noexcept {
         (void)order;
         (void)scope;
         const auto original = m_ref;
@@ -178,7 +178,7 @@ class atomic_ref<Integral, DefaultOrder, DefaultScope, AddressSpace>
     }
 
     Integral fetch_and(Integral operand, memory_order order = default_read_modify_write_order,
-        memory_scope scope = default_scope) const noexcept {
+        memory_scope scope = default_scope) noexcept {
         (void)order;
         (void)scope;
         const auto original = m_ref;
@@ -187,7 +187,7 @@ class atomic_ref<Integral, DefaultOrder, DefaultScope, AddressSpace>
     }
 
     Integral fetch_or(Integral operand, memory_order order = default_read_modify_write_order,
-        memory_scope scope = default_scope) const noexcept {
+        memory_scope scope = default_scope) noexcept {
         (void)order;
         (void)scope;
         const auto original = m_ref;
@@ -196,7 +196,7 @@ class atomic_ref<Integral, DefaultOrder, DefaultScope, AddressSpace>
     }
 
     Integral fetch_xor(Integral operand, memory_order order = default_read_modify_write_order,
-        memory_scope scope = default_scope) const noexcept {
+        memory_scope scope = default_scope) noexcept {
         (void)order;
         (void)scope;
         const auto original = m_ref;
@@ -205,7 +205,7 @@ class atomic_ref<Integral, DefaultOrder, DefaultScope, AddressSpace>
     }
 
     Integral fetch_min(Integral operand, memory_order order = default_read_modify_write_order,
-        memory_scope scope = default_scope) const noexcept {
+        memory_scope scope = default_scope) noexcept {
         (void)order;
         (void)scope;
         const auto original = m_ref;
@@ -214,7 +214,7 @@ class atomic_ref<Integral, DefaultOrder, DefaultScope, AddressSpace>
     }
 
     Integral fetch_max(Integral operand, memory_order order = default_read_modify_write_order,
-        memory_scope scope = default_scope) const noexcept {
+        memory_scope scope = default_scope) noexcept {
         (void)order;
         (void)scope;
         const auto original = m_ref;
@@ -222,15 +222,15 @@ class atomic_ref<Integral, DefaultOrder, DefaultScope, AddressSpace>
         return original;
     }
 
-    Integral operator++(int) const noexcept { return fetch_add(1); }
-    Integral operator--(int) const noexcept { return fetch_sub(1); }
-    Integral operator++() const noexcept { return fetch_add(1) + 1; }
-    Integral operator--() const noexcept { return fetch_sub(1) - 1; }
-    Integral operator+=(Integral operand) const noexcept { return fetch_add(operand) + operand; }
-    Integral operator-=(Integral operand) const noexcept { return fetch_sub(operand) - operand; }
-    Integral operator&=(Integral operand) const noexcept { return fetch_and(operand) & operand; }
-    Integral operator|=(Integral operand) const noexcept { return fetch_and(operand) | operand; }
-    Integral operator^=(Integral operand) const noexcept { return fetch_and(operand) ^ operand; }
+    Integral operator++(int) noexcept { return fetch_add(1); }
+    Integral operator--(int) noexcept { return fetch_sub(1); }
+    Integral operator++() noexcept { return fetch_add(1) + 1; }
+    Integral operator--() noexcept { return fetch_sub(1) - 1; }
+    Integral operator+=(Integral operand) noexcept { return fetch_add(operand) + operand; }
+    Integral operator-=(Integral operand) noexcept { return fetch_sub(operand) - operand; }
+    Integral operator&=(Integral operand) noexcept { return fetch_and(operand) & operand; }
+    Integral operator|=(Integral operand) noexcept { return fetch_and(operand) | operand; }
+    Integral operator^=(Integral operand) noexcept { return fetch_and(operand) ^ operand; }
 
   private:
     using base::m_ref;
@@ -255,7 +255,7 @@ class atomic_ref<Floating, DefaultOrder, DefaultScope, AddressSpace>
     using base::operator=;
 
     Floating fetch_add(Floating operand, memory_order order = default_read_modify_write_order,
-        memory_scope scope = default_scope) const noexcept {
+        memory_scope scope = default_scope) noexcept {
         (void)order;
         (void)scope;
         const auto original = m_ref;
@@ -264,7 +264,7 @@ class atomic_ref<Floating, DefaultOrder, DefaultScope, AddressSpace>
     }
 
     Floating fetch_sub(Floating operand, memory_order order = default_read_modify_write_order,
-        memory_scope scope = default_scope) const noexcept {
+        memory_scope scope = default_scope) noexcept {
         (void)order;
         (void)scope;
         const auto original = m_ref;
@@ -273,7 +273,7 @@ class atomic_ref<Floating, DefaultOrder, DefaultScope, AddressSpace>
     }
 
     Floating fetch_min(Floating operand, memory_order order = default_read_modify_write_order,
-        memory_scope scope = default_scope) const noexcept {
+        memory_scope scope = default_scope) noexcept {
         (void)order;
         (void)scope;
         const auto original = m_ref;
@@ -282,7 +282,7 @@ class atomic_ref<Floating, DefaultOrder, DefaultScope, AddressSpace>
     }
 
     Floating fetch_max(Floating operand, memory_order order = default_read_modify_write_order,
-        memory_scope scope = default_scope) const noexcept {
+        memory_scope scope = default_scope) noexcept {
         (void)order;
         (void)scope;
         const auto original = m_ref;
@@ -290,8 +290,8 @@ class atomic_ref<Floating, DefaultOrder, DefaultScope, AddressSpace>
         return original;
     }
 
-    Floating operator+=(Floating operand) const noexcept { return fetch_add(operand) + operand; }
-    Floating operator-=(Floating operand) const noexcept { return fetch_sub(operand) - operand; }
+    Floating operator+=(Floating operand) noexcept { return fetch_add(operand) + operand; }
+    Floating operator-=(Floating operand) noexcept { return fetch_sub(operand) - operand; }
 
   private:
     using base::m_ref;
@@ -306,7 +306,7 @@ class atomic_ref<T *, DefaultOrder, DefaultScope, AddressSpace>
 
   public:
     using typename base::value_type;
-    using difference_type = value_type;
+    using difference_type = std::ptrdiff_t;
 
     using base::default_read_modify_write_order;
     using base::default_scope;
@@ -315,7 +315,7 @@ class atomic_ref<T *, DefaultOrder, DefaultScope, AddressSpace>
     using base::operator=;
 
     T *fetch_add(difference_type operand, memory_order order = default_read_modify_write_order,
-        memory_scope scope = default_scope) const noexcept {
+        memory_scope scope = default_scope) noexcept {
         (void)order;
         (void)scope;
         const auto original = m_ref;
@@ -324,7 +324,7 @@ class atomic_ref<T *, DefaultOrder, DefaultScope, AddressSpace>
     }
 
     T *fetch_sub(difference_type operand, memory_order order = default_read_modify_write_order,
-        memory_scope scope = default_scope) const noexcept {
+        memory_scope scope = default_scope) noexcept {
         (void)order;
         (void)scope;
         const auto original = m_ref;
@@ -332,12 +332,12 @@ class atomic_ref<T *, DefaultOrder, DefaultScope, AddressSpace>
         return original;
     }
 
-    T *operator++(int) const noexcept { return fetch_add(1); }
-    T *operator--(int) const noexcept { return fetch_sub(1); }
-    T *operator++() const noexcept { return fetch_add(1) + 1; }
-    T *operator--() const noexcept { return fetch_sub(1) - 1; }
-    T *operator+=(difference_type operand) const noexcept { return fetch_add(operand) + operand; }
-    T *operator-=(difference_type operand) const noexcept { return fetch_sub(operand) - operand; }
+    T *operator++(int) noexcept { return fetch_add(1); }
+    T *operator--(int) noexcept { return fetch_sub(1); }
+    T *operator++() noexcept { return fetch_add(1) + 1; }
+    T *operator--() noexcept { return fetch_sub(1) - 1; }
+    T *operator+=(difference_type operand) noexcept { return fetch_add(operand) + operand; }
+    T *operator-=(difference_type operand) noexcept { return fetch_sub(operand) - operand; }
 
   private:
     using base::m_ref;

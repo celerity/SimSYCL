@@ -117,7 +117,9 @@ void dispatch_for_nd_range(const sycl::nd_range<Dimensions> &range,
         const auto sub_group_id_in_group = sycl::id<1>(sub_group_linear_id_in_group);
         const auto thread_id_in_sub_group = sycl::id<1>(thread_linear_id_in_sub_group);
 
-        const auto global_item = detail::make_item(global_id, range.get_global_range());
+        SIMSYCL_START_IGNORING_DEPRECATIONS;
+        const auto global_item = detail::make_item(global_id, range.get_global_range(), range.get_offset());
+        SIMSYCL_STOP_IGNORING_DEPRECATIONS
         const auto local_item = detail::make_item(local_id, range.get_local_range());
         const auto group_item = detail::make_item(group_id, range.get_group_range());
 

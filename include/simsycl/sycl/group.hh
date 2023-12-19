@@ -13,7 +13,7 @@ namespace simsycl::detail {
 
 template<int Dimensions>
 sycl::group<Dimensions> make_group(const sycl::item<Dimensions, false> &local_item,
-    const sycl::item<Dimensions, false> &global_item, const sycl::item<Dimensions, false> &group_item,
+    const sycl::item<Dimensions, true> &global_item, const sycl::item<Dimensions, false> &group_item,
     detail::group_impl *impl) {
     return sycl::group<Dimensions>(local_item, global_item, group_item, impl);
 }
@@ -113,17 +113,17 @@ class group {
     bool operator!=(const group<Dimensions> &rhs) const { return !((*this) == rhs); }
 
   private:
-    item<Dimensions, false> m_local_item;
-    item<Dimensions, false> m_global_item;
-    item<Dimensions, false> m_group_item;
+    item<Dimensions, false /* WithOffset */> m_local_item;
+    item<Dimensions, true /* WithOffset */> m_global_item;
+    item<Dimensions, false /* WithOffset */> m_group_item;
     detail::group_impl *m_impl;
 
-    group(const item<Dimensions, false> &local_item, const item<Dimensions, false> &global_item,
+    group(const item<Dimensions, false> &local_item, const item<Dimensions, true> &global_item,
         const item<Dimensions, false> &group_item, detail::group_impl *impl)
         : m_local_item(local_item), m_global_item(global_item), m_group_item(group_item), m_impl(impl) {}
 
     friend group<Dimensions> detail::make_group<Dimensions>(const sycl::item<Dimensions, false> &local_item,
-        const sycl::item<Dimensions, false> &global_item, const sycl::item<Dimensions, false> &group_item,
+        const sycl::item<Dimensions, true> &global_item, const sycl::item<Dimensions, false> &group_item,
         detail::group_impl *impl);
 
     friend detail::group_impl &detail::get_group_impl<Dimensions>(const sycl::group<Dimensions> &g);

@@ -2,6 +2,9 @@
 
 #include "forward.hh"
 
+#include <bit>
+
+
 namespace simsycl::sycl {
 
 template<class T>
@@ -48,3 +51,8 @@ template<typename...>
 constexpr bool always_false = false;
 
 } // namespace simsycl::detail
+
+// TODO consider moving this to a different header.
+namespace simsycl::sycl {
+using std::bit_cast;
+}

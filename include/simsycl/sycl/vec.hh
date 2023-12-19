@@ -454,13 +454,13 @@ using ushort16 = vec<uint16_t, 16>;
 using int2 = vec<int32_t, 2>;
 using int3 = vec<int32_t, 3>;
 using int4 = vec<int32_t, 4>;
-using int32 = vec<int32_t, 8>;
+using int8 = vec<int32_t, 8>;
 using int16 = vec<int32_t, 16>;
 
 using uint2 = vec<uint32_t, 2>;
 using uint3 = vec<uint32_t, 3>;
 using uint4 = vec<uint32_t, 4>;
-using uint32 = vec<uint32_t, 8>;
+using uint8 = vec<uint32_t, 8>;
 using uint16 = vec<uint32_t, 16>;
 
 using long2 = vec<int64_t, 2>;

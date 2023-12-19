@@ -19,7 +19,7 @@ class coordinate {
         requires(sizeof...(Values) + 1 == Dimensions)
     constexpr coordinate(const size_t dim_0, const Values... dim_n) : m_values{dim_0, static_cast<size_t>(dim_n)...} {}
 
-    constexpr size_t get(int dimension) {
+    constexpr size_t get(int dimension) const {
         SIMSYCL_CHECK(dimension < Dimensions);
         return m_values[dimension];
     }

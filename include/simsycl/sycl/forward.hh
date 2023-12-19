@@ -46,7 +46,7 @@ class exception_list;
 
 class handler;
 
-struct half; // TODO
+using half = _Float16; // currently requires a compiler that supports _Float16
 
 template<typename DataT, int Dimensions = 1,
     access_mode AccessMode = (std::is_const_v<DataT> ? access_mode::read : access_mode::read_write)>

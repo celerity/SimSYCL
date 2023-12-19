@@ -29,7 +29,7 @@ struct nd_item_impl {
 };
 
 template<int Dimensions>
-sycl::nd_item<Dimensions> make_nd_item(const sycl::item<Dimensions, false> &global_id,
+sycl::nd_item<Dimensions> make_nd_item(const sycl::item<Dimensions, true> &global_id,
     const sycl::item<Dimensions, false> &local_id, const sycl::group<Dimensions> &group,
     const sycl::sub_group &sub_group, nd_item_impl *impl) {
     return sycl::nd_item<Dimensions>(global_id, local_id, group, sub_group, impl);
@@ -168,18 +168,18 @@ class nd_item {
     bool operator!=(const nd_item &rhs) const { return !((*this) == rhs); }
 
   private:
-    item<Dimensions, false> m_global_item;
-    item<Dimensions, false> m_local_item;
+    item<Dimensions, true /* WithOffset */> m_global_item;
+    item<Dimensions, false /* WithOffset */> m_local_item;
     group<Dimensions> m_group;
     sub_group m_sub_group;
 
     detail::nd_item_impl *m_impl;
 
-    nd_item(const item<Dimensions, false> &global_item, const item<Dimensions, false> &local_item,
+    nd_item(const item<Dimensions, true> &global_item, const item<Dimensions, false> &local_item,
         const group<Dimensions> &group, const sub_group &sub_group, detail::nd_item_impl *impl)
         : m_global_item(global_item), m_local_item(local_item), m_group(group), m_sub_group(sub_group), m_impl(impl) {}
 
-    friend nd_item<Dimensions> detail::make_nd_item<Dimensions>(const sycl::item<Dimensions, false> &,
+    friend nd_item<Dimensions> detail::make_nd_item<Dimensions>(const sycl::item<Dimensions, true> &,
         const sycl::item<Dimensions, false> &, const sycl::group<Dimensions> &, const sycl::sub_group &,
         detail::nd_item_impl *);
 };

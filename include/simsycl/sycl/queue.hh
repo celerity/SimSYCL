@@ -109,63 +109,69 @@ class queue final : public detail::reference_type<queue, detail::queue_state>,
 
     /* -- convenience shortcuts -- */
 
-    template<typename KernelName, typename KernelType>
+    template<typename KernelName = simsycl::detail::unnamed_kernel, typename KernelType>
     event single_task(const KernelType &kernel_func) {
         auto status = detail::event_state::submit_and_start();
         kernel_func();
         return status.end();
     }
 
-    template<typename KernelName, typename KernelType>
+    template<typename KernelName = simsycl::detail::unnamed_kernel, typename KernelType>
     event single_task(event /* dep_event */, const KernelType &kernel_func) {
         auto status = detail::event_state::submit_and_start();
         kernel_func();
         return status.end();
     }
 
-    template<typename KernelName, typename KernelType>
+    template<typename KernelName = simsycl::detail::unnamed_kernel, typename KernelType>
     event single_task(const std::vector<event> & /* dep_events */, const KernelType &kernel_func) {
         auto status = detail::event_state::submit_and_start();
         kernel_func();
         return status.end();
     }
 
-    template<typename KernelName, int Dims, typename... Rest, std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
+    template<typename KernelName = simsycl::detail::unnamed_kernel, int Dims, typename... Rest,
+        std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
     event parallel_for(range<Dims> num_work_items, Rest &&...rest) {
         auto status = detail::event_state::submit_and_start();
         simsycl::detail::parallel_for(num_work_items, std::forward<Rest>(rest)...);
         return status.end();
     }
 
-    template<typename KernelName, int Dims, typename... Rest, std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
+    template<typename KernelName = simsycl::detail::unnamed_kernel, int Dims, typename... Rest,
+        std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
     event parallel_for(range<Dims> num_work_items, event /* dep_event */, Rest &&...rest) {
         auto status = detail::event_state::submit_and_start();
         simsycl::detail::parallel_for(num_work_items, std::forward<Rest>(rest)...);
         return status.end();
     }
 
-    template<typename KernelName, int Dims, typename... Rest, std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
+    template<typename KernelName = simsycl::detail::unnamed_kernel, int Dims, typename... Rest,
+        std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
     event parallel_for(range<Dims> num_work_items, const std::vector<event> & /* dep_events */, Rest &&...rest) {
         auto status = detail::event_state::submit_and_start();
         simsycl::detail::parallel_for(num_work_items, std::forward<Rest>(rest)...);
         return status.end();
     }
 
-    template<typename KernelName, int Dims, typename... Rest, std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
+    template<typename KernelName = simsycl::detail::unnamed_kernel, int Dims, typename... Rest,
+        std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
     event parallel_for(nd_range<Dims> execution_range, Rest &&...rest) {
         auto status = detail::event_state::submit_and_start();
         simsycl::detail::parallel_for(execution_range, std::forward<Rest>(rest)...);
         return status.end();
     }
 
-    template<typename KernelName, int Dims, typename... Rest, std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
+    template<typename KernelName = simsycl::detail::unnamed_kernel, int Dims, typename... Rest,
+        std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
     event parallel_for(nd_range<Dims> execution_range, event /* dep_event */, Rest &&...rest) {
         auto status = detail::event_state::submit_and_start();
         simsycl::detail::parallel_for(execution_range, std::forward<Rest>(rest)...);
         return status.end();
     }
 
-    template<typename KernelName, int Dims, typename... Rest, std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
+    template<typename KernelName = simsycl::detail::unnamed_kernel, int Dims, typename... Rest,
+        std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
     event parallel_for(nd_range<Dims> execution_range, const std::vector<event> & /* dep_events */, Rest &&...rest) {
         auto status = detail::event_state::submit_and_start();
         simsycl::detail::parallel_for(execution_range, std::forward<Rest>(rest)...);

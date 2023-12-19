@@ -15,7 +15,8 @@ class nd_range {
         : m_global_range(global_range), m_local_range(local_range) {}
 
     [[deprecated("Deprecated in SYCL 2020")]] nd_range(
-        range<Dimensions> global_range, range<Dimensions> local_range, id<Dimensions> offset);
+        range<Dimensions> global_range, range<Dimensions> local_range, id<Dimensions> offset)
+        : m_global_range(global_range), m_local_range(local_range), m_offset(offset) {}
 
     range<Dimensions> get_global_range() const { return m_global_range; }
     range<Dimensions> get_local_range() const { return m_local_range; }
