@@ -34,7 +34,7 @@ else ()
   set(SIMSYCL_FEATURE_HALF_TYPE 0)
 endif()
 
-set(SIMSYCL_ASAN_ENABLED OFF CACHE BOOL "Whether to enable address sanitizer")
+set(SIMSYCL_ENABLE_ASAN OFF CACHE BOOL "Whether to enable address sanitizer")
 set(SIMSYCL_CHECK_MODE "SIMSYCL_CHECK_ABORT" CACHE STRING "Check mode to use")
 
 set(CONFIG_PATH "${CMAKE_CURRENT_BINARY_DIR}/include/simsycl/config.hh")
@@ -51,10 +51,10 @@ function(set_simsycl_target_options target)
     target_compile_options(${target} PRIVATE
         # 4180 is a false positive in MSVC in group_operation_impl -- "fixing" it actually breaks the code
         $<$<CXX_COMPILER_ID:MSVC>:/W4 /wd4180>
-        $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic $<$<BOOL:${SIMSYCL_ASAN_ENABLED}>:-fsanitize=address>>
+        $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic $<$<BOOL:${SIMSYCL_ENABLE_ASAN}>:-fsanitize=address>>
     )
     target_link_options(${target} PRIVATE
-        $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:$<$<BOOL:${SIMSYCL_ASAN_ENABLED}>:-fsanitize=address>>
+        $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:$<$<BOOL:${SIMSYCL_ENABLE_ASAN}>:-fsanitize=address>>
     )
 endfunction()
 
@@ -88,6 +88,7 @@ add_library(simsycl
     include/simsycl/sycl/group_algorithms.hh
     include/simsycl/sycl/group_functions.hh
     include/simsycl/sycl/group.hh
+    include/simsycl/sycl/h_item.hh
     include/simsycl/sycl/handler.hh
     include/simsycl/sycl/id.hh
     include/simsycl/sycl/info.hh
@@ -102,6 +103,7 @@ add_library(simsycl
     include/simsycl/sycl/nd_range.hh
     include/simsycl/sycl/binary_ops.hh
     include/simsycl/sycl/platform.hh
+    include/simsycl/sycl/private_memory.hh
     include/simsycl/sycl/property.hh
     include/simsycl/sycl/queue.hh
     include/simsycl/sycl/range.hh
