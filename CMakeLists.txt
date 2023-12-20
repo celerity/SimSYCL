@@ -25,6 +25,7 @@ else ()
   set(SIMSYCL_FEATURE_HALF_TYPE 0)
 endif()
 
+set(SIMSYCL_ASAN_ENABLED OFF CACHE BOOL "Whether to enable address sanitizer")
 set(SIMSYCL_CHECK_MODE "SIMSYCL_CHECK_ABORT" CACHE STRING "Check mode to use")
 
 set(CONFIG_PATH "${CMAKE_CURRENT_BINARY_DIR}/include/simsycl/config.hh")
@@ -41,10 +42,10 @@ function(set_simsycl_target_options target)
     target_compile_options(${target} PRIVATE
         # 4180 is a false positive in MSVC in group_operation_impl -- "fixing" it actually breaks the code
         $<$<CXX_COMPILER_ID:MSVC>:/W4 /wd4180>
-        $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic $<$<CONFIG:Debug>:-fsanitize=address>>
+        $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic $<$<BOOL:${SIMSYCL_ASAN_ENABLED}>:-fsanitize=address>>
     )
     target_link_options(${target} PRIVATE
-        $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:$<$<CONFIG:Debug>:-fsanitize=address>>
+        $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:$<$<BOOL:${SIMSYCL_ASAN_ENABLED}>:-fsanitize=address>>
     )
 endfunction()
 
@@ -69,6 +70,7 @@ add_library(simsycl
     include/simsycl/sycl/concepts.hh
     include/simsycl/sycl/context.hh
     include/simsycl/sycl/device.hh
+    include/simsycl/sycl/device_selector.hh
     include/simsycl/sycl/enums.hh
     include/simsycl/sycl/event.hh
     include/simsycl/sycl/exception.hh
