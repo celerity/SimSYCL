@@ -6,10 +6,9 @@ using namespace simsycl;
 
 template<sycl::Group G>
 void check_group_op_sequence(const G &g, const std::vector<detail::group_operation_id> &expected_ids) {
-    CHECK(detail::get_group_impl(g).operations.size() == expected_ids.size());
-    for(size_t i = 0; i < expected_ids.size(); ++i) {
-        CHECK(detail::get_group_impl(g).operations[i].id == expected_ids[i]);
-    }
+    auto &group_instance = detail::get_concurrent_group(g).instance;
+    CHECK(group_instance.operations.size() == expected_ids.size());
+    for(size_t i = 0; i < expected_ids.size(); ++i) { CHECK(group_instance.operations[i].id == expected_ids[i]); }
 }
 
 TEST_CASE("Group barriers behave as expected", "[group_op]") {

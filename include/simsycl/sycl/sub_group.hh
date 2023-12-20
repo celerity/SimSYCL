@@ -99,17 +99,17 @@ class sub_group {
     id_type m_group_id;
     range_type m_group_range;
 
-    detail::sub_group_impl *m_impl; // NOLINT
+    detail::concurrent_sub_group *m_concurrent_group; // NOLINT
 
     sub_group(const id_type &local_id, const range_type &local_range, const id_type &group_id,
-        const range_type &group_range, detail::sub_group_impl *impl)
+        const range_type &group_range, detail::concurrent_sub_group *concurrent_group)
         : m_local_id(local_id), m_local_range(local_range), m_group_id(group_id), m_group_range(group_range),
-          m_impl(impl) {}
+          m_concurrent_group(concurrent_group) {}
 
     friend sycl::sub_group detail::make_sub_group(const sycl::id<1> &local_id, const sycl::range<1> &local_range,
-        const sycl::id<1> &group_id, const sycl::range<1> &group_range, detail::sub_group_impl *impl);
+        const sycl::id<1> &group_id, const sycl::range<1> &group_range, detail::concurrent_sub_group *impl);
 
-    friend detail::sub_group_impl &detail::get_group_impl(const sycl::sub_group &g);
+    friend detail::concurrent_sub_group &detail::get_concurrent_group(const sycl::sub_group &g);
 };
 
 template<>
@@ -123,7 +123,7 @@ template<>
 struct is_sub_group<sycl::sub_group> : std::true_type {};
 
 inline sycl::sub_group make_sub_group(const sycl::id<1> &local_id, const sycl::range<1> &local_range,
-    const sycl::id<1> &group_id, const sycl::range<1> &group_range, detail::sub_group_impl *impl) {
+    const sycl::id<1> &group_id, const sycl::range<1> &group_range, detail::concurrent_sub_group *impl) {
     return sycl::sub_group(local_id, local_range, group_id, group_range, impl);
 }
 

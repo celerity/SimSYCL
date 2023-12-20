@@ -91,7 +91,7 @@ class queue final : public detail::reference_type<queue, detail::queue_state>,
     template<typename T>
     event submit(T cgf) {
         auto status = detail::event_state::submit();
-        auto cgh = simsycl::detail::make_handler();
+        auto cgh = simsycl::detail::make_handler(get_device());
         status.start();
         cgf(cgh);
         return status.end();

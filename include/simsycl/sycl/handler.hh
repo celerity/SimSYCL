@@ -6,18 +6,15 @@
 #include <vector>
 
 #include "accessor.hh"
+#include "device.hh"
 #include "enums.hh"
 #include "event.hh"
 #include "forward.hh"
-#include "group.hh"
 #include "id.hh"
 #include "item.hh"
 #include "nd_item.hh"
 #include "nd_range.hh"
 #include "range.hh"
-
-#include "simsycl/detail/allocation.hh"
-#include "simsycl/detail/utils.hh"
 
 
 namespace simsycl::detail {
@@ -71,111 +68,20 @@ struct local_memory_requirement {
 };
 
 
+template<int Dimensions>
+using nd_kernel = std::function<void(const sycl::nd_item<Dimensions> &)>;
+
+template<int Dimensions>
+void dispatch_for_nd_range(const sycl::device &device, const sycl::nd_range<Dimensions> &range,
+    const std::vector<local_memory_requirement> &local_memory, const nd_kernel<Dimensions> &kernel);
+
 template<int Dimensions, typename Func, typename... Params>
-void dispatch_for_nd_range(const sycl::nd_range<Dimensions> &range,
+    requires(!std::is_same_v<std::remove_cvref_t<Func>, nd_kernel<Dimensions>>)
+void dispatch_for_nd_range(const sycl::device &device, const sycl::nd_range<Dimensions> &range,
     const std::vector<local_memory_requirement> &local_memory, Func &&func, Params &&...args) {
-    const auto &global_range = range.get_global_range();
-    const auto global_linear_range = global_range.size();
-    if(global_linear_range == 0) return;
-    const auto &group_range = range.get_group_range();
-    const auto group_linear_range = group_range.size();
-    assert(group_linear_range > 0);
-    const auto &local_range = range.get_local_range();
-    const auto local_linear_range = local_range.size();
-    assert(local_linear_range > 0);
-    const auto sub_group_local_linear_range = config::max_sub_group_size;
-    const auto sub_group_local_range = sycl::range<1>(sub_group_local_linear_range);
-    assert(sub_group_local_linear_range > 0);
-    const auto sub_group_linear_range_in_group = detail::div_ceil(local_linear_range, sub_group_local_linear_range);
-    const sycl::range<1> sub_group_range_in_group{sub_group_linear_range_in_group};
-    assert(sub_group_linear_range_in_group > 0);
-
-    std::vector<detail::group_impl> group_impls(group_linear_range);
-    std::vector<detail::sub_group_impl> sub_group_impls(group_linear_range * sub_group_linear_range_in_group);
-    std::vector<detail::nd_item_impl> nd_item_impls(global_linear_range);
-    std::vector<boost::context::continuation> continuations;
-
-    for(size_t group_linear_id = 0; group_linear_id < group_linear_range; ++group_linear_id) {
-        group_impls[group_linear_id].local_memory_allocations.resize(local_memory.size());
-        for(size_t i = 0; i < local_memory.size(); ++i) {
-            group_impls[group_linear_id].local_memory_allocations[i]
-                = allocation(local_memory[i].size, local_memory[i].align);
-        }
-    }
-
-    // build the work items, groups, subgroups and continuations
-    for(size_t global_linear_id = 0; global_linear_id < range.get_global_range().size(); ++global_linear_id) {
-        const auto global_id = linear_index_to_id(global_range, global_linear_id);
-        const auto local_id = global_id % sycl::id(local_range);
-        const auto group_id = global_id / sycl::id(local_range);
-
-        const auto local_linear_id = get_linear_index(local_range, local_id);
-        const auto group_linear_id = get_linear_index(group_range, group_id);
-
-        const auto sub_group_linear_id_in_group = local_linear_id / sub_group_local_linear_range;
-        const auto thread_linear_id_in_sub_group = local_linear_id % sub_group_local_linear_range;
-        const auto sub_group_id_in_group = sycl::id<1>(sub_group_linear_id_in_group);
-        const auto thread_id_in_sub_group = sycl::id<1>(thread_linear_id_in_sub_group);
-
-        SIMSYCL_START_IGNORING_DEPRECATIONS;
-        const auto global_item = detail::make_item(global_id, range.get_global_range(), range.get_offset());
-        SIMSYCL_STOP_IGNORING_DEPRECATIONS
-        const auto local_item = detail::make_item(local_id, range.get_local_range());
-        const auto group_item = detail::make_item(group_id, range.get_group_range());
-
-        const auto nd_item_impl_ptr = &nd_item_impls[global_linear_id];
-        const auto group_impl_ptr = &group_impls[group_linear_id];
-        group_impl_ptr->item_impls.push_back(nd_item_impl_ptr);
-        nd_item_impl_ptr->group = group_impl_ptr;
-        const auto group = detail::make_group(local_item, global_item, group_item, group_impl_ptr);
-
-        const auto sub_group_impl_ptr
-            = &sub_group_impls[group_linear_id * sub_group_linear_range_in_group + sub_group_linear_id_in_group];
-        sub_group_impl_ptr->item_impls.push_back(nd_item_impl_ptr);
-        const auto sub_group = detail::make_sub_group(thread_id_in_sub_group, sub_group_local_range,
-            sub_group_id_in_group, sub_group_range_in_group, sub_group_impl_ptr);
-
-        const auto nd_item = detail::make_nd_item(global_item, local_item, group, sub_group, nd_item_impl_ptr);
-
-        // adjust local memory pointers before spawning each fiber
-        for(size_t i = 0; i < local_memory.size(); ++i) {
-            *local_memory[i].ptr = group_impls[group_linear_id].local_memory_allocations[i].get();
-        }
-
-        continuations.push_back(
-            boost::context::callcc([func, nd_item, nd_item_impl_ptr, &args...](boost::context::continuation &&cont) {
-                nd_item_impl_ptr->continuation = &cont;
-                nd_item_impl_ptr->state = detail::nd_item_state::running;
-                try {
-                    func(nd_item, std::forward<Params>(args)...);
-                } catch(...) { nd_item_impl_ptr->exception = std::current_exception(); }
-                nd_item_impl_ptr->state = nd_item_state::exit;
-                return std::move(cont);
-            }));
-    }
-
-    // run until all are complete (this does an extra loop)
-    bool done = false;
-    while(!done) {
-        done = true;
-        for(size_t global_linear_id = 0; global_linear_id < global_linear_range; ++global_linear_id) {
-            if(nd_item_impls[global_linear_id].state == nd_item_state::exit) continue;
-            done = false;
-
-            // adjust local memory pointers before switching fibers
-            const auto group = nd_item_impls[global_linear_id].group;
-            for(size_t i = 0; i < local_memory.size(); ++i) {
-                *local_memory[i].ptr = group->local_memory_allocations[i].get();
-            }
-
-            continuations[global_linear_id] = continuations[global_linear_id].resume();
-        }
-    }
-
-    // rethrow encountered exceptions, if any
-    for(const auto &nd_item_impl : nd_item_impls) {
-        if(nd_item_impl.exception) std::rethrow_exception(nd_item_impl.exception);
-    }
+    const nd_kernel<Dimensions> kernel(
+        [&](const sycl::nd_item<Dimensions> &item) { func(item, std::forward<Params>(args)...); });
+    dispatch_for_nd_range(device, range, local_memory, kernel);
 }
 
 template<int Dimensions, typename ParamTuple, size_t... ReductionIndices, size_t KernelIndex>
@@ -188,11 +94,12 @@ void dispatch_for(const sycl::range<Dimensions> &range, ParamTuple &&params,
 }
 
 template<int Dimensions, typename ParamTuple, size_t... ReductionIndices, size_t KernelIndex>
-void dispatch_for(const sycl::nd_range<Dimensions> &range, const std::vector<local_memory_requirement> &local_memory,
-    ParamTuple &&params, std::index_sequence<ReductionIndices...> /* reduction_indices */,
+void dispatch_for(const sycl::device &device, const sycl::nd_range<Dimensions> &range,
+    const std::vector<local_memory_requirement> &local_memory, ParamTuple &&params,
+    std::index_sequence<ReductionIndices...> /* reduction_indices */,
     std::index_sequence<KernelIndex> /* kernel_index */) {
     const auto &kernel_func = std::get<KernelIndex>(params);
-    detail::dispatch_for_nd_range(range, local_memory, kernel_func, std::get<ReductionIndices>(params)...);
+    detail::dispatch_for_nd_range(device, range, local_memory, kernel_func, std::get<ReductionIndices>(params)...);
 }
 
 template<int Dimensions, typename... Rest, std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
@@ -209,9 +116,9 @@ void parallel_for(
 
 template<typename KernelName = unnamed_kernel, int Dimensions, typename... Rest,
     std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
-void parallel_for(sycl::nd_range<Dimensions> execution_range, const std::vector<local_memory_requirement> &local_memory,
-    Rest &&...rest) {
-    detail::dispatch_for(execution_range, local_memory, std::forward_as_tuple(std::forward<Rest>(rest)...),
+void parallel_for(const sycl::device &device, sycl::nd_range<Dimensions> execution_range,
+    const std::vector<local_memory_requirement> &local_memory, Rest &&...rest) {
+    detail::dispatch_for(device, execution_range, local_memory, std::forward_as_tuple(std::forward<Rest>(rest)...),
         std::make_index_sequence<sizeof...(Rest) - 1>(), std::index_sequence<sizeof...(Rest) - 1>());
 }
 
@@ -261,8 +168,8 @@ class handler {
         kernel_func();
     }
 
-    template<typename KernelName = simsycl::detail::unnamed_kernel, int Dimensions, typename... Rest,
-        std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
+    template<typename KernelName = simsycl::detail::unnamed_kernel, int Dimensions, typename... Rest>
+        requires(sizeof...(Rest) > 0)
     void parallel_for(range<Dimensions> num_work_items, Rest &&...rest) {
         simsycl::detail::parallel_for(num_work_items, std::forward<Rest>(rest)...);
     }
@@ -273,10 +180,10 @@ class handler {
         simsycl::detail::parallel_for(num_work_items, work_item_offset, kernel_func);
     }
 
-    template<typename KernelName = simsycl::detail::unnamed_kernel, int Dimensions, typename... Rest,
-        std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
+    template<typename KernelName = simsycl::detail::unnamed_kernel, int Dimensions, typename... Rest>
+        requires(sizeof...(Rest) > 0)
     void parallel_for(nd_range<Dimensions> execution_range, Rest &&...rest) {
-        simsycl::detail::parallel_for(execution_range, m_local_memory, std::forward<Rest>(rest)...);
+        simsycl::detail::parallel_for(m_device, execution_range, m_local_memory, std::forward<Rest>(rest)...);
     }
 
     template<typename KernelName = simsycl::detail::unnamed_kernel, typename WorkgroupFunctionType, int Dimensions>
@@ -374,19 +281,20 @@ class handler {
     typename std::remove_reference_t<decltype(SpecName)>::value_type get_specialization_constant();
 
   private:
-    friend handler simsycl::detail::make_handler();
+    friend handler simsycl::detail::make_handler(const sycl::device &device);
     friend void **simsycl::detail::require_local_memory(handler &cgh, size_t size, size_t align);
 
+    device m_device;
     std::vector<detail::local_memory_requirement> m_local_memory;
 
-    handler() = default;
+    explicit handler(const device &device) : m_device(device) {}
 };
 
 } // namespace simsycl::sycl
 
 namespace simsycl::detail {
 
-inline sycl::handler make_handler() { return {}; }
+inline sycl::handler make_handler(const sycl::device &device) { return sycl::handler(device); }
 
 inline void **require_local_memory(sycl::handler &cgh, const size_t size, const size_t align) {
     cgh.m_local_memory.push_back(local_memory_requirement{std::make_unique<void *>(), size, align});

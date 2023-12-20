@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <type_traits>
@@ -124,23 +125,36 @@ struct group_operation_data {
 
 // group and sub-group impl
 
-struct group_impl {
-    std::vector<nd_item_impl *> item_impls;
-    std::vector<allocation> local_memory_allocations;
+struct group_instance {
+    size_t group_linear_id = std::numeric_limits<size_t>::max();
     std::vector<group_operation_data> operations;
+    size_t num_items_exited = 0;
+
+    group_instance() : group_linear_id(std::numeric_limits<size_t>::max()) {}
+    explicit group_instance(size_t group_linear_id) : group_linear_id(group_linear_id) {}
+};
+
+struct concurrent_group {
+    std::vector<concurrent_nd_item *> concurrent_nd_items;
+    std::vector<allocation> local_memory_allocations;
+    group_instance instance;
 };
 
 template<int Dimensions>
-group_impl &get_group_impl(const sycl::group<Dimensions> &g) {
-    return *g.m_impl;
+concurrent_group &get_concurrent_group(const sycl::group<Dimensions> &g) {
+    return *g.m_concurrent_group;
 }
 
-struct sub_group_impl {
-    std::vector<nd_item_impl *> item_impls;
+struct sub_group_instance {
     std::vector<group_operation_data> operations;
 };
 
-inline detail::sub_group_impl &get_group_impl(const sycl::sub_group &g) { return *g.m_impl; }
+struct concurrent_sub_group {
+    std::vector<concurrent_nd_item *> concurrent_nd_items;
+    sub_group_instance instance;
+};
+
+inline detail::concurrent_sub_group &get_concurrent_group(const sycl::sub_group &g) { return *g.m_concurrent_group; }
 
 // group operation function template
 
@@ -171,11 +185,13 @@ struct group_operation_spec {
 
 template<sycl::Group G, typename Spec>
 auto perform_group_operation(G g, group_operation_id id, const Spec &spec) {
-    auto &group_impl = detail::get_group_impl(g);
+    auto &concurrent_group = detail::get_concurrent_group(g);
+    auto &group_instance = concurrent_group.instance;
     const auto linear_id_in_group = g.get_local_linear_id();
-    auto &this_nd_item_impl = *group_impl.item_impls[linear_id_in_group];
+    auto &this_concurrent_nd_item = *concurrent_group.concurrent_nd_items[linear_id_in_group];
+    auto &this_nd_item_instance = this_concurrent_nd_item.instance;
     size_t &ops_reached
-        = is_sub_group_v<G> ? this_nd_item_impl.group_ops_reached : this_nd_item_impl.sub_group_ops_reached;
+        = is_sub_group_v<G> ? this_nd_item_instance.group_ops_reached : this_nd_item_instance.sub_group_ops_reached;
 
     detail::group_operation_data new_op;
     new_op.id = id;
@@ -185,14 +201,14 @@ auto perform_group_operation(G g, group_operation_id id, const Spec &spec) {
 
     const size_t new_op_index = ops_reached;
 
-    if(new_op_index == group_impl.operations.size()) {
+    if(new_op_index == group_instance.operations.size()) {
         // first item to reach this group op
-        group_impl.operations.push_back(std::move(new_op));
+        group_instance.operations.push_back(std::move(new_op));
     } else {
         // not first item to reach this group op
-        SIMSYCL_CHECK(new_op_index < group_impl.operations.size() && "group operation reached in unexpected order");
+        SIMSYCL_CHECK(new_op_index < group_instance.operations.size() && "group operation reached in unexpected order");
 
-        auto &op = group_impl.operations[ops_reached];
+        auto &op = group_instance.operations[ops_reached];
         SIMSYCL_CHECK(op.id == new_op.id);
         SIMSYCL_CHECK(op.expected_num_work_items == new_op.expected_num_work_items);
         SIMSYCL_CHECK(op.num_work_items_participating < op.expected_num_work_items);
@@ -205,13 +221,13 @@ auto perform_group_operation(G g, group_operation_id id, const Spec &spec) {
 
     // wait for all work items to enter this group operation
     for(;;) {
-        this_nd_item_impl.yield();
+        this_concurrent_nd_item.yield_to_scheduler();
         // we cannot preserve a reference into `operations` across a yield since it might be resized by another item
-        const auto &op = group_impl.operations[new_op_index];
+        const auto &op = group_instance.operations[new_op_index];
         if(op.num_work_items_participating == op.expected_num_work_items) break;
     }
 
-    return spec.complete(dynamic_cast<typename Spec::per_op_t &>(*group_impl.operations[new_op_index].per_op_data));
+    return spec.complete(dynamic_cast<typename Spec::per_op_t &>(*group_instance.operations[new_op_index].per_op_data));
 }
 
 // more specific helper functions for group operations

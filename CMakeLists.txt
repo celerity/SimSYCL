@@ -103,6 +103,7 @@ add_library(simsycl
     src/simsycl/check.cc
     src/simsycl/context.cc
     src/simsycl/device.cc
+    src/simsycl/handler.cc
     src/simsycl/platform.cc
     src/simsycl/queue.cc
     src/simsycl/system.cc

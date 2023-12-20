@@ -3,8 +3,8 @@
 #include "allocator.hh"
 #include "enums.hh"
 
-#include <simsycl/config.hh>
 #include "../detail/preprocessor.hh"
+#include <simsycl/config.hh>
 
 #include <functional>
 #include <type_traits>
@@ -122,23 +122,23 @@ namespace simsycl::detail {
 
 class unnamed_kernel;
 
-struct nd_item_impl;
-struct group_impl;
-struct sub_group_impl;
+struct concurrent_nd_item;
+struct concurrent_group;
+struct concurrent_sub_group;
 
 using device_selector = std::function<int(const sycl::device &)>;
 
 sycl::sub_group make_sub_group(
-    const sycl::id<1> &, const sycl::range<1> &, const sycl::id<1> &, const sycl::range<1> &, sub_group_impl *);
+    const sycl::id<1> &, const sycl::range<1> &, const sycl::id<1> &, const sycl::range<1> &, concurrent_sub_group *);
 
-sub_group_impl &get_group_impl(const sycl::sub_group &g);
+concurrent_sub_group &get_concurrent_group(const sycl::sub_group &g);
 template<int Dimensions>
-group_impl &get_group_impl(const sycl::group<Dimensions> &g);
+concurrent_group &get_concurrent_group(const sycl::group<Dimensions> &g);
 
 template<typename T, int Dimensions, typename AllocatorT>
 T *get_buffer_data(sycl::buffer<T, Dimensions, AllocatorT> &buf);
 
-sycl::handler make_handler();
+sycl::handler make_handler(const sycl::device &device);
 
 void **require_local_memory(sycl::handler &cgh, size_t size, size_t align);
 

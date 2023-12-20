@@ -1,7 +1,5 @@
 #pragma once
 
-#include <boost/context/continuation.hpp>
-
 #include "forward.hh"
 
 #include "group.hh"
@@ -12,26 +10,32 @@
 
 #include "simsycl/detail/check.hh"
 
+
+// forward
+namespace boost::context {
+class continuation;
+}
+
 namespace simsycl::detail {
 
-enum class nd_item_state { init, running, exit };
-
-struct nd_item_impl {
-  public:
-    void yield() { *continuation = continuation->resume(); } // NOLINT(readability-make-member-function-const)
-
-    nd_item_state state = nd_item_state::init;
-    group_impl *group = nullptr;
-    boost::context::continuation *continuation = nullptr;
+struct nd_item_instance {
     size_t group_ops_reached = 0;
     size_t sub_group_ops_reached = 0;
-    std::exception_ptr exception = nullptr;
+};
+
+struct concurrent_nd_item {
+  public:
+    void yield_to_scheduler(); // implemented in handler.cc
+
+    boost::context::continuation *scheduler = nullptr;
+    detail::concurrent_group *concurrent_group = nullptr;
+    nd_item_instance instance;
 };
 
 template<int Dimensions>
 sycl::nd_item<Dimensions> make_nd_item(const sycl::item<Dimensions, true> &global_id,
     const sycl::item<Dimensions, false> &local_id, const sycl::group<Dimensions> &group,
-    const sycl::sub_group &sub_group, nd_item_impl *impl) {
+    const sycl::sub_group &sub_group, concurrent_nd_item *impl) {
     return sycl::nd_item<Dimensions>(global_id, local_id, group, sub_group, impl);
 }
 
@@ -96,7 +100,7 @@ class nd_item {
     [[deprecated("use sycl::group_barrier() free function instead")]] void barrier(
         access::fence_space access_space = access::fence_space::global_and_local) const {
         (void)access_space;
-        m_impl->yield();
+        m_impl->yield_to_scheduler();
     }
 
     template<access::mode AccessMode = access_mode::read_write>
@@ -173,15 +177,15 @@ class nd_item {
     group<Dimensions> m_group;
     sub_group m_sub_group;
 
-    detail::nd_item_impl *m_impl;
+    detail::concurrent_nd_item *m_impl;
 
     nd_item(const item<Dimensions, true> &global_item, const item<Dimensions, false> &local_item,
-        const group<Dimensions> &group, const sub_group &sub_group, detail::nd_item_impl *impl)
+        const group<Dimensions> &group, const sub_group &sub_group, detail::concurrent_nd_item *impl)
         : m_global_item(global_item), m_local_item(local_item), m_group(group), m_sub_group(sub_group), m_impl(impl) {}
 
     friend nd_item<Dimensions> detail::make_nd_item<Dimensions>(const sycl::item<Dimensions, true> &,
         const sycl::item<Dimensions, false> &, const sycl::group<Dimensions> &, const sycl::sub_group &,
-        detail::nd_item_impl *);
+        detail::concurrent_nd_item *);
 };
 
 } // namespace simsycl::sycl

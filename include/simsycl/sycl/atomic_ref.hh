@@ -73,8 +73,8 @@ class atomic_ref_base {
 
     operator T() const noexcept { return m_ref; }
 
-    T exchange(T operand, memory_order order = default_read_modify_write_order,
-        memory_scope scope = default_scope) noexcept {
+    T exchange(
+        T operand, memory_order order = default_read_modify_write_order, memory_scope scope = default_scope) noexcept {
         using std::swap;
         (void)order;
         (void)scope;

@@ -14,7 +14,7 @@ namespace simsycl::detail {
 template<int Dimensions>
 sycl::group<Dimensions> make_group(const sycl::item<Dimensions, false> &local_item,
     const sycl::item<Dimensions, true> &global_item, const sycl::item<Dimensions, false> &group_item,
-    detail::group_impl *impl) {
+    detail::concurrent_group *impl) {
     return sycl::group<Dimensions>(local_item, global_item, group_item, impl);
 }
 
@@ -107,7 +107,7 @@ class group {
         return (rhs.m_local_id == this->m_local_id) && (rhs.m_local_range == this->m_local_range)
             && (rhs.m_global_id == this->m_global_id) && (rhs.m_global_range == this->m_global_range)
             && (rhs.m_group_id == this->m_group_id) && (rhs.m_group_range == this->m_group_range)
-            && (rhs.m_impl == this->m_impl);
+            && (rhs.m_concurrent_group == this->m_concurrent_group);
     }
 
     bool operator!=(const group<Dimensions> &rhs) const { return !((*this) == rhs); }
@@ -116,17 +116,17 @@ class group {
     item<Dimensions, false /* WithOffset */> m_local_item;
     item<Dimensions, true /* WithOffset */> m_global_item;
     item<Dimensions, false /* WithOffset */> m_group_item;
-    detail::group_impl *m_impl;
+    detail::concurrent_group *m_concurrent_group;
 
     group(const item<Dimensions, false> &local_item, const item<Dimensions, true> &global_item,
-        const item<Dimensions, false> &group_item, detail::group_impl *impl)
-        : m_local_item(local_item), m_global_item(global_item), m_group_item(group_item), m_impl(impl) {}
+        const item<Dimensions, false> &group_item, detail::concurrent_group *impl)
+        : m_local_item(local_item), m_global_item(global_item), m_group_item(group_item), m_concurrent_group(impl) {}
 
     friend group<Dimensions> detail::make_group<Dimensions>(const sycl::item<Dimensions, false> &local_item,
         const sycl::item<Dimensions, true> &global_item, const sycl::item<Dimensions, false> &group_item,
-        detail::group_impl *impl);
+        detail::concurrent_group *impl);
 
-    friend detail::group_impl &detail::get_group_impl<Dimensions>(const sycl::group<Dimensions> &g);
+    friend detail::concurrent_group &detail::get_concurrent_group<Dimensions>(const sycl::group<Dimensions> &g);
 };
 
 template<int Dimensions>
