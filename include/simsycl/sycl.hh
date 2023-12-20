@@ -11,6 +11,7 @@
 #include "sycl/bundle.hh"
 #include "sycl/context.hh"
 #include "sycl/device.hh"
+#include "sycl/device_selector.hh"
 #include "sycl/enums.hh"
 #include "sycl/event.hh"
 #include "sycl/exception.hh"

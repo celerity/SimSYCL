@@ -1,6 +1,6 @@
 #pragma once
 
-#include "concepts.hh"
+#include "concepts.hh" // IWYU pragma: keep
 #include "enums.hh"
 #include "forward.hh"
 #include "info.hh"

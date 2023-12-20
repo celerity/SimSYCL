@@ -1,8 +1,9 @@
 #pragma once
 
-#include <concepts> // IWYU pragma: keep
-
+#include "forward.hh"
 #include "type_traits.hh"
+
+#include <concepts> // IWYU pragma: keep
 
 namespace simsycl::sycl {
 

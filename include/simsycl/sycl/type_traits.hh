@@ -1,9 +1,6 @@
 #pragma once
 
-#include "forward.hh"
-
 #include <bit>
-
 
 namespace simsycl::sycl {
 
