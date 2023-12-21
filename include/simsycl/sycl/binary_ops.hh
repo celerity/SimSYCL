@@ -73,12 +73,12 @@ struct known_identity<logical_or<OpT>, T> {
 
 template<typename T = void>
 struct minimum {
-    T operator()(const T &x, const T &y) const { return x <= y ? x : y; }
+    T operator()(const T &x, const T &y) const { return x < y ? x : y; }
 };
 template<>
 struct minimum<void> {
     template<typename T, typename U>
-    decltype(auto) operator()(T && x, U && y) const {
+    std::common_type_t<T &&, U &&> operator()(T &&x, U &&y) const {
         return x < y ? std::forward<T>(x) : std::forward<U>(y);
     }
 };
@@ -97,7 +97,7 @@ struct maximum {
 template<>
 struct maximum<void> {
     template<typename T, typename U>
-    decltype(auto) operator()(T && x, U && y) const {
+    std::common_type_t<T &&, U &&> operator()(T &&x, U &&y) const {
         return x > y ? std::forward<T>(x) : std::forward<U>(y);
     }
 };

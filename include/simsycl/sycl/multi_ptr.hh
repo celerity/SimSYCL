@@ -49,40 +49,29 @@ class multi_ptr {
     explicit multi_ptr(typename multi_ptr<ElementType, Space, access::decorated::yes>::pointer);
     multi_ptr(std::nullptr_t);
 
-    // Available only when:
-    //   (Space == access::address_space::global_space ||
-    //    Space == access::address_space::generic_space)
     template<int Dimensions, access_mode Mode, access::placeholder IsPlaceholder>
+        requires(Space == access::address_space::global_space || Space == access::address_space::generic_space)
     multi_ptr(accessor<value_type, Dimensions, Mode, target::device, IsPlaceholder>);
 
-    // Available only when:
-    //   (Space == access::address_space::local_space ||
-    //    Space == access::address_space::generic_space)
     template<int Dimensions>
+        requires(Space == access::address_space::local_space || Space == access::address_space::generic_space)
     multi_ptr(local_accessor<ElementType, Dimensions>);
 
-    // Deprecated
-    // Available only when:
-    //   (Space == access::address_space::local_space ||
-    //    Space == access::address_space::generic_space)
     template<int Dimensions, access_mode Mode, access::placeholder IsPlaceholder>
-    multi_ptr(accessor<value_type, Dimensions, Mode, target::local, IsPlaceholder>);
+        requires(Space == access::address_space::local_space || Space == access::address_space::generic_space)
+    [[deprecated]] multi_ptr(accessor<value_type, Dimensions, Mode, target::local, IsPlaceholder>);
 
     // Assignment and access operators
     multi_ptr &operator=(const multi_ptr &);
     multi_ptr &operator=(multi_ptr &&);
     multi_ptr &operator=(std::nullptr_t);
 
-    // Available only when:
-    //   (Space == access::address_space::generic_space &&
-    //    AS != access::address_space::constant_space)
     template<access::address_space AS, access::decorated IsDecorated>
+        requires(Space == access::address_space::generic_space && AS != access::address_space::constant_space)
     multi_ptr &operator=(const multi_ptr<value_type, AS, IsDecorated> &);
 
-    // Available only when:
-    //   (Space == access::address_space::generic_space &&
-    //    AS != access::address_space::constant_space)
     template<access::address_space AS, access::decorated IsDecorated>
+        requires(Space == access::address_space::generic_space && AS != access::address_space::constant_space)
     multi_ptr &operator=(multi_ptr<value_type, AS, IsDecorated> &&);
 
     reference operator[](std::ptrdiff_t) const;
@@ -99,50 +88,50 @@ class multi_ptr {
     operator pointer() const;
 
     // Cast to private_ptr
-    // Available only when: (Space == access::address_space::generic_space)
-    explicit operator multi_ptr<value_type, access::address_space::private_space, DecorateAddress>();
+    explicit operator multi_ptr<value_type, access::address_space::private_space, DecorateAddress>()
+        requires(Space == access::address_space::generic_space);
 
     // Cast to private_ptr
-    // Available only when: (Space == access::address_space::generic_space)
-    explicit operator multi_ptr<const value_type, access::address_space::private_space, DecorateAddress>() const;
+    explicit operator multi_ptr<const value_type, access::address_space::private_space, DecorateAddress>() const
+        requires(Space == access::address_space::generic_space);
 
     // Cast to global_ptr
-    // Available only when: (Space == access::address_space::generic_space)
-    explicit operator multi_ptr<value_type, access::address_space::global_space, DecorateAddress>();
+    explicit operator multi_ptr<value_type, access::address_space::global_space, DecorateAddress>()
+        requires(Space == access::address_space::generic_space);
 
     // Cast to global_ptr
-    // Available only when: (Space == access::address_space::generic_space)
-    explicit operator multi_ptr<const value_type, access::address_space::global_space, DecorateAddress>() const;
+    explicit operator multi_ptr<const value_type, access::address_space::global_space, DecorateAddress>() const
+        requires(Space == access::address_space::generic_space);
 
     // Cast to local_ptr
-    // Available only when: (Space == access::address_space::generic_space)
-    explicit operator multi_ptr<value_type, access::address_space::local_space, DecorateAddress>();
+    explicit operator multi_ptr<value_type, access::address_space::local_space, DecorateAddress>()
+        requires(Space == access::address_space::generic_space);
 
     // Cast to local_ptr
-    // Available only when: (Space == access::address_space::generic_space)
-    explicit operator multi_ptr<const value_type, access::address_space::local_space, DecorateAddress>() const;
+    explicit operator multi_ptr<const value_type, access::address_space::local_space, DecorateAddress>() const
+        requires(Space == access::address_space::generic_space);
 
     // Implicit conversion to a multi_ptr<void>.
-    // Available only when: (!std::is_const_v<value_type>)
     template<access::decorated IsDecorated>
-    operator multi_ptr<void, Space, IsDecorated>() const;
+    operator multi_ptr<void, Space, IsDecorated>() const
+        requires(!std::is_const_v<value_type>);
 
     // Implicit conversion to a multi_ptr<const void>.
-    // Available only when: (std::is_const_v<value_type>)
     template<access::decorated IsDecorated>
-    operator multi_ptr<const void, Space, IsDecorated>() const;
+    operator multi_ptr<const void, Space, IsDecorated>() const
+        requires(std::is_const_v<value_type>);
 
     // Implicit conversion to multi_ptr<const value_type, Space>.
     template<access::decorated IsDecorated>
     operator multi_ptr<const value_type, Space, IsDecorated>() const;
 
     // Implicit conversion to the non-decorated version of multi_ptr.
-    // Available only when: (is_decorated == true)
-    operator multi_ptr<value_type, Space, access::decorated::no>() const;
+    operator multi_ptr<value_type, Space, access::decorated::no>() const
+        requires is_decorated;
 
     // Implicit conversion to the decorated version of multi_ptr.
-    // Available only when: (is_decorated == false)
-    operator multi_ptr<value_type, Space, access::decorated::yes>() const;
+    operator multi_ptr<value_type, Space, access::decorated::yes>() const
+        requires(!is_decorated);
 
     void prefetch(size_t num_elements) const;
 
@@ -202,21 +191,17 @@ class multi_ptr<simsycl::detail::void_type<VoidType>, Space, DecorateAddress> {
     explicit multi_ptr(typename multi_ptr<VoidType, Space, access::decorated::yes>::pointer);
     multi_ptr(std::nullptr_t);
 
-    // Available only when:
-    //   (Space == access::address_space::global_space)
     template<typename ElementType, int Dimensions, access_mode Mode, access::placeholder IsPlaceholder>
+        requires(Space == access::address_space::global_space)
     multi_ptr(accessor<ElementType, Dimensions, Mode, target::device, IsPlaceholder>);
 
-    // Available only when:
-    //   (Space == access::address_space::local_space)
     template<typename ElementType, int Dimensions>
+        requires(Space == access::address_space::local_space)
     multi_ptr(local_accessor<ElementType, Dimensions>);
 
-    // Deprecated
-    // Available only when:
-    //   (Space == access::address_space::local_space)
     template<typename ElementType, int Dimensions, access_mode Mode, access::placeholder IsPlaceholder>
-    multi_ptr(accessor<ElementType, Dimensions, Mode, target::local, IsPlaceholder>);
+        requires(Space == access::address_space::local_space)
+    [[deprecated]] multi_ptr(accessor<ElementType, Dimensions, Mode, target::local, IsPlaceholder>);
 
     // Assignment operators
     multi_ptr &operator=(const multi_ptr &);
@@ -229,20 +214,248 @@ class multi_ptr<simsycl::detail::void_type<VoidType>, Space, DecorateAddress> {
     explicit operator pointer() const;
 
     // Explicit conversion to a multi_ptr<ElementType>
-    // Available only when: (std::is_const_v<ElementType> || !std::is_const_v<VoidType>)
     template<typename ElementType>
+        requires(std::is_const_v<ElementType> || !std::is_const_v<VoidType>)
     explicit operator multi_ptr<ElementType, Space, DecorateAddress>() const;
 
     // Implicit conversion to the non-decorated version of multi_ptr.
-    // Available only when: (is_decorated == true)
-    operator multi_ptr<value_type, Space, access::decorated::no>() const;
+    operator multi_ptr<value_type, Space, access::decorated::no>() const
+        requires is_decorated;
 
     // Implicit conversion to the decorated version of multi_ptr.
-    // Available only when: (is_decorated == false)
-    operator multi_ptr<value_type, Space, access::decorated::yes>() const;
+    operator multi_ptr<value_type, Space, access::decorated::yes>() const
+        requires(!is_decorated);
 
     // Implicit conversion to multi_ptr<const void, Space>
     operator multi_ptr<const void, Space, DecorateAddress>() const;
+
+    friend bool operator==(const multi_ptr &lhs, const multi_ptr &rhs) {
+        SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, rhs);
+    }
+    friend bool operator!=(const multi_ptr &lhs, const multi_ptr &rhs) {
+        SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, rhs);
+    }
+    friend bool operator<(const multi_ptr &lhs, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, rhs); }
+    friend bool operator>(const multi_ptr &lhs, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, rhs); }
+    friend bool operator<=(const multi_ptr &lhs, const multi_ptr &rhs) {
+        SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, rhs);
+    }
+    friend bool operator>=(const multi_ptr &lhs, const multi_ptr &rhs) {
+        SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, rhs);
+    }
+
+    friend bool operator==(const multi_ptr &lhs, std::nullptr_t) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs); }
+    friend bool operator!=(const multi_ptr &lhs, std::nullptr_t) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs); }
+    friend bool operator<(const multi_ptr &lhs, std::nullptr_t) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs); }
+    friend bool operator>(const multi_ptr &lhs, std::nullptr_t) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs); }
+    friend bool operator<=(const multi_ptr &lhs, std::nullptr_t) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs); }
+    friend bool operator>=(const multi_ptr &lhs, std::nullptr_t) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs); }
+
+    friend bool operator==(std::nullptr_t, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(rhs); }
+    friend bool operator!=(std::nullptr_t, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(rhs); }
+    friend bool operator<(std::nullptr_t, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(rhs); }
+    friend bool operator>(std::nullptr_t, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(rhs); }
+    friend bool operator<=(std::nullptr_t, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(rhs); }
+    friend bool operator>=(std::nullptr_t, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(rhs); }
+};
+
+// Legacy interface, inherited from 1.2.1.
+// Deprecated.
+template<typename ElementType, access::address_space Space>
+class [[deprecated]] multi_ptr<ElementType, Space, access::decorated::legacy> {
+  public:
+    using value_type = ElementType;
+    using element_type = ElementType;
+    using difference_type = std::ptrdiff_t;
+
+    // Implementation defined pointer and reference types that correspond to
+    // SYCL/OpenCL interoperability types for OpenCL C functions.
+    using pointer_t = multi_ptr<ElementType, Space, access::decorated::yes>::pointer;
+    using const_pointer_t = multi_ptr<const ElementType, Space, access::decorated::yes>::pointer;
+    using reference_t = multi_ptr<ElementType, Space, access::decorated::yes>::reference;
+    using const_reference_t = multi_ptr<const ElementType, Space, access::decorated::yes>::reference;
+
+    static constexpr access::address_space address_space = Space;
+
+    // Constructors
+    multi_ptr();
+    multi_ptr(const multi_ptr &);
+    multi_ptr(multi_ptr &&);
+    multi_ptr(pointer_t);
+    multi_ptr(std::nullptr_t);
+    ~multi_ptr();
+
+    // Assignment and access operators
+    multi_ptr &operator=(const multi_ptr &);
+    multi_ptr &operator=(multi_ptr &&);
+    multi_ptr &operator=(pointer_t);
+    multi_ptr &operator=(std::nullptr_t);
+    friend ElementType &operator*(const multi_ptr &mp) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(mp); }
+    ElementType *operator->() const;
+
+    // Spec error: what is AccDataT?
+    // Available only when:
+    //   (Space == access::address_space::global_space ||
+    //    Space == access::address_space::generic_space) &&
+    //   (std::is_same_v<std::remove_const_t<ElementType>, std::remove_const_t<AccDataT>>) &&
+    //   (std::is_const_v<ElementType> ||
+    //    !std::is_const_v<accessor<AccDataT, Dimensions, Mode, target::device,
+    //                              IsPlaceholder>::value_type>)
+    template<int Dimensions, access_mode Mode, access::placeholder IsPlaceholder>
+    multi_ptr(accessor<ElementType, Dimensions, Mode, target::device, IsPlaceholder>);
+
+    // Spec error: what is AccDataT?
+    // Available only when:
+    //   (Space == access::address_space::local_space ||
+    //    Space == access::address_space::generic_space) &&
+    //   (std::is_same_v<std::remove_const_t<ElementType>, std::remove_const_t<AccDataT>>) &&
+    //   (std::is_const_v<ElementType> || !std::is_const_v<AccDataT>)
+    template<int Dimensions, access_mode Mode, access::placeholder IsPlaceholder>
+    multi_ptr(accessor<ElementType, Dimensions, Mode, target::local, IsPlaceholder>);
+
+    template<typename AccDataT, int Dimensions>
+        requires(Space == access::address_space::local_space || Space == access::address_space::generic_space)
+        && (std::is_same_v<std::remove_const_t<ElementType>, std::remove_const_t<AccDataT>>)
+        && (std::is_const_v<ElementType> || !std::is_const_v<AccDataT>)
+    multi_ptr(local_accessor<AccDataT, Dimensions>);
+
+    template<int Dimensions, access_mode Mode, access::placeholder IsPlaceholder>
+    multi_ptr(accessor<ElementType, Dimensions, Mode, target::constant_buffer, IsPlaceholder>)
+        requires(Space == access::address_space::constant_space);
+
+    // Returns the underlying OpenCL C pointer
+    pointer_t get() const;
+
+    std::add_pointer_t<value_type> get_raw() const;
+
+    pointer_t get_decorated() const;
+
+    // Implicit conversion to the underlying pointer type
+    operator ElementType *() const;
+
+    // Implicit conversion to a multi_ptr<void>
+    operator multi_ptr<void, Space, access::decorated::legacy>() const
+        requires(!std::is_const_v<ElementType>);
+
+    // Implicit conversion to a multi_ptr<const void>
+    operator multi_ptr<const void, Space, access::decorated::legacy>() const
+        requires(std::is_const_v<ElementType>);
+
+    // Implicit conversion to multi_ptr<const ElementType, Space>
+    operator multi_ptr<const ElementType, Space, access::decorated::legacy>() const;
+
+    // Arithmetic operators
+    friend multi_ptr &operator++(multi_ptr &mp) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(mp); }
+    friend multi_ptr operator++(multi_ptr &mp, int) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(mp); }
+    friend multi_ptr &operator--(multi_ptr &mp) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(mp); }
+    friend multi_ptr operator--(multi_ptr &mp, int) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(mp); }
+    friend multi_ptr &operator+=(multi_ptr &lhs, difference_type r) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, r); }
+    friend multi_ptr &operator-=(multi_ptr &lhs, difference_type r) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, r); }
+    friend multi_ptr operator+(const multi_ptr &lhs, difference_type r) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, r); }
+    friend multi_ptr operator-(const multi_ptr &lhs, difference_type r) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, r); }
+
+    void prefetch(size_t num_elements) const { (void)num_elements; }
+
+    friend bool operator==(const multi_ptr &lhs, const multi_ptr &rhs) {
+        SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, rhs);
+    }
+    friend bool operator!=(const multi_ptr &lhs, const multi_ptr &rhs) {
+        SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, rhs);
+    }
+    friend bool operator<(const multi_ptr &lhs, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, rhs); }
+    friend bool operator>(const multi_ptr &lhs, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, rhs); }
+    friend bool operator<=(const multi_ptr &lhs, const multi_ptr &rhs) {
+        SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, rhs);
+    }
+    friend bool operator>=(const multi_ptr &lhs, const multi_ptr &rhs) {
+        SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, rhs);
+    }
+
+    friend bool operator==(const multi_ptr &lhs, std::nullptr_t) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs); }
+    friend bool operator!=(const multi_ptr &lhs, std::nullptr_t) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs); }
+    friend bool operator<(const multi_ptr &lhs, std::nullptr_t) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs); }
+    friend bool operator>(const multi_ptr &lhs, std::nullptr_t) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs); }
+    friend bool operator<=(const multi_ptr &lhs, std::nullptr_t) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs); }
+    friend bool operator>=(const multi_ptr &lhs, std::nullptr_t) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs); }
+
+    friend bool operator==(std::nullptr_t, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(rhs); }
+    friend bool operator!=(std::nullptr_t, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(rhs); }
+    friend bool operator<(std::nullptr_t, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(rhs); }
+    friend bool operator>(std::nullptr_t, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(rhs); }
+    friend bool operator<=(std::nullptr_t, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(rhs); }
+    friend bool operator>=(std::nullptr_t, const multi_ptr &rhs) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(rhs); }
+};
+
+// Legacy interface, inherited from 1.2.1.
+// Deprecated.
+// Specialization of multi_ptr for void and const void
+// VoidType can be either void or const void
+template<typename VoidType, access::address_space Space>
+class [[deprecated]] multi_ptr<simsycl::detail::void_type<VoidType>, Space, access::decorated::legacy> {
+  public:
+    using value_type = VoidType;
+    using element_type = VoidType;
+    using difference_type = std::ptrdiff_t;
+
+    // Implementation defined pointer types that correspond to
+    // SYCL/OpenCL interoperability types for OpenCL C functions
+    using pointer_t = multi_ptr<VoidType, Space, access::decorated::yes>::pointer;
+    using const_pointer_t = multi_ptr<const VoidType, Space, access::decorated::yes>::pointer;
+
+    static constexpr access::address_space address_space = Space;
+
+    // Constructors
+    multi_ptr();
+    multi_ptr(const multi_ptr &);
+    multi_ptr(multi_ptr &&);
+    multi_ptr(pointer_t);
+    multi_ptr(std::nullptr_t);
+    ~multi_ptr();
+
+    // Assignment operators
+    multi_ptr &operator=(const multi_ptr &);
+    multi_ptr &operator=(multi_ptr &&);
+    multi_ptr &operator=(pointer_t);
+    multi_ptr &operator=(std::nullptr_t);
+
+    template<typename ElementType, int Dimensions, access_mode Mode, access::placeholder IsPlaceholder>
+        requires(Space == access::address_space::global_space || Space == access::address_space::generic_space)
+        && (std::is_const_v<VoidType>
+            || !std::is_const_v<
+                typename accessor<ElementType, Dimensions, Mode, target::device, IsPlaceholder>::value_type>)
+    multi_ptr(accessor<ElementType, Dimensions, Mode, target::device>);
+
+    template<typename ElementType, int Dimensions, access_mode Mode>
+        requires(Space == access::address_space::local_space || Space == access::address_space::generic_space)
+        && (std::is_const_v<VoidType> || !std::is_const_v<ElementType>)
+    multi_ptr(accessor<ElementType, Dimensions, Mode, target::local>);
+
+    template<typename AccDataT, int Dimensions>
+        requires((Space == access::address_space::local_space || Space == access::address_space::generic_space)
+            && (std::is_const_v<VoidType> || !std::is_const_v<element_type>))
+    multi_ptr(local_accessor<AccDataT, Dimensions>);
+
+    template<typename ElementType, int Dimensions, access_mode Mode>
+    multi_ptr(accessor<ElementType, Dimensions, Mode, target::constant_buffer>)
+        requires(Space == access::address_space::constant_space);
+
+    // Returns the underlying OpenCL C pointer
+    pointer_t get() const;
+
+    std::add_pointer_t<value_type> get_raw() const;
+
+    pointer_t get_decorated() const;
+
+    // Implicit conversion to the underlying pointer type
+    operator VoidType *() const;
+
+    // Explicit conversion to a multi_ptr<ElementType>
+    template<typename ElementType>
+        requires(!std::is_const_v<VoidType> || std::is_const_v<ElementType>)
+    explicit operator multi_ptr<ElementType, Space, access::decorated::legacy>() const;
+
+    // Implicit conversion to multi_ptr<const void, Space>
+    operator multi_ptr<const void, Space, access::decorated::legacy>() const;
 
     friend bool operator==(const multi_ptr &lhs, const multi_ptr &rhs) {
         SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, rhs);

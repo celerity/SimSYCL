@@ -11,6 +11,7 @@
 #include "event.hh"
 #include "forward.hh"
 #include "id.hh"
+#include "interop_handle.hh"
 #include "item.hh"
 #include "nd_item.hh"
 #include "nd_range.hh"
@@ -158,7 +159,11 @@ class handler {
     template<typename T>
     void host_task(T &&host_task_callable) {
         // TODO pass interop_handle if possible
-        host_task_callable();
+        if constexpr(std::is_invocable_v<T, interop_handle>) {
+            host_task_callable(detail::make_interop_handle());
+        } else {
+            host_task_callable();
+        }
     }
 
     //------ Kernel dispatch API

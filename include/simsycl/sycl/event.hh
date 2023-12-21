@@ -45,13 +45,16 @@ uint64_t nanoseconds_since_epoch(std::chrono::time_point<Clock, Dur> time_point)
 
 namespace simsycl::sycl {
 
-class event : detail::reference_type<event, detail::event_state> {
+class event : public detail::reference_type<event, detail::event_state> {
   public:
     event() = default;
 
-    backend get_backend() const noexcept;
+    backend get_backend() const noexcept { return backend::simsycl; }
 
-    std::vector<event> get_wait_list();
+    std::vector<event> get_wait_list() {
+        // spec: already completed events do not need to be included
+        return {};
+    }
 
     void wait() {}
 

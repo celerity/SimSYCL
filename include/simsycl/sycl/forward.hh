@@ -65,6 +65,8 @@ class host_unsampled_image_accessor;
 template<int Dimensions = 1>
 class id;
 
+class interop_handle;
+
 template<int Dimensions = 1, bool WithOffset = true>
 class item;
 
@@ -81,7 +83,8 @@ class kernel_id;
 template<typename DataT, int Dimensions = 1>
 class local_accessor;
 
-template<typename ElementType, access::address_space Space, access::decorated DecorateAddress>
+template<typename ElementType, access::address_space Space,
+    access::decorated DecorateAddress = access::decorated::legacy>
 class multi_ptr;
 
 template<int Dimensions = 1>
@@ -139,6 +142,8 @@ template<typename T, int Dimensions, typename AllocatorT>
 T *get_buffer_data(sycl::buffer<T, Dimensions, AllocatorT> &buf);
 
 sycl::handler make_handler(const sycl::device &device);
+
+sycl::interop_handle make_interop_handle();
 
 void **require_local_memory(sycl::handler &cgh, size_t size, size_t align);
 
