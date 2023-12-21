@@ -11,7 +11,6 @@
 #include <cstdlib>
 #include <type_traits>
 
-
 namespace simsycl::detail {
 
 template<typename DataT, int NumElements>
@@ -27,6 +26,8 @@ struct no_repeat_indices {
 
 template<int I1>
 struct no_repeat_indices<I1> : std::true_type {};
+template<int... Is>
+static constexpr bool no_repeat_indices_v = no_repeat_indices<Is...>::value;
 
 template<int I1, int I2>
 struct no_repeat_indices<I1, I2> : std::bool_constant<I1 != I2> {};
@@ -38,15 +39,46 @@ template<int I1, int I2, int I3, int I4>
 struct no_repeat_indices<I1, I2, I3, I4>
     : std::bool_constant<I1 != I2 && I1 != I3 && I1 != I4 && I2 != I3 && I2 != I4 && I3 != I4> {};
 
-template<int... Is>
-static constexpr bool no_repeat_indices_v = no_repeat_indices<Is...>::value;
+template<typename V1, typename V2>
+static constexpr bool is_compatible_vector_v = requires {
+    V1::dimensions == V2::dimensions;
+    std::is_same_v<typename V1::element_type, typename V2::element_type>;
+} || std::is_same_v<typename V1::element_type, V2>;
+
+template<typename DataT, int... Indices>
+class swizzled_vec;
+
+template<typename T>
+struct is_swizzle : std::false_type {};
+template<typename DataT, int... Indices>
+struct is_swizzle<swizzled_vec<DataT, Indices...>> : std::true_type {};
+template<typename T>
+static constexpr bool is_swizzle_v = is_swizzle<T>::value;
+
+template<typename DataT, int NumElements>
+sycl::vec<DataT, NumElements> to_vec(const sycl::vec<DataT, NumElements> &v) {
+    return v;
+}
+template<typename DataT, int... Indices>
+sycl::vec<DataT, sizeof...(Indices)> to_vec(const swizzled_vec<DataT, Indices...> &v) {
+    return v;
+}
+template<typename DataT, int NumElements>
+sycl::vec<DataT, NumElements> to_vec(const DataT &e) {
+    return sycl::vec<DataT, NumElements>(e);
+}
 
 template<typename DataT, int... Indices>
 class swizzled_vec {
     static_assert(!std::is_volatile_v<DataT>);
     static_assert(sizeof...(Indices) > 0);
 
+    static constexpr bool allow_assign = no_repeat_indices_v<Indices...>;
+
   public:
+    using element_type = DataT;
+    static constexpr int dimensions = sizeof...(Indices);
+
     swizzled_vec() = delete;
     swizzled_vec(const swizzled_vec &) = delete;
     swizzled_vec(swizzled_vec &&) = delete;
@@ -54,40 +86,132 @@ class swizzled_vec {
     swizzled_vec &operator=(swizzled_vec &&) = delete;
 
     swizzled_vec &operator=(const DataT &rhs)
-        requires(no_repeat_indices_v<Indices...>)
+        requires(allow_assign)
     {
-        for(size_t i = 0; i < sizeof...(Indices); ++i) { m_elems[indices[i]] = rhs; }
+        for(size_t i = 0; i < dimensions; ++i) { m_elems[indices[i]] = rhs; }
         return *this;
     }
 
-    swizzled_vec &operator=(const sycl::vec<DataT, sizeof...(Indices)> &rhs)
-        requires(no_repeat_indices_v<Indices...>)
+    swizzled_vec &operator=(const sycl::vec<DataT, dimensions> &rhs)
+        requires(allow_assign)
     {
-        for(size_t i = 0; i < sizeof...(Indices); ++i) { m_elems[indices[i]] = rhs[i]; }
+        for(size_t i = 0; i < dimensions; ++i) { m_elems[indices[i]] = rhs[i]; }
         return *this;
     }
 
     template<int... OtherIndices>
     swizzled_vec &operator=(const swizzled_vec<DataT, OtherIndices...> &rhs)
-        requires(sizeof...(Indices) == sizeof...(OtherIndices) && no_repeat_indices_v<Indices...>)
+        requires(dimensions == sizeof...(OtherIndices) && allow_assign)
     {
-        for(size_t i = 0; i < sizeof...(Indices); ++i) { m_elems[indices[i]] = rhs.m_elems[rhs.indices[i]]; }
+        for(size_t i = 0; i < dimensions; ++i) { m_elems[indices[i]] = rhs.m_elems[rhs.indices[i]]; }
         return *this;
     }
 
-    operator sycl::vec<DataT, sizeof...(Indices)>() const
-        requires(sizeof...(Indices) > 1)
-    {
-        return sycl::vec<DataT, sizeof...(Indices)>(m_elems[Indices]...);
-    }
+    operator sycl::vec<DataT, dimensions>() const { return sycl::vec<DataT, dimensions>(m_elems[Indices]...); }
 
     operator DataT() const
-        requires(sizeof...(Indices) == 1)
+        requires(dimensions == 1)
     {
         return m_elems[0];
     }
 
-    // TODO all the operatorOP from vec
+#define SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_COPY_OPERATOR(op, enable_if)                                              \
+    template<typename LHS, typename RHS>                                                                               \
+    friend constexpr auto operator op(const LHS &lhs, const RHS &rhs)                                                  \
+        requires(enable_if && is_compatible_vector_v<swizzled_vec, RHS> && is_compatible_vector_v<swizzled_vec, LHS>   \
+            && (std::is_same_v<swizzled_vec, LHS> || (std::is_same_v<swizzled_vec, RHS> && !is_swizzle_v<LHS>)))       \
+    {                                                                                                                  \
+        return to_vec<element_type, dimensions>(lhs) op to_vec<element_type, dimensions>(rhs);                         \
+    }
+
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_COPY_OPERATOR(+, true)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_COPY_OPERATOR(-, true)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_COPY_OPERATOR(*, true)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_COPY_OPERATOR(/, true)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_COPY_OPERATOR(%, !detail::is_floating_point_v<DataT>)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_COPY_OPERATOR(&, !detail::is_floating_point_v<DataT>)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_COPY_OPERATOR(|, !detail::is_floating_point_v<DataT>)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_COPY_OPERATOR(^, !detail::is_floating_point_v<DataT>)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_COPY_OPERATOR(<<, !detail::is_floating_point_v<DataT>)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_COPY_OPERATOR(>>, !detail::is_floating_point_v<DataT>)
+#undef SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_COPY_OPERATOR
+
+#define SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_INPLACE_OPERATOR(op, enable_if)                                           \
+    template<typename RHS>                                                                                             \
+    friend constexpr swizzled_vec &operator op##=(swizzled_vec && lhs, const RHS & rhs)                                \
+        requires(enable_if && allow_assign && is_compatible_vector_v<swizzled_vec, RHS>)                               \
+    {                                                                                                                  \
+        return lhs = to_vec<element_type, dimensions>(lhs) op to_vec<element_type, dimensions>(rhs);                   \
+    }
+
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_INPLACE_OPERATOR(+, true)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_INPLACE_OPERATOR(-, true)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_INPLACE_OPERATOR(*, true)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_INPLACE_OPERATOR(/, true)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_INPLACE_OPERATOR(%, !detail::is_floating_point_v<DataT>)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_INPLACE_OPERATOR(&, !detail::is_floating_point_v<DataT>)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_INPLACE_OPERATOR(|, !detail::is_floating_point_v<DataT>)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_INPLACE_OPERATOR(^, !detail::is_floating_point_v<DataT>)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_INPLACE_OPERATOR(<<, !detail::is_floating_point_v<DataT>)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_INPLACE_OPERATOR(>>, !detail::is_floating_point_v<DataT>)
+#undef SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_INPLACE_OPERATOR
+
+#define SIMSYCL_DETAIL_DEFINE_SWIZZLE_UNARY_COPY_OPERATOR(op, enable_if)                                               \
+    friend constexpr auto operator op(const swizzled_vec &v)                                                           \
+        requires(enable_if)                                                                                            \
+    {                                                                                                                  \
+        return op to_vec(v);                                                                                           \
+    }
+
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_UNARY_COPY_OPERATOR(+, true)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_UNARY_COPY_OPERATOR(-, true)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_UNARY_COPY_OPERATOR(~, !detail::is_floating_point_v<DataT>)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_UNARY_COPY_OPERATOR(!, !detail::is_floating_point_v<DataT>)
+#undef SIMSYCL_DETAIL_DEFINE_SWIZZLE_UNARY_COPY_OPERATOR
+
+#define SIMSYCL_DETAIL_DEFINE_SWIZZLE_UNARY_PREFIX_OPERATOR(op)                                                        \
+    friend constexpr swizzled_vec &operator op(swizzled_vec && v)                                                      \
+        requires(!std::is_same_v<DataT, bool>)                                                                         \
+    {                                                                                                                  \
+        for(int d = 0; d < dimensions; ++d) { op v.m_elems[indices[d]]; }                                              \
+        return v;                                                                                                      \
+    }
+
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_UNARY_PREFIX_OPERATOR(++)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_UNARY_PREFIX_OPERATOR(--)
+#undef SIMSYCL_DETAIL_DEFINE_SWIZZLE_UNARY_PREFIX_OPERATOR
+
+#define SIMSYCL_DETAIL_DEFINE_SWIZZLE_UNARY_POSTFIX_OPERATOR(op)                                                       \
+    friend constexpr auto operator op(swizzled_vec &&v, int)                                                           \
+        requires(!std::is_same_v<DataT, bool>)                                                                         \
+    {                                                                                                                  \
+        auto result = to_vec(v);                                                                                       \
+        for(int d = 0; d < dimensions; ++d) { v.m_elems[indices[d]] op; }                                              \
+        return result;                                                                                                 \
+    }
+
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_UNARY_POSTFIX_OPERATOR(++)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_UNARY_POSTFIX_OPERATOR(--)
+#undef SIMSYCL_DETAIL_DEFINE_SWIZZLE_UNARY_POSTFIX_OPERATOR
+
+#define SIMSYCL_DETAIL_DEFINE_SWIZZLE_COMPARISON_OPERATOR(op)                                                          \
+    template<typename LHS, typename RHS>                                                                               \
+    friend constexpr auto operator op(const LHS &lhs, const RHS &rhs)                                                  \
+        requires(is_compatible_vector_v<swizzled_vec, RHS> && is_compatible_vector_v<swizzled_vec, LHS>                \
+            && (std::is_same_v<swizzled_vec, LHS> || (std::is_same_v<swizzled_vec, RHS> && !is_swizzle_v<LHS>)))       \
+    {                                                                                                                  \
+        return to_vec<element_type, dimensions>(lhs) op to_vec<element_type, dimensions>(rhs);                         \
+    }
+
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_COMPARISON_OPERATOR(==)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_COMPARISON_OPERATOR(!=)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_COMPARISON_OPERATOR(<)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_COMPARISON_OPERATOR(>)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_COMPARISON_OPERATOR(<=)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_COMPARISON_OPERATOR(>=)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_COMPARISON_OPERATOR(&&)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_COMPARISON_OPERATOR(||)
+#undef SIMSYCL_DETAIL_DEFINE_SWIZZLE_COMPARISON_OPERATOR
 
   private:
     template<typename T, int NumElements>
@@ -147,6 +271,7 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
   public:
     using element_type = DataT;
     using value_type = DataT;
+    static constexpr int dimensions = NumElements;
 
     using vector_t = vec; // __SYCL_DEVICE_ONLY__
 
@@ -194,6 +319,7 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
     template<typename AsT>
     AsT as() const;
 
+    // swizzling
 
     template<int... SwizzleIndexes>
         requires(NumElements > detail::max(SwizzleIndexes...))
@@ -381,6 +507,7 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
     }
 
     // load and store member functions
+
     template<access::address_space AddressSpace, access::decorated IsDecorated>
     void load(size_t offset, multi_ptr<const DataT, AddressSpace, IsDecorated> ptr);
 
@@ -396,6 +523,8 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
         SIMSYCL_CHECK(index >= 0 && index < NumElements && "Index out of range");
         return m_elems[index];
     }
+
+    // operators
 
 #define SIMSYCL_DETAIL_DEFINE_VEC_BINARY_COPY_OPERATOR(op, enable_if)                                                  \
     friend vec operator op(const vec &lhs, const vec &rhs)                                                             \

@@ -5,6 +5,8 @@
 
 using namespace simsycl;
 
+// this test has no pretentions of being exhaustive, it just instantiates a subset and does basic checks
+
 template<int Dimensions>
 bool check_bool_vec(sycl::vec<bool, Dimensions> a) {
     for(int i = 0; i < Dimensions; ++i) {
@@ -13,17 +15,7 @@ bool check_bool_vec(sycl::vec<bool, Dimensions> a) {
     return true;
 }
 
-#include <iostream>
-
-template<typename T, int Dimensions>
-void print_vec(sycl::vec<T, Dimensions> a) {
-    for(int i = 0; i < Dimensions; ++i) { std::cout << a[i] << " "; }
-    std::cout << std::endl;
-}
-
 TEST_CASE("Basic vector operations work as expected", "[vec]") {
-    // this test has no pretentions of being exhaustive, it just instantiates a subset and does basic checks
-
     auto vi1 = sycl::vec<int, 1>(1);
 
     CHECK(check_bool_vec(vi1 + 2 == sycl::vec<int, 1>{3}));
@@ -162,5 +154,58 @@ TEST_CASE("Vector swizzled access is available", "[vec][swizzle]") {
         CHECK(check_bool_vec(vi == sycl::vec<int, 4>{5, 9, 7, 10}));
         vi.even() = {11, 12};
         CHECK(check_bool_vec(vi == sycl::vec<int, 4>{11, 9, 12, 10}));
+    }
+}
+
+TEST_CASE("Operations on swizzled vectors work as expected", "[vec][swizzle]") {
+    SECTION("binary operators") {
+        sycl::vec<int, 4> vi = {1, 2, 3, 4};
+        sycl::vec<int, 2> vi2 = {5, 6};
+        CHECK(check_bool_vec(vi.xx() + vi.zw() == sycl::vec<int, 2>{4, 5}));
+        CHECK(check_bool_vec(vi.zz() + vi2 == sycl::vec<int, 2>{8, 9}));
+        CHECK(check_bool_vec(vi2 + vi.ww() == sycl::vec<int, 2>{9, 10}));
+        CHECK(check_bool_vec(1 + vi.yz() == sycl::vec<int, 2>{3, 4}));
+        CHECK(check_bool_vec(vi.xxz() + 1 == sycl::vec<int, 3>{2, 2, 4}));
+    }
+
+    SECTION("compound operators") {
+        sycl::vec<int, 4> vi = {1, 2, 3, 4};
+        vi.xy() += 1;
+        CHECK(check_bool_vec(vi == sycl::vec<int, 4>{2, 3, 3, 4}));
+        vi.zw() += sycl::vec<int, 2>{5, 6};
+        CHECK(check_bool_vec(vi == sycl::vec<int, 4>{2, 3, 8, 10}));
+        vi.ra() -= vi.ra();
+        CHECK(check_bool_vec(vi == sycl::vec<int, 4>{0, 3, 8, 0}));
+    }
+
+    SECTION("unary operators") {
+        sycl::vec<int, 4> vi = {1, 2, 3, 4};
+        CHECK(check_bool_vec(-vi.xy() == sycl::vec<int, 2>{-1, -2}));
+        CHECK(check_bool_vec(~vi.zw() == sycl::vec<int, 2>{~3, ~4}));
+
+        CHECK(check_bool_vec(++vi.xz() == sycl::vec<int, 2>{2, 4}));
+        CHECK(check_bool_vec(vi == sycl::vec<int, 4>{2, 2, 4, 4}));
+        CHECK(check_bool_vec(vi.xyw()-- == sycl::vec<int, 3>{2, 2, 4}));
+        CHECK(check_bool_vec(vi == sycl::vec<int, 4>{1, 1, 4, 3}));
+
+        sycl::vec<bool, 3> vb = {true, false, true};
+        CHECK(check_bool_vec((!vb.yz()) == sycl::vec<bool, 2>{true, false}));
+    }
+
+    SECTION("comparison operators") {
+        sycl::vec<int, 4> vi = {1, 2, 3, 4};
+        CHECK(check_bool_vec(vi.xy() == vi.xy()));
+        CHECK(check_bool_vec(vi.xy() != vi.zw()));
+        CHECK(check_bool_vec(vi.xy() < vi.zw()));
+        CHECK(check_bool_vec(vi.xy() <= vi.zw()));
+        CHECK(check_bool_vec(vi.zw() > vi.xy()));
+        CHECK(check_bool_vec(vi.zw() >= vi.xy()));
+
+        CHECK(check_bool_vec(vi.yx() == sycl::vec<int, 2>{2, 1}));
+        CHECK(check_bool_vec(sycl::vec<int, 2>{0, 0} < vi.xy()));
+
+        CHECK(check_bool_vec(vi.zw() < 10));
+        CHECK(check_bool_vec(vi.z() == 3));
+        CHECK(check_bool_vec(4 == vi.a()));
     }
 }
