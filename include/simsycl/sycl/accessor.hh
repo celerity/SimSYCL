@@ -308,7 +308,7 @@ class accessor : public simsycl::detail::property_interface {
         requires(AccessMode != access_mode::atomic)
     {
         SIMSYCL_CHECK(m_buffer != nullptr);
-        SIMSYCL_CHECK(m_required);
+        SIMSYCL_CHECK(*m_required);
         return m_buffer[detail::get_linear_index(m_access_range, index)];
     }
 
@@ -323,14 +323,14 @@ class accessor : public simsycl::detail::property_interface {
 
     std::add_pointer_t<value_type> get_pointer() const noexcept {
         SIMSYCL_CHECK(m_buffer != nullptr);
-        SIMSYCL_CHECK(m_required);
+        SIMSYCL_CHECK(*m_required);
         return m_buffer;
     }
 
     template<access::decorated IsDecorated>
     accessor_ptr<IsDecorated> get_multi_ptr() const noexcept {
         SIMSYCL_CHECK(m_buffer != nullptr);
-        SIMSYCL_CHECK(m_required);
+        SIMSYCL_CHECK(*m_required);
         return accessor_ptr<IsDecorated>(m_buffer);
     }
 
@@ -360,7 +360,8 @@ class accessor : public simsycl::detail::property_interface {
     range<Dimensions> m_buffer_range;
     id<Dimensions> m_access_offset;
     range<Dimensions> m_access_range;
-    bool m_required = false;
+    // shared: require() on a copy is equivalent to require() on the original instance
+    std::shared_ptr<bool> m_required = std::make_shared<bool>(false);
 
     template<typename AllocatorT>
     void init(buffer<DataT, Dimensions, AllocatorT> &buffer_ref) {
@@ -372,7 +373,7 @@ class accessor : public simsycl::detail::property_interface {
 
     void init(const range<Dimensions> &access_range) { m_access_range = access_range; }
 
-    void init(handler & /* cgh */) { m_required = true; }
+    void init(handler & /* cgh */) { *m_required = true; }
 
     void init(const property_list &prop_list) {
         static_cast<detail::property_interface &>(*this)
@@ -388,7 +389,7 @@ class accessor : public simsycl::detail::property_interface {
 
     void require() {
         SIMSYCL_CHECK(m_buffer != nullptr);
-        m_required = true;
+        *m_required = true;
     }
 
     const range<Dimensions> &get_buffer_range() const { return m_buffer_range; }
