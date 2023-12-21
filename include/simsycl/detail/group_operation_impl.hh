@@ -146,7 +146,11 @@ concurrent_group &get_concurrent_group(const sycl::group<Dimensions> &g) {
 }
 
 struct sub_group_instance {
+    size_t sub_group_linear_id = std::numeric_limits<size_t>::max();
     std::vector<group_operation_data> operations;
+
+    sub_group_instance() : sub_group_linear_id(std::numeric_limits<size_t>::max()) {}
+    explicit sub_group_instance(size_t sub_group_linear_id) : sub_group_linear_id(sub_group_linear_id) {}
 };
 
 struct concurrent_sub_group {

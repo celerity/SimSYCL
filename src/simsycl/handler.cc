@@ -87,9 +87,10 @@ void dispatch_for_nd_range(const sycl::device &device, const sycl::nd_range<Dime
 
         fibers.push_back(boost::context::callcc(
             [concurrent_group_idx, num_concurrent_groups, local_id, local_range, local_linear_range, group_range,
-                group_linear_range, sub_group_local_range, thread_id_in_sub_group, sub_group_id_in_group,
-                sub_group_range_in_group, &concurrent_nd_item, &concurrent_group, &concurrent_sub_group, &kernel,
-                &concurrent_items_exited, &caught_exceptions, &range](boost::context::continuation &&scheduler) //
+                group_linear_range, sub_group_linear_id_in_group, sub_group_linear_range_in_group,
+                sub_group_local_range, thread_id_in_sub_group, sub_group_id_in_group, sub_group_range_in_group,
+                &concurrent_nd_item, &concurrent_group, &concurrent_sub_group, &kernel, &concurrent_items_exited,
+                &caught_exceptions, &range](boost::context::continuation &&scheduler) //
             {
                 // yield immediately to allow the scheduling loop to set up local memory pointers
                 concurrent_nd_item.scheduler = &scheduler;
@@ -98,11 +99,17 @@ void dispatch_for_nd_range(const sycl::device &device, const sycl::nd_range<Dime
                 for(size_t group_linear_id = concurrent_group_idx; group_linear_id < group_linear_range;
                     group_linear_id += num_concurrent_groups) //
                 {
+                    const auto sub_group_linear_id
+                        = group_linear_id * sub_group_linear_range_in_group + sub_group_linear_id_in_group;
+
                     concurrent_nd_item.instance = nd_item_instance{};
                     // the first item to arrive in this group will create the new group instance
                     if(concurrent_group.instance.group_linear_id != group_linear_id) {
                         concurrent_group.instance = group_instance(group_linear_id);
-                        concurrent_sub_group.instance = sub_group_instance{};
+                    }
+                    // the first item to arrive in this sub_group will create the new sub_group instance
+                    if(concurrent_sub_group.instance.sub_group_linear_id != sub_group_linear_id) {
+                        concurrent_sub_group.instance = sub_group_instance(sub_group_linear_id);
                     }
 
                     const auto group_id = linear_index_to_id(group_range, group_linear_id);
