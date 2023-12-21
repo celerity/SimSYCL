@@ -428,6 +428,10 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
 
     constexpr static int num_storage_elems = NumElements == 3 ? 4 : NumElements;
 
+    // Workaround for friend templates in earlier MSVC versions; TODO: remove when we drop support for them
+#if defined(_MSC_VER)
+  public:
+#endif
     DataT m_elems[num_storage_elems]{};
 }; // namespace simsycl::sycl
 
