@@ -21,7 +21,10 @@ class id : public detail::coordinate<id<Dimensions>, Dimensions> {
         for(int d = 0; d < Dimensions; ++d) { (*this)[d] = range[d]; }
     }
 
-    id(const item<Dimensions> &item) {
+    // Non-standard: The spec only mentions item<Dimensions> and thus only allows an item with offset to be passed here,
+    // but we are certain that this is an oversight.
+    template<bool WithOffset>
+    id(const item<Dimensions, WithOffset> &item) {
         for(int d = 0; d < Dimensions; ++d) { (*this)[d] = item[d]; }
     }
 

@@ -9,11 +9,85 @@
 
 namespace simsycl::sycl {
 
-class kernel_id { /* ... */
+class kernel {
+  public:
+    kernel() = delete;
+
+    backend get_backend() const noexcept { return backend::simsycl; }
+
+    context get_context() const;
+
+    kernel_bundle<bundle_state::executable> get_kernel_bundle() const;
+
+    template<typename Param>
+    typename Param::return_type get_info() const;
+
+    template<typename Param>
+    typename Param::return_type get_info(const device &dev) const;
+
+    template<typename Param>
+    typename Param::return_type get_backend_info() const;
+};
+
+class kernel_id {
+  public:
+    kernel_id() = delete;
+
+    const char *get_name() const noexcept;
 };
 
 template<bundle_state State>
-class kernel_bundle { /* ... */
+class kernel_bundle {
+  public:
+    struct device_image_iterator;
+
+    kernel_bundle() = delete;
+
+    bool empty() const noexcept;
+
+    backend get_backend() const noexcept { return backend::simsycl; }
+
+    context get_context() const noexcept;
+
+    std::vector<device> get_devices() const noexcept;
+
+    bool has_kernel(const kernel_id &kernel_id) const noexcept;
+
+    bool has_kernel(const kernel_id &kernel_id, const device &dev) const noexcept;
+
+    template<typename KernelName>
+    bool has_kernel() const noexcept;
+
+    template<typename KernelName>
+    bool has_kernel(const device &dev) const noexcept;
+
+    std::vector<kernel_id> get_kernel_ids() const;
+
+    kernel get_kernel(const kernel_id &kernel_id) const
+        requires(State == bundle_state::executable);
+
+    template<typename KernelName>
+    kernel get_kernel() const
+        requires(State == bundle_state::executable);
+
+    bool contains_specialization_constants() const noexcept;
+
+    bool native_specialization_constant() const noexcept;
+
+    template<auto &SpecName>
+    bool has_specialization_constant() const noexcept;
+
+    /* Available only when:  */
+    template<auto &SpecName>
+    void set_specialization_constant(typename std::remove_reference_t<decltype(SpecName)>::value_type value)
+        requires(State == bundle_state::input);
+
+    template<auto &SpecName>
+    typename std::remove_reference_t<decltype(SpecName)>::value_type get_specialization_constant() const;
+
+    device_image_iterator begin() const;
+
+    device_image_iterator end() const;
 };
 
 template<typename KernelName>

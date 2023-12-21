@@ -21,6 +21,36 @@
 namespace simsycl::detail {
 
 template<typename Func, typename... Params>
+void sequential_for(const sycl::range<1> &range, Func &&func, Params &&...args) {
+    sycl::id<1> id;
+    for(id[0] = 0; id[0] < range[0]; ++id[0]) { //
+        func(make_item(id, range), std::forward<Params>(args)...);
+    }
+}
+
+template<typename Func, typename... Params>
+void sequential_for(const sycl::range<2> &range, Func &&func, Params &&...args) {
+    sycl::id<2> id;
+    for(id[0] = 0; id[0] < range[0]; ++id[0]) {
+        for(id[1] = 0; id[1] < range[1]; ++id[1]) { //
+            func(make_item(id, range), std::forward<Params>(args)...);
+        }
+    }
+}
+
+template<typename Func, typename... Params>
+void sequential_for(const sycl::range<3> &range, Func &&func, Params &&...args) {
+    sycl::id<3> id;
+    for(id[0] = 0; id[0] < range[0]; ++id[0]) {
+        for(id[1] = 0; id[1] < range[1]; ++id[1]) {
+            for(id[2] = 0; id[2] < range[2]; ++id[2]) { //
+                func(make_item(id, range), std::forward<Params>(args)...);
+            }
+        }
+    }
+}
+
+template<typename Func, typename... Params>
 void sequential_for(const sycl::range<1> &range, const sycl::id<1> &offset, Func &&func, Params &&...args) {
     sycl::id<1> id;
     for(id[0] = offset[0]; id[0] < offset[0] + range[0]; ++id[0]) { //
@@ -89,9 +119,8 @@ template<int Dimensions, typename ParamTuple, size_t... ReductionIndices, size_t
 void dispatch_for(const sycl::range<Dimensions> &range, ParamTuple &&params,
     std::index_sequence<ReductionIndices...> /* reduction_indices */,
     std::index_sequence<KernelIndex> /* kernel_index */) {
-    const sycl::id<Dimensions> offset{};
     const auto &kernel_func = std::get<KernelIndex>(params);
-    detail::sequential_for(range, offset, kernel_func, std::get<ReductionIndices>(params)...);
+    detail::sequential_for(range, kernel_func, std::get<ReductionIndices>(params)...);
 }
 
 template<int Dimensions, typename ParamTuple, size_t... ReductionIndices, size_t KernelIndex>
@@ -173,9 +202,27 @@ class handler {
         kernel_func();
     }
 
-    template<typename KernelName = simsycl::detail::unnamed_kernel, int Dimensions, typename... Rest>
+    template<typename KernelName = simsycl::detail::unnamed_kernel, typename... Rest>
         requires(sizeof...(Rest) > 0)
-    void parallel_for(range<Dimensions> num_work_items, Rest &&...rest) {
+    void parallel_for(size_t num_work_items, Rest &&...rest) {
+        simsycl::detail::parallel_for(range<1>(num_work_items), std::forward<Rest>(rest)...);
+    }
+
+    template<typename KernelName = simsycl::detail::unnamed_kernel, typename... Rest>
+        requires(sizeof...(Rest) > 0)
+    void parallel_for(range<1> num_work_items, Rest &&...rest) {
+        simsycl::detail::parallel_for(num_work_items, std::forward<Rest>(rest)...);
+    }
+
+    template<typename KernelName = simsycl::detail::unnamed_kernel, typename... Rest>
+        requires(sizeof...(Rest) > 0)
+    void parallel_for(range<2> num_work_items, Rest &&...rest) {
+        simsycl::detail::parallel_for(num_work_items, std::forward<Rest>(rest)...);
+    }
+
+    template<typename KernelName = simsycl::detail::unnamed_kernel, typename... Rest>
+        requires(sizeof...(Rest) > 0)
+    void parallel_for(range<3> num_work_items, Rest &&...rest) {
         simsycl::detail::parallel_for(num_work_items, std::forward<Rest>(rest)...);
     }
 
@@ -219,7 +266,7 @@ class handler {
 
     template<typename T>
     void fill(void *ptr, const T &pattern, size_t count) {
-        std::fill_n(ptr, count, pattern);
+        std::fill_n(static_cast<T *>(ptr), count, pattern);
     }
 
     void prefetch(void * /* ptr */, size_t /* num_bytes */) {}

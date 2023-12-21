@@ -155,12 +155,11 @@ T shift_group_left(G g, T x, typename G::linear_id_type delta = 1) {
                     SIMSYCL_CHECK(per_op.delta == delta);
                     per_op.values[g.get_local_linear_id()] = x;
                 },
-            .complete =
-                [&](detail::group_shift_data<T> &per_op) {
-                    const auto target = (g.get_local_linear_id() + per_op.delta);
-                    if(target >= per_op.values.size()) { return detail::unspecified<T>; }
-                    return per_op.values[target];
-                }});
+            .complete = [&](detail::group_shift_data<T> &per_op) -> T {
+                const auto target = (g.get_local_linear_id() + per_op.delta);
+                if(target >= per_op.values.size()) { return detail::unspecified<T>(); }
+                return per_op.values[target];
+            }});
 }
 
 template<SubGroup G, TriviallyCopyable T>
@@ -178,11 +177,10 @@ T shift_group_right(G g, T x, typename G::linear_id_type delta = 1) {
                     SIMSYCL_CHECK(per_op.delta == delta);
                     per_op.values[g.get_local_linear_id()] = x;
                 },
-            .complete =
-                [&](detail::group_shift_data<T> &per_op) {
-                    if(per_op.delta > g.get_local_linear_id()) { return detail::unspecified<T>; }
-                    return per_op.values[g.get_local_linear_id() - per_op.delta];
-                }});
+            .complete = [&](detail::group_shift_data<T> &per_op) -> T {
+                if(per_op.delta > g.get_local_linear_id()) { return detail::unspecified<T>(); }
+                return per_op.values[g.get_local_linear_id() - per_op.delta];
+            }});
 }
 
 // permute
@@ -203,12 +201,11 @@ T permute_group(G g, T x, typename G::linear_id_type mask) {
                     SIMSYCL_CHECK(per_op.mask == mask);
                     per_op.values[g.get_local_linear_id()] = x;
                 },
-            .complete =
-                [&](detail::group_permute_data<T> &per_op) {
-                    auto target = (g.get_local_linear_id() ^ per_op.mask);
-                    if(target >= per_op.values.size()) { return detail::unspecified<T>; }
-                    return per_op.values[target];
-                }});
+            .complete = [&](detail::group_permute_data<T> &per_op) -> T {
+                auto target = (g.get_local_linear_id() ^ per_op.mask);
+                if(target >= per_op.values.size()) { return detail::unspecified<T>(); }
+                return per_op.values[target];
+            }});
 }
 
 template<typename Group, typename T>
@@ -228,12 +225,11 @@ T select_from_group(G g, T x, typename G::id_type remote_local_id) {
                     return per_op_data;
                 },
             .reached = [&](detail::group_select_data<T> &per_op) { per_op.values[g.get_local_linear_id()] = x; },
-            .complete =
-                [&](detail::group_select_data<T> &per_op) {
-                    const auto remote_local_linear_id = detail::get_linear_index(g.get_local_range(), remote_local_id);
-                    if(remote_local_linear_id >= per_op.values.size()) { return detail::unspecified<T>; }
-                    return per_op.values[remote_local_linear_id];
-                }});
+            .complete = [&](detail::group_select_data<T> &per_op) -> T {
+                const auto remote_local_linear_id = detail::get_linear_index(g.get_local_range(), remote_local_id);
+                if(remote_local_linear_id >= per_op.values.size()) { return detail::unspecified<T>(); }
+                return per_op.values[remote_local_linear_id];
+            }});
 }
 
 // reduce
@@ -316,7 +312,7 @@ OutPtr joint_inclusive_scan(G g, InPtr first, InPtr last, OutPtr result, Op bina
 }
 
 template<Group G, PointerToFundamental InPtr, PointerToFundamental OutPtr, Fundamental T, SyclFunctionObject Op>
-OutPtr joint_inclusive_scan(G g, InPtr first, InPtr last, OutPtr result, T init, Op binary_op) {
+OutPtr joint_inclusive_scan(G g, InPtr first, InPtr last, OutPtr result, Op binary_op, T init) {
     std::vector<T> results(std::distance(first, last));
     results[0] = binary_op(init, *first);
     for(auto i = 1u; i < results.size(); ++i) { results[i] = binary_op(results[i - 1], first[i]); }
@@ -332,7 +328,7 @@ T inclusive_scan_over_group(G g, T x, Op binary_op) {
 }
 
 template<Group G, Fundamental V, Fundamental T, SyclFunctionObject Op>
-T inclusive_scan_over_group(G g, V x, T init, Op binary_op) {
+T inclusive_scan_over_group(G g, V x, Op binary_op, T init) {
     return simsycl::detail::group_scan_impl(
         g, simsycl::detail::group_operation_id::inclusive_scan, x, {init}, binary_op);
 }

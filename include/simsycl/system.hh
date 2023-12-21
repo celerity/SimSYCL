@@ -98,6 +98,7 @@ struct device_config {
 };
 
 struct platform_config {
+    std::string profile{};
     std::string version{};
     std::string name{};
     std::string vendor{};

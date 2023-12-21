@@ -35,6 +35,8 @@ class atomic;
 template<typename T, int Dimensions = 1, typename AllocatorT = buffer_allocator<std::remove_const_t<T>>>
 class buffer;
 
+using byte [[deprecated]] = std::uint8_t;
+
 class context;
 
 class device;

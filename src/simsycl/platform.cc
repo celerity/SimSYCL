@@ -29,6 +29,11 @@ std::vector<device> platform::get_devices(info::device_type type) const {
 }
 
 template<>
+std::string platform::get_info<info::platform::profile>() const {
+    return state().config.profile;
+}
+
+template<>
 std::string platform::get_info<info::platform::version>() const {
     return state().config.version;
 }

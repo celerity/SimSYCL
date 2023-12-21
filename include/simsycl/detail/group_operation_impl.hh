@@ -8,17 +8,42 @@
 #include <typeindex>
 #include <vector>
 
-#include "simsycl/detail/allocation.hh"
-#include "simsycl/detail/check.hh"
-#include "simsycl/sycl/concepts.hh" // IWYU pragma: keep
-#include "simsycl/sycl/enums.hh"
-#include "simsycl/sycl/group.hh"
-#include "simsycl/sycl/sub_group.hh"
+#include "allocation.hh"
+#include "check.hh"
+
+#include "../sycl/concepts.hh" // IWYU pragma: keep
+#include "../sycl/enums.hh"
+#include "../sycl/group.hh"
+#include "../sycl/sub_group.hh"
+#include "../sycl/vec.hh"
 
 namespace simsycl::detail {
 
 template<typename T>
-constexpr auto unspecified = (T)(0xDEADBEEFull);
+struct unspecified_factory {
+    T operator()() const
+        requires(std::is_constructible_v<T, unsigned int>)
+    {
+        return T(0xDEADBEEF);
+    }
+
+    T operator()() const
+        requires(std::is_default_constructible_v<T> && !std::is_constructible_v<T, unsigned int>)
+    {
+        return T();
+    }
+};
+
+template<typename T, int NumElements>
+    requires(std::is_constructible_v<T, unsigned int>)
+struct unspecified_factory<sycl::vec<T, NumElements>> {
+    sycl::vec<T, NumElements> operator()() const { return sycl::vec<T, NumElements>(T(0xDEADBEEF)); }
+};
+
+template<typename T>
+T unspecified() {
+    return unspecified_factory<T>{}();
+}
 
 enum class group_operation_id {
     broadcast,
@@ -310,24 +335,21 @@ T group_scan_impl(G g, group_operation_id op_id, T x, std::optional<T> init, Op 
                     SIMSYCL_CHECK(per_op.values.size() == g.get_local_range().size());
                     per_op.values[g.get_local_linear_id()] = x;
                 },
-            .complete =
-                [&](const group_scan_data<T> &per_op) {
-                    std::vector<T> results(per_op.values.size());
-                    if(op_id == group_operation_id::exclusive_scan) {
-                        results[0] = sycl::known_identity_v<Op, T>;
-                        if(init) { results[0] = op(*init, results[0]); }
-                        for(auto i = 0u; i < results.size() - 1; ++i) {
-                            results[i + 1] = op(results[i], per_op.values[i]);
-                        }
-                    } else if(op_id == group_operation_id::inclusive_scan) {
-                        results[0] = per_op.values[0];
-                        if(init) { results[0] = op(*init, results[0]); }
-                        for(auto i = 1u; i < results.size(); ++i) { results[i] = op(results[i - 1], per_op.values[i]); }
-                    } else {
-                        SIMSYCL_CHECK(false && "unexpected scan group operation id");
-                    }
-                    return results[g.get_local_linear_id()];
-                }});
+            .complete = [&](const group_scan_data<T> &per_op) -> T {
+                std::vector<T> results(per_op.values.size());
+                if(op_id == group_operation_id::exclusive_scan) {
+                    results[0] = sycl::known_identity_v<Op, T>;
+                    if(init) { results[0] = op(*init, results[0]); }
+                    for(auto i = 0u; i < results.size() - 1; ++i) { results[i + 1] = op(results[i], per_op.values[i]); }
+                } else if(op_id == group_operation_id::inclusive_scan) {
+                    results[0] = per_op.values[0];
+                    if(init) { results[0] = op(*init, results[0]); }
+                    for(auto i = 1u; i < results.size(); ++i) { results[i] = op(results[i - 1], per_op.values[i]); }
+                } else {
+                    SIMSYCL_CHECK(false && "unexpected scan group operation id");
+                }
+                return results[g.get_local_linear_id()];
+            }});
 }
 
 } // namespace simsycl::detail

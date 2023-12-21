@@ -77,6 +77,8 @@ class swizzled_vec {
 
   public:
     using element_type = DataT;
+    using value_type = DataT;
+
     static constexpr int dimensions = sizeof...(Indices);
 
     swizzled_vec() = delete;
@@ -677,7 +679,6 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
         requires(Offset + ArgNumElements <= NumElements)
     constexpr void init_with_offset(const vec<DataT, ArgNumElements> &arg, const ArgTN &...args) {
         for(int i = 0; i < ArgNumElements; ++i) { m_elems[Offset + i] = arg[i]; }
-        m_elems[Offset] = arg;
         init_with_offset<Offset + ArgNumElements>(args...);
     }
 

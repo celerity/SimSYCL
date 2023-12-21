@@ -105,9 +105,9 @@ struct buffer_state {
 namespace simsycl::sycl {
 
 template<typename T, int Dimensions, typename AllocatorT>
-class buffer final
-    : public detail::reference_type<buffer<T, Dimensions, AllocatorT>, detail::buffer_state<T, Dimensions, AllocatorT>>,
-      public detail::property_interface {
+class buffer final : public detail::reference_type<buffer<T, Dimensions, AllocatorT>,
+                         detail::buffer_state<std::remove_const_t<T>, Dimensions, AllocatorT>>,
+                     public detail::property_interface {
   private:
     using reference_type
         = detail::reference_type<buffer<T, Dimensions, AllocatorT>, detail::buffer_state<T, Dimensions, AllocatorT>>;

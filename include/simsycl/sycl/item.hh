@@ -47,7 +47,7 @@ class item {
     operator item<Dimensions, true>() const
         requires(!WithOffset)
     {
-        return item<Dimensions, true>(m_id, m_range, m_offset);
+        return make_item(m_id, m_range, m_offset);
     }
 
     operator size_t() const
@@ -61,6 +61,12 @@ class item {
         for(int d = 1; d < Dimensions; ++d) { linear = linear * m_range[d] + m_id[d] - m_offset[d]; }
         return linear;
     }
+
+    friend bool operator==(const item &lhs, const item &rhs) {
+        return lhs.m_id == rhs.m_id && lhs.m_range == rhs.m_range && lhs.m_offset == rhs.m_offset;
+    }
+
+    friend bool operator!=(const item &lhs, const item &rhs) { return !(lhs == rhs); }
 
   private:
     friend sycl::item<Dimensions, true> simsycl::detail::make_item<Dimensions>(

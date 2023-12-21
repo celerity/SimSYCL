@@ -242,21 +242,21 @@ class queue final : public detail::reference_type<queue, detail::queue_state>,
     template<typename T>
     event fill(void *ptr, const T &pattern, size_t count) {
         auto status = detail::event_state::submit_and_start();
-        std::fill_n(ptr, count, pattern);
+        std::fill_n(static_cast<T *>(ptr), count, pattern);
         return status.end();
     }
 
     template<typename T>
     event fill(void *ptr, const T &pattern, size_t count, event /* dep_event */) {
         auto status = detail::event_state::submit_and_start();
-        std::fill_n(ptr, count, pattern);
+        std::fill_n(static_cast<T *>(ptr), count, pattern);
         return status.end();
     }
 
     template<typename T>
     event fill(void *ptr, const T &pattern, size_t count, const std::vector<event> & /* dep_events */) {
         auto status = detail::event_state::submit_and_start();
-        std::fill_n(ptr, count, pattern);
+        std::fill_n(static_cast<T *>(ptr), count, pattern);
         return status.end();
     }
 

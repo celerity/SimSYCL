@@ -60,7 +60,15 @@ constexpr bool always_false = false;
 
 } // namespace simsycl::detail
 
-// TODO consider moving this to a different header.
 namespace simsycl::sycl {
+
+// TODO consider moving this to a different header.
 using std::bit_cast;
-}
+
+template<typename T>
+using is_device_copyable = std::is_nothrow_copy_constructible<T>; // approximation
+
+template<typename T>
+inline constexpr bool is_device_copyable_v = is_device_copyable<T>::value;
+
+} // namespace simsycl::sycl

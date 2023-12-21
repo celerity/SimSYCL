@@ -65,7 +65,7 @@ class group {
 
     size_t get_group_range(int dimension) const { return get_group_range()[dimension]; }
 
-    size_t get_group_linear_range() const { return m_group_item.size(); }
+    size_t get_group_linear_range() const { return get_group_range().size(); }
 
     range_type get_max_local_range() const { return get_local_range(); }
 

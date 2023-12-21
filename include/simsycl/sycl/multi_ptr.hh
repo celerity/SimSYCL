@@ -144,7 +144,9 @@ class multi_ptr {
     friend multi_ptr &operator-=(multi_ptr &lhs, difference_type r) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, r); }
     friend multi_ptr operator+(const multi_ptr &lhs, difference_type r) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, r); }
     friend multi_ptr operator-(const multi_ptr &lhs, difference_type r) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, r); }
-    friend reference operator*(const multi_ptr &lhs) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs); }
+
+    // Spec error: conflicts with operator* above
+    // friend reference operator*(const multi_ptr &lhs) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs); }
 
     friend bool operator==(const multi_ptr &lhs, const multi_ptr &rhs) {
         SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(lhs, rhs);
@@ -290,7 +292,7 @@ class [[deprecated]] multi_ptr<ElementType, Space, access::decorated::legacy> {
     multi_ptr &operator=(multi_ptr &&);
     multi_ptr &operator=(pointer_t);
     multi_ptr &operator=(std::nullptr_t);
-    friend ElementType &operator*(const multi_ptr &mp) { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(mp); }
+
     ElementType *operator->() const;
 
     // Spec error: what is AccDataT?

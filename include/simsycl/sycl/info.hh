@@ -194,7 +194,9 @@ struct compile_sub_group_size : detail::info_descriptor<uint32_t> {};
 
 namespace simsycl::sycl::info::platform {
 
-struct profile; // undocumented - probably erroneously part of the spec Appendix A.1
+// info::platform::profile is undocumented - probably erroneously part of the spec Appendix A.1.
+// we assume that it's equivalent to info::device::platform (at least SYCL-CTS expects a string here).
+struct profile : detail::info_descriptor<std::string> {};
 struct version : detail::info_descriptor<std::string> {};
 struct name : detail::info_descriptor<std::string> {};
 struct vendor : detail::info_descriptor<std::string> {};
