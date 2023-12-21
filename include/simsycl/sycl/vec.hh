@@ -141,6 +141,7 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
         init_with_offset<0>(args...);
     }
 
+    vec(const vec &) = default;
     vec &operator=(const vec &rhs) = default;
 
     vec &operator=(const DataT &rhs) {
@@ -303,11 +304,15 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
 #undef SIMSYCL_DETAIL_DEFINE_VEC_BINARY_COPY_OPERATOR
 
 #define SIMSYCL_DETAIL_DEFINE_VEC_BINARY_INPLACE_OPERATOR(op, enable_if)                                               \
-    friend vec &operator op(vec & lhs, const vec & rhs) {                                                              \
+    friend vec &operator op(vec & lhs, const vec & rhs)                                                                \
+        requires(enable_if)                                                                                            \
+    {                                                                                                                  \
         for(int d = 0; d < NumElements; ++d) { lhs.m_elems[d] op rhs.m_elems[d]; }                                     \
         return lhs;                                                                                                    \
     }                                                                                                                  \
-    friend vec &operator op(vec & lhs, const DataT & rhs) {                                                            \
+    friend vec &operator op(vec & lhs, const DataT & rhs)                                                              \
+        requires(enable_if)                                                                                            \
+    {                                                                                                                  \
         for(int d = 0; d < NumElements; ++d) { lhs.m_elems[d] op rhs; }                                                \
         return lhs;                                                                                                    \
     }
@@ -325,15 +330,19 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
 
 #undef SIMSYCL_DETAIL_DEFINE_VEC_BINARY_INPLACE_OPERATOR
 
-#define SIMSYCL_DETAIL_DEFINE_VEC_UNARY_COPY_OPERATOR(op)                                                              \
-    friend constexpr vec operator op(const vec &rhs) {                                                                 \
+#define SIMSYCL_DETAIL_DEFINE_VEC_UNARY_COPY_OPERATOR(op, enable_if)                                                   \
+    friend constexpr vec operator op(const vec &rhs)                                                                   \
+        requires(enable_if)                                                                                            \
+    {                                                                                                                  \
         vec result;                                                                                                    \
         for(int d = 0; d < NumElements; ++d) { result.m_elems[d] = op rhs[d]; }                                        \
         return result;                                                                                                 \
     }
 
-    SIMSYCL_DETAIL_DEFINE_VEC_UNARY_COPY_OPERATOR(+)
-    SIMSYCL_DETAIL_DEFINE_VEC_UNARY_COPY_OPERATOR(-)
+    SIMSYCL_DETAIL_DEFINE_VEC_UNARY_COPY_OPERATOR(+, true)
+    SIMSYCL_DETAIL_DEFINE_VEC_UNARY_COPY_OPERATOR(-, true)
+    SIMSYCL_DETAIL_DEFINE_VEC_UNARY_COPY_OPERATOR(~, !detail::is_floating_point_v<DataT>)
+    SIMSYCL_DETAIL_DEFINE_VEC_UNARY_COPY_OPERATOR(!, !detail::is_floating_point_v<DataT>)
 
 #undef SIMSYCL_DETAIL_DEFINE_VEC_UNARY_COPY_OPERATOR
 
@@ -395,6 +404,8 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
   private:
     template<typename T, int... Indices>
     friend class detail::swizzled_vec;
+    template<typename T, int Dimensions>
+    friend class vec;
 
     template<int Offset, typename... ArgTN>
         requires(Offset + 1 <= NumElements)
@@ -418,7 +429,7 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
     constexpr static int num_storage_elems = NumElements == 3 ? 4 : NumElements;
 
     DataT m_elems[num_storage_elems]{};
-};
+}; // namespace simsycl::sycl
 
 
 // Deduction guides
