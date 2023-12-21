@@ -20,6 +20,27 @@ constexpr size_t vec_alignment_v = std::min(size_t{64}, sizeof(DataT) * NumEleme
 template<typename DataT>
 constexpr size_t vec_alignment_v<DataT, 3> = std::min(size_t{64}, sizeof(DataT) * 4);
 
+template<int... Is>
+struct no_repeat_indices {
+    static_assert(sizeof...(Is) < 0, "Only implemented for up to 4 indices");
+};
+
+template<int I1>
+struct no_repeat_indices<I1> : std::true_type {};
+
+template<int I1, int I2>
+struct no_repeat_indices<I1, I2> : std::bool_constant<I1 != I2> {};
+
+template<int I1, int I2, int I3>
+struct no_repeat_indices<I1, I2, I3> : std::bool_constant<I1 != I2 && I1 != I3 && I2 != I3> {};
+
+template<int I1, int I2, int I3, int I4>
+struct no_repeat_indices<I1, I2, I3, I4>
+    : std::bool_constant<I1 != I2 && I1 != I3 && I1 != I4 && I2 != I3 && I2 != I4 && I3 != I4> {};
+
+template<int... Is>
+static constexpr bool no_repeat_indices_v = no_repeat_indices<Is...>::value;
+
 template<typename DataT, int... Indices>
 class swizzled_vec {
     static_assert(!std::is_volatile_v<DataT>);
@@ -33,14 +54,14 @@ class swizzled_vec {
     swizzled_vec &operator=(swizzled_vec &&) = delete;
 
     swizzled_vec &operator=(const DataT &rhs)
-    // TODO requires(no-repeat-indices)
+        requires(no_repeat_indices_v<Indices...>)
     {
-        for(size_t i = 0; i < sizeof...(Indices); ++i) { m_elems[i] = rhs; }
+        for(size_t i = 0; i < sizeof...(Indices); ++i) { m_elems[indices[i]] = rhs; }
         return *this;
     }
 
     swizzled_vec &operator=(const sycl::vec<DataT, sizeof...(Indices)> &rhs)
-    // TODO requires(no-repeat-indices)
+        requires(no_repeat_indices_v<Indices...>)
     {
         for(size_t i = 0; i < sizeof...(Indices); ++i) { m_elems[indices[i]] = rhs[i]; }
         return *this;
@@ -48,8 +69,7 @@ class swizzled_vec {
 
     template<int... OtherIndices>
     swizzled_vec &operator=(const swizzled_vec<DataT, OtherIndices...> &rhs)
-        requires(sizeof...(Indices) == sizeof...(OtherIndices))
-    // TODO requires(no-repeat-indices)
+        requires(sizeof...(Indices) == sizeof...(OtherIndices) && no_repeat_indices_v<Indices...>)
     {
         for(size_t i = 0; i < sizeof...(Indices); ++i) { m_elems[indices[i]] = rhs.m_elems[rhs.indices[i]]; }
         return *this;
@@ -58,7 +78,7 @@ class swizzled_vec {
     operator sycl::vec<DataT, sizeof...(Indices)>() const
         requires(sizeof...(Indices) > 1)
     {
-        return vec<DataT, sizeof...(Indices)>(m_elems[Indices]...);
+        return sycl::vec<DataT, sizeof...(Indices)>(m_elems[Indices]...);
     }
 
     operator DataT() const
@@ -230,42 +250,40 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
 
 #ifdef SYCL_SIMPLE_SWIZZLES
 
-#define SIMSYCL_SWIZZLE_2(comp1, comp2)                                                                                \
+#define SIMSYCL_SWIZZLE_2(req, comp1, comp2)                                                                           \
     auto comp1##comp2()                                                                                                \
-        requires(NumElements <= 4 && NumElements > elem::comp1 && NumElements > elem::comp2)                           \
+        requires(req && NumElements > elem::comp1 && NumElements > elem::comp2)                                        \
     {                                                                                                                  \
         return detail::swizzled_vec<DataT, elem::comp1, elem::comp2>(*this);                                           \
     }                                                                                                                  \
     auto comp1##comp2() const                                                                                          \
-        requires(NumElements <= 4 && NumElements > elem::comp1 && NumElements > elem::comp2)                           \
+        requires(req && NumElements > elem::comp1 && NumElements > elem::comp2)                                        \
     {                                                                                                                  \
         return detail::swizzled_vec<const DataT, elem::comp1, elem::comp2>(*this);                                     \
     }
 
-#define SIMSYCL_SWIZZLE_3(comp1, comp2, comp3)                                                                         \
+#define SIMSYCL_SWIZZLE_3(req, comp1, comp2, comp3)                                                                    \
     auto comp1##comp2##comp3()                                                                                         \
-        requires(                                                                                                      \
-            NumElements <= 4 && NumElements > elem::comp1 && NumElements > elem::comp2 && NumElements > elem::comp3)   \
+        requires(req && NumElements > elem::comp1 && NumElements > elem::comp2 && NumElements > elem::comp3)           \
     {                                                                                                                  \
         return detail::swizzled_vec<DataT, elem::comp1, elem::comp2, elem::comp3>(*this);                              \
     }                                                                                                                  \
     auto comp1##comp2##comp3() const                                                                                   \
-        requires(                                                                                                      \
-            NumElements <= 4 && NumElements > elem::comp1 && NumElements > elem::comp2 && NumElements > elem::comp3)   \
+        requires(req && NumElements > elem::comp1 && NumElements > elem::comp2 && NumElements > elem::comp3)           \
     {                                                                                                                  \
         return detail::swizzled_vec<const DataT, elem::comp1, elem::comp2, elem::comp3>(*this);                        \
     }
 
-#define SIMSYCL_SWIZZLE_4(comp1, comp2, comp3, comp4)                                                                  \
+#define SIMSYCL_SWIZZLE_4(req, comp1, comp2, comp3, comp4)                                                             \
     auto comp1##comp2##comp3##comp4()                                                                                  \
-        requires(NumElements <= 4 && NumElements > elem::comp1 && NumElements > elem::comp2                            \
-            && NumElements > elem::comp3 && NumElements > elem::comp4)                                                 \
+        requires(req && NumElements > elem::comp1 && NumElements > elem::comp2 && NumElements > elem::comp3            \
+            && NumElements > elem::comp4)                                                                              \
     {                                                                                                                  \
         return detail::swizzled_vec<DataT, elem::comp1, elem::comp2, elem::comp3, elem::comp4>(*this);                 \
     }                                                                                                                  \
     auto comp1##comp2##comp3() const                                                                                   \
-        requires(NumElements <= 4 && NumElements > elem::comp1 && NumElements > elem::comp2                            \
-            && NumElements > elem::comp3 && NumElements > elem::comp4)                                                 \
+        requires(req && NumElements > elem::comp1 && NumElements > elem::comp2 && NumElements > elem::comp3            \
+            && NumElements > elem::comp4)                                                                              \
     {                                                                                                                  \
         return detail::swizzled_vec<const DataT, elem::comp1, elem::comp2, elem::comp3, elem::comp4>(*this);           \
     }

@@ -13,6 +13,14 @@ bool check_bool_vec(sycl::vec<bool, Dimensions> a) {
     return true;
 }
 
+#include <iostream>
+
+template<typename T, int Dimensions>
+void print_vec(sycl::vec<T, Dimensions> a) {
+    for(int i = 0; i < Dimensions; ++i) { std::cout << a[i] << " "; }
+    std::cout << std::endl;
+}
+
 TEST_CASE("Basic vector operations work as expected", "[vec]") {
     // this test has no pretentions of being exhaustive, it just instantiates a subset and does basic checks
 
@@ -94,36 +102,36 @@ TEST_CASE("Vector relational operators work as expected", "[vec]") {
 TEST_CASE("Vector swizzled access is available", "[vec][swizzle]") {
     SECTION("2 components") {
         sycl::vec<int, 4> vi = {1, 2, 3, 4};
-        vi.xx() = {5, 5};
-        CHECK(check_bool_vec(vi == sycl::vec<int, 4>{5, 2, 3, 4}));
+        CHECK(check_bool_vec(vi.xx() == sycl::vec<int, 2>{1, 1}));
         vi.xy() = {7, 8};
         CHECK(check_bool_vec(vi == sycl::vec<int, 4>{7, 8, 3, 4}));
         vi.wz() = {9, 10};
         CHECK(check_bool_vec(vi == sycl::vec<int, 4>{7, 8, 10, 9}));
 
-        sycl::vec<float, 3> vf = {1, 2, 3};
+        sycl::vec<float, 4> vf = {1, 2, 3, 4};
         vf.gr() = {4, 5};
-        CHECK(check_bool_vec(vf == sycl::vec<float, 3>{5, 4, 3}));
+        CHECK(check_bool_vec(vf == sycl::vec<float, 4>{5, 4, 3, 4}));
         vf.bg() = {6, 7};
-        CHECK(check_bool_vec(vf == sycl::vec<float, 3>{5, 7, 6}));
+        CHECK(check_bool_vec(vf == sycl::vec<float, 4>{5, 7, 6, 4}));
     }
 
     SECTION("3 components") {
         sycl::vec<int, 4> vi = {1, 2, 3, 4};
+        CHECK(check_bool_vec(vi.xxzz() == sycl::vec<int, 4>{1, 1, 3, 3}));
         vi.xyz() = {5, 6, 7};
         CHECK(check_bool_vec(vi == sycl::vec<int, 4>{5, 6, 7, 4}));
         vi.wyx() = {8, 9, 10};
         CHECK(check_bool_vec(vi == sycl::vec<int, 4>{10, 9, 7, 8}));
-        vi.zzz() = {11, 11, 11};
+        vi.z() = {11};
         CHECK(check_bool_vec(vi == sycl::vec<int, 4>{10, 9, 11, 8}));
 
-        sycl::vec<float, 3> vf = {1, 2, 3};
+        sycl::vec<float, 4> vf = {1, 2, 3, 4};
         vf.bgr() = {4, 5, 6};
-        CHECK(check_bool_vec(vf == sycl::vec<float, 3>{6, 5, 4}));
+        CHECK(check_bool_vec(vf == sycl::vec<float, 4>{6, 5, 4, 4}));
         vf.rgb() = {7, 8, 9};
-        CHECK(check_bool_vec(vf == sycl::vec<float, 3>{7, 8, 9}));
-        vf.ggg() = {10, 10, 10};
-        CHECK(check_bool_vec(vf == sycl::vec<float, 3>{7, 10, 9}));
+        CHECK(check_bool_vec(vf == sycl::vec<float, 4>{7, 8, 9, 4}));
+        vf.g() = {10};
+        CHECK(check_bool_vec(vf == sycl::vec<float, 4>{7, 10, 9, 4}));
     }
 
     SECTION("4 components") {
@@ -132,7 +140,7 @@ TEST_CASE("Vector swizzled access is available", "[vec][swizzle]") {
         CHECK(check_bool_vec(vi == sycl::vec<int, 4>{5, 6, 7, 8}));
         vi.wzyx() = {9, 10, 11, 12};
         CHECK(check_bool_vec(vi == sycl::vec<int, 4>{12, 11, 10, 9}));
-        vi.zzzz() = {13, 13, 13, 13};
+        vi.z() = {13};
         CHECK(check_bool_vec(vi == sycl::vec<int, 4>{12, 11, 13, 9}));
 
         sycl::vec<float, 4> vf = {1, 2, 3, 4};
@@ -140,7 +148,7 @@ TEST_CASE("Vector swizzled access is available", "[vec][swizzle]") {
         CHECK(check_bool_vec(vf == sycl::vec<float, 4>{6, 5, 4, 7}));
         vf.rgba() = {8, 9, 10, 11};
         CHECK(check_bool_vec(vf == sycl::vec<float, 4>{8, 9, 10, 11}));
-        vf.aaaa() = {12, 12, 12, 12};
+        vf.a() = {12};
         CHECK(check_bool_vec(vf == sycl::vec<float, 4>{8, 9, 10, 12}));
     }
 
