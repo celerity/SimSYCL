@@ -60,6 +60,7 @@ add_library(simsycl
     include/simsycl/detail/hash.hh
     include/simsycl/detail/subscript.hh
     include/simsycl/detail/utils.hh
+    include/simsycl/detail/vec_swizzles.inc
     include/simsycl/sycl/accessor.hh
     include/simsycl/sycl/allocator.hh
     include/simsycl/sycl/async_handler.hh

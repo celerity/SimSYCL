@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#define SYCL_SIMPLE_SWIZZLES
 #include <sycl/sycl.hpp>
 
 using namespace simsycl;
@@ -88,4 +89,70 @@ TEST_CASE("Vector relational operators work as expected", "[vec]") {
     CHECK(check_bool_vec((vb1 <= vb2) == sycl::vec<bool, 4>{false, true, true, true}));
     CHECK(check_bool_vec((vb2 > vb1) == sycl::vec<bool, 4>{false, true, false, false}));
     CHECK(check_bool_vec((vb2 >= vb1) == sycl::vec<bool, 4>{false, true, true, true}));
+}
+
+TEST_CASE("Vector swizzled access is available", "[vec][swizzle]") {
+    SECTION("2 components") {
+        sycl::vec<int, 4> vi = {1, 2, 3, 4};
+        vi.xx() = {5, 5};
+        CHECK(check_bool_vec(vi == sycl::vec<int, 4>{5, 2, 3, 4}));
+        vi.xy() = {7, 8};
+        CHECK(check_bool_vec(vi == sycl::vec<int, 4>{7, 8, 3, 4}));
+        vi.wz() = {9, 10};
+        CHECK(check_bool_vec(vi == sycl::vec<int, 4>{7, 8, 10, 9}));
+
+        sycl::vec<float, 3> vf = {1, 2, 3};
+        vf.gr() = {4, 5};
+        CHECK(check_bool_vec(vf == sycl::vec<float, 3>{5, 4, 3}));
+        vf.bg() = {6, 7};
+        CHECK(check_bool_vec(vf == sycl::vec<float, 3>{5, 7, 6}));
+    }
+
+    SECTION("3 components") {
+        sycl::vec<int, 4> vi = {1, 2, 3, 4};
+        vi.xyz() = {5, 6, 7};
+        CHECK(check_bool_vec(vi == sycl::vec<int, 4>{5, 6, 7, 4}));
+        vi.wyx() = {8, 9, 10};
+        CHECK(check_bool_vec(vi == sycl::vec<int, 4>{10, 9, 7, 8}));
+        vi.zzz() = {11, 11, 11};
+        CHECK(check_bool_vec(vi == sycl::vec<int, 4>{10, 9, 11, 8}));
+
+        sycl::vec<float, 3> vf = {1, 2, 3};
+        vf.bgr() = {4, 5, 6};
+        CHECK(check_bool_vec(vf == sycl::vec<float, 3>{6, 5, 4}));
+        vf.rgb() = {7, 8, 9};
+        CHECK(check_bool_vec(vf == sycl::vec<float, 3>{7, 8, 9}));
+        vf.ggg() = {10, 10, 10};
+        CHECK(check_bool_vec(vf == sycl::vec<float, 3>{7, 10, 9}));
+    }
+
+    SECTION("4 components") {
+        sycl::vec<int, 4> vi = {1, 2, 3, 4};
+        vi.xyzw() = {5, 6, 7, 8};
+        CHECK(check_bool_vec(vi == sycl::vec<int, 4>{5, 6, 7, 8}));
+        vi.wzyx() = {9, 10, 11, 12};
+        CHECK(check_bool_vec(vi == sycl::vec<int, 4>{12, 11, 10, 9}));
+        vi.zzzz() = {13, 13, 13, 13};
+        CHECK(check_bool_vec(vi == sycl::vec<int, 4>{12, 11, 13, 9}));
+
+        sycl::vec<float, 4> vf = {1, 2, 3, 4};
+        vf.bgra() = {4, 5, 6, 7};
+        CHECK(check_bool_vec(vf == sycl::vec<float, 4>{6, 5, 4, 7}));
+        vf.rgba() = {8, 9, 10, 11};
+        CHECK(check_bool_vec(vf == sycl::vec<float, 4>{8, 9, 10, 11}));
+        vf.aaaa() = {12, 12, 12, 12};
+        CHECK(check_bool_vec(vf == sycl::vec<float, 4>{8, 9, 10, 12}));
+    }
+
+    SECTION("lo, hi, odd and even") {
+        sycl::vec<int, 4> vi = {1, 2, 3, 4};
+        vi.lo() = {5, 6};
+        CHECK(check_bool_vec(vi == sycl::vec<int, 4>{5, 6, 3, 4}));
+        vi.hi() = {7, 8};
+        CHECK(check_bool_vec(vi == sycl::vec<int, 4>{5, 6, 7, 8}));
+        vi.odd() = {9, 10};
+        CHECK(check_bool_vec(vi == sycl::vec<int, 4>{5, 9, 7, 10}));
+        vi.even() = {11, 12};
+        CHECK(check_bool_vec(vi == sycl::vec<int, 4>{11, 9, 12, 10}));
+    }
 }

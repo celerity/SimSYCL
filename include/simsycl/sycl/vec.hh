@@ -35,14 +35,14 @@ class swizzled_vec {
     swizzled_vec &operator=(const DataT &rhs)
     // TODO requires(no-repeat-indices)
     {
-        for(int i = 0; i < sizeof...(Indices); ++i) { m_elems[i] = rhs; }
+        for(size_t i = 0; i < sizeof...(Indices); ++i) { m_elems[i] = rhs; }
         return *this;
     }
 
     swizzled_vec &operator=(const sycl::vec<DataT, sizeof...(Indices)> &rhs)
     // TODO requires(no-repeat-indices)
     {
-        for(int i = 0; i < sizeof...(Indices); ++i) { m_elems[indices[i]] = rhs[i]; }
+        for(size_t i = 0; i < sizeof...(Indices); ++i) { m_elems[indices[i]] = rhs[i]; }
         return *this;
     }
 
@@ -51,7 +51,7 @@ class swizzled_vec {
         requires(sizeof...(Indices) == sizeof...(OtherIndices))
     // TODO requires(no-repeat-indices)
     {
-        for(int i = 0; i < sizeof...(Indices); ++i) { m_elems[indices[i]] = rhs.m_elems[rhs.indices[i]]; }
+        for(size_t i = 0; i < sizeof...(Indices); ++i) { m_elems[indices[i]] = rhs.m_elems[rhs.indices[i]]; }
         return *this;
     }
 
@@ -228,27 +228,139 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
 
 #undef SIMSYCL_DETAIL_VEC_DEFINE_SCALAR_SWIZZLE
 
-#if 0 // TODO
-
 #ifdef SYCL_SIMPLE_SWIZZLES
-    // Available only when NumElements <= 4.
-    // XYZW_SWIZZLE is all permutations with repetition of: x, y, z, w, subject to
-    // NumElements.
-    __swizzled_vec__ XYZW_SWIZZLE() const;
 
-    // Available only when NumElements == 4.
-    // RGBA_SWIZZLE is all permutations with repetition of: r, g, b, a.
-    __swizzled_vec__ RGBA_SWIZZLE() const;
+#define SIMSYCL_SWIZZLE_2(comp1, comp2)                                                                                \
+    auto comp1##comp2()                                                                                                \
+        requires(NumElements <= 4 && NumElements > elem::comp1 && NumElements > elem::comp2)                           \
+    {                                                                                                                  \
+        return detail::swizzled_vec<DataT, elem::comp1, elem::comp2>(*this);                                           \
+    }                                                                                                                  \
+    auto comp1##comp2() const                                                                                          \
+        requires(NumElements <= 4 && NumElements > elem::comp1 && NumElements > elem::comp2)                           \
+    {                                                                                                                  \
+        return detail::swizzled_vec<const DataT, elem::comp1, elem::comp2>(*this);                                     \
+    }
+
+#define SIMSYCL_SWIZZLE_3(comp1, comp2, comp3)                                                                         \
+    auto comp1##comp2##comp3()                                                                                         \
+        requires(                                                                                                      \
+            NumElements <= 4 && NumElements > elem::comp1 && NumElements > elem::comp2 && NumElements > elem::comp3)   \
+    {                                                                                                                  \
+        return detail::swizzled_vec<DataT, elem::comp1, elem::comp2, elem::comp3>(*this);                              \
+    }                                                                                                                  \
+    auto comp1##comp2##comp3() const                                                                                   \
+        requires(                                                                                                      \
+            NumElements <= 4 && NumElements > elem::comp1 && NumElements > elem::comp2 && NumElements > elem::comp3)   \
+    {                                                                                                                  \
+        return detail::swizzled_vec<const DataT, elem::comp1, elem::comp2, elem::comp3>(*this);                        \
+    }
+
+#define SIMSYCL_SWIZZLE_4(comp1, comp2, comp3, comp4)                                                                  \
+    auto comp1##comp2##comp3##comp4()                                                                                  \
+        requires(NumElements <= 4 && NumElements > elem::comp1 && NumElements > elem::comp2                            \
+            && NumElements > elem::comp3 && NumElements > elem::comp4)                                                 \
+    {                                                                                                                  \
+        return detail::swizzled_vec<DataT, elem::comp1, elem::comp2, elem::comp3, elem::comp4>(*this);                 \
+    }                                                                                                                  \
+    auto comp1##comp2##comp3() const                                                                                   \
+        requires(NumElements <= 4 && NumElements > elem::comp1 && NumElements > elem::comp2                            \
+            && NumElements > elem::comp3 && NumElements > elem::comp4)                                                 \
+    {                                                                                                                  \
+        return detail::swizzled_vec<const DataT, elem::comp1, elem::comp2, elem::comp3, elem::comp4>(*this);           \
+    }
+
+#include "simsycl/detail/vec_swizzles.inc"
+
+#undef SIMSYCL_SWIZZLE_2
+#undef SIMSYCL_SWIZZLE_3
+#undef SIMSYCL_SWIZZLE_4
 
 #endif // #ifdef SYCL_SIMPLE_SWIZZLES
 
-    // Available only when: NumElements > 1.
-    __swizzled_vec__ lo() const;
-    __swizzled_vec__ hi() const;
-    __swizzled_vec__ odd() const;
-    __swizzled_vec__ even() const;
+    auto lo() const
+        requires(NumElements == 2)
+    {
+        return detail::swizzled_vec<const DataT, 0>(*this);
+    }
+    auto lo()
+        requires(NumElements == 2)
+    {
+        return detail::swizzled_vec<DataT, 0>(*this);
+    }
+    auto lo() const
+        requires(NumElements >= 3 && NumElements <= 4)
+    {
+        return detail::swizzled_vec<const DataT, 0, 1>(*this);
+    }
+    auto lo()
+        requires(NumElements >= 3 && NumElements <= 4)
+    {
+        return detail::swizzled_vec<DataT, 0, 1>(*this);
+    }
 
-#endif
+    auto hi() const
+        requires(NumElements == 2)
+    {
+        return detail::swizzled_vec<const DataT, 1>(*this);
+    }
+    auto hi()
+        requires(NumElements == 2)
+    {
+        return detail::swizzled_vec<DataT, 1>(*this);
+    }
+    auto hi() const
+        requires(NumElements >= 3 && NumElements <= 4)
+    {
+        return detail::swizzled_vec<const DataT, 2, 3>(*this);
+    }
+    auto hi()
+        requires(NumElements >= 3 && NumElements <= 4)
+    {
+        return detail::swizzled_vec<DataT, 2, 3>(*this);
+    }
+
+    auto odd() const
+        requires(NumElements == 2)
+    {
+        return detail::swizzled_vec<const DataT, 1>(*this);
+    }
+    auto odd()
+        requires(NumElements == 2)
+    {
+        return detail::swizzled_vec<DataT, 1>(*this);
+    }
+    auto odd() const
+        requires(NumElements >= 3 && NumElements <= 4)
+    {
+        return detail::swizzled_vec<const DataT, 1, 3>(*this);
+    }
+    auto odd()
+        requires(NumElements >= 3 && NumElements <= 4)
+    {
+        return detail::swizzled_vec<DataT, 1, 3>(*this);
+    }
+
+    auto even() const
+        requires(NumElements == 2)
+    {
+        return detail::swizzled_vec<const DataT, 0>(*this);
+    }
+    auto even()
+        requires(NumElements == 2)
+    {
+        return detail::swizzled_vec<DataT, 0>(*this);
+    }
+    auto even() const
+        requires(NumElements >= 3 && NumElements <= 4)
+    {
+        return detail::swizzled_vec<const DataT, 0, 2>(*this);
+    }
+    auto even()
+        requires(NumElements >= 3 && NumElements <= 4)
+    {
+        return detail::swizzled_vec<DataT, 0, 2>(*this);
+    }
 
     // load and store member functions
     template<access::address_space AddressSpace, access::decorated IsDecorated>
