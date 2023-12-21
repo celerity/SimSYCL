@@ -25,6 +25,7 @@ inline size_t get_linear_index(const sycl::range<3> &range, const sycl::id<3> &i
 inline void memcpy_strided_host(const void *source_base_ptr, void *target_base_ptr, size_t elem_size,
     const sycl::range<1> &source_range, const sycl::id<1> &source_offset, const sycl::range<1> &target_range,
     const sycl::id<1> &target_offset, const sycl::range<1> &copy_range) {
+    if(copy_range.size() == 0) return;
     const size_t line_size = elem_size * copy_range[0];
     ::memcpy(static_cast<std::byte *>(target_base_ptr) + elem_size * get_linear_index(target_range, target_offset),
         static_cast<const std::byte *>(source_base_ptr) + elem_size * get_linear_index(source_range, source_offset),
@@ -34,6 +35,7 @@ inline void memcpy_strided_host(const void *source_base_ptr, void *target_base_p
 inline void memcpy_strided_host(const void *source_base_ptr, void *target_base_ptr, size_t elem_size,
     const sycl::range<2> &source_range, const sycl::id<2> &source_offset, const sycl::range<2> &target_range,
     const sycl::id<2> &target_offset, const sycl::range<2> &copy_range) {
+    if(copy_range.size() == 0) return;
     const size_t line_size = elem_size * copy_range[1];
     const auto source_base_offset = get_linear_index(source_range, source_offset);
     const auto target_base_offset = get_linear_index(target_range, target_offset);
@@ -47,6 +49,7 @@ inline void memcpy_strided_host(const void *source_base_ptr, void *target_base_p
 inline void memcpy_strided_host(const void *source_base_ptr, void *target_base_ptr, size_t elem_size,
     const sycl::range<3> &source_range, const sycl::id<3> &source_offset, const sycl::range<3> &target_range,
     const sycl::id<3> &target_offset, const sycl::range<3> &copy_range) {
+    if(copy_range.size() == 0) return;
     // We simply decompose this into a bunch of 2D copies. Subtract offset on the copy plane, as it will be added again
     // during the 2D copy.
     const auto source_base_offset = get_linear_index(source_range, source_offset)
