@@ -130,52 +130,94 @@ class queue final : public detail::reference_type<queue, detail::queue_state>,
         return status.end();
     }
 
-    template<typename KernelName = simsycl::detail::unnamed_kernel, int Dims, typename... Rest,
+    template<typename KernelName = simsycl::detail::unnamed_kernel, typename... Rest,
         std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
-    event parallel_for(range<Dims> num_work_items, Rest &&...rest) {
-        auto status = detail::event_state::submit_and_start();
-        simsycl::detail::parallel_for(num_work_items, std::forward<Rest>(rest)...);
-        return status.end();
+    event parallel_for(size_t num_work_items, Rest &&...rest) {
+        return parallel_for_range(range(num_work_items), std::forward<Rest>(rest)...);
     }
 
-    template<typename KernelName = simsycl::detail::unnamed_kernel, int Dims, typename... Rest,
+    template<typename KernelName = simsycl::detail::unnamed_kernel, typename... Rest,
         std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
-    event parallel_for(range<Dims> num_work_items, event /* dep_event */, Rest &&...rest) {
-        auto status = detail::event_state::submit_and_start();
-        simsycl::detail::parallel_for(num_work_items, std::forward<Rest>(rest)...);
-        return status.end();
+    event parallel_for(range<1> num_work_items, Rest &&...rest) {
+        return parallel_for_range(num_work_items, std::forward<Rest>(rest)...);
     }
 
-    template<typename KernelName = simsycl::detail::unnamed_kernel, int Dims, typename... Rest,
+    template<typename KernelName = simsycl::detail::unnamed_kernel, typename... Rest,
         std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
-    event parallel_for(range<Dims> num_work_items, const std::vector<event> & /* dep_events */, Rest &&...rest) {
-        auto status = detail::event_state::submit_and_start();
-        simsycl::detail::parallel_for(num_work_items, std::forward<Rest>(rest)...);
-        return status.end();
+    event parallel_for(range<2> num_work_items, Rest &&...rest) {
+        return parallel_for_range(num_work_items, std::forward<Rest>(rest)...);
+    }
+
+    template<typename KernelName = simsycl::detail::unnamed_kernel, typename... Rest,
+        std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
+    event parallel_for(range<3> num_work_items, Rest &&...rest) {
+        return parallel_for_range(num_work_items, std::forward<Rest>(rest)...);
+    }
+
+    template<typename KernelName = simsycl::detail::unnamed_kernel, typename... Rest,
+        std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
+    event parallel_for(size_t num_work_items, event /* dep_event */, Rest &&...rest) {
+        return parallel_for_range(range(num_work_items), std::forward<Rest>(rest)...);
+    }
+
+    template<typename KernelName = simsycl::detail::unnamed_kernel, typename... Rest,
+        std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
+    event parallel_for(range<1> num_work_items, event /* dep_event */, Rest &&...rest) {
+        return parallel_for_range(num_work_items, std::forward<Rest>(rest)...);
+    }
+
+    template<typename KernelName = simsycl::detail::unnamed_kernel, typename... Rest,
+        std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
+    event parallel_for(range<2> num_work_items, event /* dep_event */, Rest &&...rest) {
+        return parallel_for_range(num_work_items, std::forward<Rest>(rest)...);
+    }
+
+    template<typename KernelName = simsycl::detail::unnamed_kernel, typename... Rest,
+        std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
+    event parallel_for(range<3> num_work_items, event /* dep_event */, Rest &&...rest) {
+        return parallel_for_range(num_work_items, std::forward<Rest>(rest)...);
+    }
+
+    template<typename KernelName = simsycl::detail::unnamed_kernel, typename... Rest,
+        std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
+    event parallel_for(size_t num_work_items, const std::vector<event> & /* dep_events */, Rest &&...rest) {
+        return parallel_for_range(range(num_work_items), std::forward<Rest>(rest)...);
+    }
+
+    template<typename KernelName = simsycl::detail::unnamed_kernel, typename... Rest,
+        std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
+    event parallel_for(range<1> num_work_items, const std::vector<event> & /* dep_events */, Rest &&...rest) {
+        return parallel_for_range(num_work_items, std::forward<Rest>(rest)...);
+    }
+
+    template<typename KernelName = simsycl::detail::unnamed_kernel, typename... Rest,
+        std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
+    event parallel_for(range<2> num_work_items, const std::vector<event> & /* dep_events */, Rest &&...rest) {
+        return parallel_for_range(num_work_items, std::forward<Rest>(rest)...);
+    }
+
+    template<typename KernelName = simsycl::detail::unnamed_kernel, typename... Rest,
+        std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
+    event parallel_for(range<3> num_work_items, const std::vector<event> & /* dep_events */, Rest &&...rest) {
+        return parallel_for_range(num_work_items, std::forward<Rest>(rest)...);
     }
 
     template<typename KernelName = simsycl::detail::unnamed_kernel, int Dims, typename... Rest,
         std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
     event parallel_for(nd_range<Dims> execution_range, Rest &&...rest) {
-        auto status = detail::event_state::submit_and_start();
-        simsycl::detail::parallel_for(execution_range, std::forward<Rest>(rest)...);
-        return status.end();
+        return parallel_for_range(execution_range, std::forward<Rest>(rest)...);
     }
 
     template<typename KernelName = simsycl::detail::unnamed_kernel, int Dims, typename... Rest,
         std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
     event parallel_for(nd_range<Dims> execution_range, event /* dep_event */, Rest &&...rest) {
-        auto status = detail::event_state::submit_and_start();
-        simsycl::detail::parallel_for(execution_range, std::forward<Rest>(rest)...);
-        return status.end();
+        return parallel_for_range(execution_range, std::forward<Rest>(rest)...);
     }
 
     template<typename KernelName = simsycl::detail::unnamed_kernel, int Dims, typename... Rest,
         std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
     event parallel_for(nd_range<Dims> execution_range, const std::vector<event> & /* dep_events */, Rest &&...rest) {
-        auto status = detail::event_state::submit_and_start();
-        simsycl::detail::parallel_for(execution_range, std::forward<Rest>(rest)...);
-        return status.end();
+        return parallel_for_range(execution_range, std::forward<Rest>(rest)...);
     }
 
     /* -- USM functions -- */
@@ -336,6 +378,22 @@ class queue final : public detail::reference_type<queue, detail::queue_state>,
 
     explicit queue(internal_t /* tag */, const context &sycl_context, const device &sycl_device,
         const async_handler &async_handler, const property_list &prop_list);
+
+    template<typename KernelName = simsycl::detail::unnamed_kernel, int Dims, typename... Rest,
+        std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
+    event parallel_for_range(range<Dims> num_work_items, Rest &&...rest) {
+        auto status = detail::event_state::submit_and_start();
+        simsycl::detail::parallel_for(num_work_items, std::forward<Rest>(rest)...);
+        return status.end();
+    }
+
+    template<typename KernelName = simsycl::detail::unnamed_kernel, int Dims, typename... Rest,
+        std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
+    event parallel_for_range(nd_range<Dims> execution_range, Rest &&...rest) {
+        auto status = detail::event_state::submit_and_start();
+        simsycl::detail::parallel_for(get_device(), execution_range, std::forward<Rest>(rest)...);
+        return status.end();
+    }
 };
 
 } // namespace simsycl::sycl
