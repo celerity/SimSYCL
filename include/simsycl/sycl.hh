@@ -5,6 +5,7 @@
 // IWYU pragma: begin_keep
 #include "sycl/accessor.hh"
 #include "sycl/allocator.hh"
+#include "sycl/atomic_fence.hh"
 #include "sycl/atomic_ref.hh"
 #include "sycl/backend.hh"
 #include "sycl/buffer.hh"

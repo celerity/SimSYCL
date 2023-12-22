@@ -64,6 +64,7 @@ add_library(simsycl
     include/simsycl/sycl/accessor.hh
     include/simsycl/sycl/allocator.hh
     include/simsycl/sycl/async_handler.hh
+    include/simsycl/sycl/atomic_fence.hh
     include/simsycl/sycl/atomic_ref.hh
     include/simsycl/sycl/backend.hh
     include/simsycl/sycl/buffer.hh
