@@ -13,7 +13,11 @@ template<typename T>
 concept TriviallyCopyable = std::is_trivially_copyable_v<T>;
 
 template<typename T>
+#if SIMSYCL_FEATURE_HALF_TYPE
+concept Fundamental = std::is_fundamental_v<T> || std::is_same_v<T, half>;
+#else
 concept Fundamental = std::is_fundamental_v<T>;
+#endif
 
 template<typename T>
 concept Pointer = std::is_pointer_v<T>;
@@ -39,7 +43,11 @@ template<typename Fn>
 concept SyclFunctionObject = detail::is_function_object_v<Fn>;
 
 template<typename T>
-concept Arithmetic = detail::is_arithmetic_v<T>;
+#if SIMSYCL_FEATURE_HALF_TYPE
+concept Arithmetic = detail::is_arithmetic_v<T> || std::is_same_v<T, half>;
+#else
+concept Arithmetic = std::is_fundamental_v<T>;
+#endif
 
 template<typename F>
 concept DeviceSelector = std::is_invocable_r_v<int, F, const device &>;

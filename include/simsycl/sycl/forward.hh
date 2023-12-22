@@ -85,6 +85,9 @@ class kernel_id;
 template<typename DataT, int Dimensions = 1>
 class local_accessor;
 
+template<typename DataT, size_t NumElements>
+class marray;
+
 template<typename ElementType, access::address_space Space,
     access::decorated DecorateAddress = access::decorated::legacy>
 class multi_ptr;

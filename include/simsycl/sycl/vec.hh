@@ -13,6 +13,24 @@
 
 namespace simsycl::detail {
 
+template<typename DataT, typename... ArgTN>
+struct vec_init_arg_traits {};
+
+template<typename DataT>
+struct vec_init_arg_traits<DataT> {
+    static constexpr int num_elements = 0;
+};
+
+template<typename DataT, std::convertible_to<DataT> ElementT, typename... ArgTN>
+struct vec_init_arg_traits<DataT, ElementT, ArgTN...> {
+    static constexpr int num_elements = 1 + vec_init_arg_traits<DataT, ArgTN...>::num_elements;
+};
+
+template<typename DataT, int N, typename... ArgTN>
+struct vec_init_arg_traits<DataT, sycl::vec<DataT, N>, ArgTN...> {
+    static constexpr int num_elements = N + vec_init_arg_traits<DataT, ArgTN...>::num_elements;
+};
+
 template<typename DataT, int NumElements>
 constexpr size_t vec_alignment_v = std::min(size_t{64}, sizeof(DataT) * NumElements);
 
@@ -284,6 +302,7 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
     }
 
     template<typename... ArgTN>
+        requires(detail::vec_init_arg_traits<DataT, ArgTN...>::num_elements == NumElements)
     constexpr vec(const ArgTN &...args) {
         init_with_offset<0>(args...);
     }
@@ -678,7 +697,7 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
     template<int Offset, int ArgNumElements, typename... ArgTN>
         requires(Offset + ArgNumElements <= NumElements)
     constexpr void init_with_offset(const vec<DataT, ArgNumElements> &arg, const ArgTN &...args) {
-        for(int i = 0; i < ArgNumElements; ++i) { m_elems[Offset + i] = arg[i]; }
+        for(int i = 0; i < ArgNumElements; ++i) { m_elems[Offset + i] = arg.m_elems[i]; }
         init_with_offset<Offset + ArgNumElements>(args...);
     }
 

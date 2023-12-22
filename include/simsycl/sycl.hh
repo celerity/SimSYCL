@@ -23,6 +23,7 @@
 #include "sycl/id.hh"
 #include "sycl/image.hh"
 #include "sycl/item.hh"
+#include "sycl/marray.hh"
 #include "sycl/math.hh"
 #include "sycl/multi_ptr.hh"
 #include "sycl/nd_item.hh"

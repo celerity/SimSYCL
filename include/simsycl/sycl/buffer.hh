@@ -222,13 +222,13 @@ class buffer final : public detail::reference_type<buffer<T, Dimensions, Allocat
     SIMSYCL_STOP_IGNORING_DEPRECATIONS
 
     template<typename... Ts>
-    auto get_access(Ts... args) {
-        return accessor(*this, args...);
+    auto get_access(Ts &&...args) {
+        return accessor(*this, std::forward<Ts>(args)...);
     }
 
     template<typename... Ts>
-    auto get_host_access(Ts... args) {
-        return host_accessor(*this, args...);
+    auto get_host_access(Ts &&...args) {
+        return host_accessor(*this, std::forward<Ts>(args)...);
     }
 
     template<typename Destination = std::nullptr_t>
@@ -288,7 +288,7 @@ buffer(Container &, const property_list & = {}) -> buffer<typename Container::va
 } // namespace simsycl::sycl
 
 template<typename T, int Dimensions, typename AllocatorT>
-class std::hash<simsycl::sycl::buffer<T, Dimensions, AllocatorT>>
+struct std::hash<simsycl::sycl::buffer<T, Dimensions, AllocatorT>>
     : std::hash<simsycl::detail::reference_type<simsycl::sycl::buffer<T, Dimensions, AllocatorT>,
           simsycl::detail::buffer_state<T, Dimensions, AllocatorT>>> {};
 

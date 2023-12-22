@@ -86,6 +86,7 @@ add_library(simsycl
     include/simsycl/sycl/image.hh
     include/simsycl/sycl/item.hh
     include/simsycl/sycl/math.hh
+    include/simsycl/sycl/marray.hh
     include/simsycl/sycl/multi_ptr.hh
     include/simsycl/sycl/nd_item.hh
     include/simsycl/sycl/nd_range.hh
