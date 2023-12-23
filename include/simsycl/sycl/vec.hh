@@ -63,14 +63,17 @@ struct vec_init_arg_traits<DataT, sycl::vec<DataT, N>, ArgTN...> {
     static constexpr int num_elements = N + vec_init_arg_traits<DataT, ArgTN...>::num_elements;
 };
 
+
 template<typename DataT, int NumElements>
 constexpr size_t vec_alignment_v = std::min(size_t{64}, sizeof(DataT) * NumElements);
 
 template<typename DataT>
 constexpr size_t vec_alignment_v<DataT, 3> = std::min(size_t{64}, sizeof(DataT) * 4);
 
+
 template<typename DataT, int... Indices>
 class swizzled_vec;
+
 
 template<typename VecOrSwizzle>
 struct num_elements;
@@ -84,6 +87,7 @@ struct num_elements<detail::swizzled_vec<T, Indices...>> : std::integral_constan
 template<typename VecOrSwizzle>
 static constexpr bool num_elements_v = num_elements<VecOrSwizzle>::value;
 
+
 template<int... Is>
 struct no_repeat_indices;
 
@@ -93,15 +97,9 @@ struct no_repeat_indices<I1> : std::true_type {};
 template<int I1, int... Is>
 struct no_repeat_indices<I1, Is...> : std::bool_constant<((I1 != Is) && ...) && no_repeat_indices<Is...>::value> {};
 
-template<int At, int... Is>
-struct index_at;
+template<int... Is>
+static constexpr bool no_repeat_indices_v = no_repeat_indices<Is...>::value;
 
-template<int I1, int... Is>
-struct index_at<0, I1, Is...> : std::integral_constant<int, I1> {};
-
-template<int At, int I1, int... Is>
-    requires(At > 0)
-struct index_at<At, I1, Is...> : index_at<At - 1, Is...> {};
 
 template<int... Is>
 struct index_list;
@@ -116,8 +114,6 @@ struct index_list<I1, Is...> {
     constexpr int operator[](const int at) const { return at == 0 ? I1 : index_list<Is...>{}[at - 1]; }
 };
 
-template<int... Is>
-static constexpr bool no_repeat_indices_v = no_repeat_indices<Is...>::value;
 
 template<typename T>
 struct is_vec : std::false_type {};
@@ -128,25 +124,30 @@ struct is_vec<sycl::vec<DataT, NumElements>> : std::true_type {};
 template<typename T>
 static constexpr bool is_vec_v = is_vec<T>::value;
 
+
 template<typename V1, typename V2>
 static constexpr bool is_compatible_vector_v = requires {
     num_elements_v<V1> == num_elements_v<V2>;
     std::is_same_v<typename V1::element_type, typename V2::element_type>;
 } || std::is_same_v<typename V1::element_type, V2>;
 
+
 template<typename T>
 struct is_swizzle : std::false_type {};
+
 template<typename DataT, int... Indices>
 struct is_swizzle<swizzled_vec<DataT, Indices...>> : std::true_type {};
+
 template<typename T>
 static constexpr bool is_swizzle_v = is_swizzle<T>::value;
+
 
 template<typename DataT, int NumElements>
 sycl::vec<DataT, NumElements> to_vec(const sycl::vec<DataT, NumElements> &v) {
     return v;
 }
 template<typename DataT, int... Indices>
-sycl::vec<DataT, sizeof...(Indices)> to_vec(const swizzled_vec<DataT, Indices...> &v) {
+sycl::vec<std::remove_const_t<DataT>, sizeof...(Indices)> to_vec(const swizzled_vec<DataT, Indices...> &v) {
     return v;
 }
 template<typename DataT, int NumElements>
@@ -154,18 +155,98 @@ sycl::vec<DataT, NumElements> to_vec(const DataT &e) {
     return sycl::vec<DataT, NumElements>(e);
 }
 
+
+template<typename SwizzledVecWithPartialIndices, int... RemainingIndices>
+struct make_swizzled_vec_for_lo_indices;
+
+template<typename DataT, int... SwizzleIndices>
+struct make_swizzled_vec_for_lo_indices<swizzled_vec<DataT, SwizzleIndices...>> {
+    using type = detail::swizzled_vec<DataT, SwizzleIndices...>;
+};
+
+template<typename DataT, int... SwizzleIndices, int NextIndex, int... RemainingIndices>
+struct make_swizzled_vec_for_lo_indices<swizzled_vec<DataT, SwizzleIndices...>, NextIndex, RemainingIndices...> {
+    using type = std::conditional_t<(sizeof...(SwizzleIndices) >= 1 + sizeof...(RemainingIndices)),
+        swizzled_vec<DataT, SwizzleIndices...>,
+        typename make_swizzled_vec_for_lo_indices<swizzled_vec<DataT, SwizzleIndices..., NextIndex>,
+            RemainingIndices...>::type>;
+};
+
 template<typename DataT, int... Indices>
+using swizzled_vec_for_lo_indices_t = typename make_swizzled_vec_for_lo_indices<swizzled_vec<DataT>, Indices...>::type;
+
+
+template<typename SwizzledVecWithPartialIndices, int... DiscardedIndices>
+struct make_swizzled_vec_for_hi_indices;
+
+template<typename DataT, int... DiscardedIndices>
+struct make_swizzled_vec_for_hi_indices<swizzled_vec<DataT>, DiscardedIndices...> {
+    using type = detail::swizzled_vec<DataT>;
+};
+
+template<typename DataT, int... RemainingIndices, int NextIndex, int... DiscardedIndices>
+struct make_swizzled_vec_for_hi_indices<swizzled_vec<DataT, NextIndex, RemainingIndices...>, DiscardedIndices...> {
+    using type = std::conditional_t<(sizeof...(DiscardedIndices) >= 1 + sizeof...(RemainingIndices)),
+        swizzled_vec<DataT, NextIndex, RemainingIndices...>,
+        typename make_swizzled_vec_for_hi_indices<swizzled_vec<DataT, RemainingIndices...>, DiscardedIndices...,
+            NextIndex>::type>;
+};
+
+template<typename DataT, int... Indices>
+using swizzled_vec_for_hi_indices_t = typename make_swizzled_vec_for_hi_indices<swizzled_vec<DataT, Indices...>>::type;
+
+
+template<typename SwizzledVecWithPartialIndices, bool IncludeNextIndex, int... RemainingIndices>
+struct make_swizzled_vec_for_alternating_indices;
+
+template<typename DataT, int... SwizzleIndices, bool IncludeNextIndex>
+struct make_swizzled_vec_for_alternating_indices<swizzled_vec<DataT, SwizzleIndices...>, IncludeNextIndex> {
+    using type = swizzled_vec<DataT, SwizzleIndices...>;
+};
+
+template<typename DataT, int... SwizzleIndices, bool IncludeNextIndex, int NextIndex, int... RemainingIndices>
+struct make_swizzled_vec_for_alternating_indices<swizzled_vec<DataT, SwizzleIndices...>, IncludeNextIndex, NextIndex,
+    RemainingIndices...> {
+    using partial_type = std::conditional_t<IncludeNextIndex, swizzled_vec<DataT, SwizzleIndices..., NextIndex>,
+        swizzled_vec<DataT, SwizzleIndices...>>;
+    using type =
+        typename make_swizzled_vec_for_alternating_indices<partial_type, !IncludeNextIndex, RemainingIndices...>::type;
+};
+
+template<typename DataT, int... Indices>
+using swizzled_vec_for_odd_indices_t =
+    typename make_swizzled_vec_for_alternating_indices<swizzled_vec<DataT>, false, Indices...>::type;
+
+template<typename DataT, int... Indices>
+using swizzled_vec_for_even_indices_t =
+    typename make_swizzled_vec_for_alternating_indices<swizzled_vec<DataT>, true, Indices...>::type;
+
+
+template<template<typename, int...> typename Template, typename DataT, typename IndexSequence>
+struct apply_to_index_sequence;
+
+template<template<typename, int...> typename Template, typename DataT, int... Indices>
+struct apply_to_index_sequence<Template, DataT, std::integer_sequence<int, Indices...>> {
+    using type = Template<DataT, Indices...>;
+};
+
+template<template<typename, int...> typename Template, typename DataT, int NumElements>
+using apply_to_indices_of_vec_t =
+    typename apply_to_index_sequence<Template, DataT, std::make_integer_sequence<int, NumElements>>::type;
+
+
+template<typename ReferenceDataT, int... Indices>
 class swizzled_vec {
-    static_assert(!std::is_volatile_v<DataT>);
+    static_assert(!std::is_volatile_v<ReferenceDataT>);
     static_assert(sizeof...(Indices) > 0);
 
-    static constexpr bool allow_assign = !std::is_const_v<DataT> && no_repeat_indices_v<Indices...>;
+    static constexpr bool allow_assign = !std::is_const_v<ReferenceDataT> && no_repeat_indices_v<Indices...>;
     static constexpr int num_elements = sizeof...(Indices);
     static constexpr index_list<Indices...> indices;
 
   public:
-    using element_type = DataT;
-    using value_type = DataT;
+    using element_type = std::remove_const_t<ReferenceDataT>;
+    using value_type = element_type;
 
     swizzled_vec() = delete;
     swizzled_vec(const swizzled_vec &) = delete;
@@ -173,14 +254,14 @@ class swizzled_vec {
     swizzled_vec &operator=(const swizzled_vec &) = delete;
     swizzled_vec &operator=(swizzled_vec &&) = delete;
 
-    swizzled_vec &operator=(const DataT &rhs)
+    swizzled_vec &operator=(const value_type &rhs)
         requires(allow_assign)
     {
         for(size_t i = 0; i < num_elements; ++i) { m_elems[indices[i]] = rhs; }
         return *this;
     }
 
-    swizzled_vec &operator=(const sycl::vec<DataT, num_elements> &rhs)
+    swizzled_vec &operator=(const sycl::vec<value_type, num_elements> &rhs)
         requires(allow_assign)
     {
         for(size_t i = 0; i < num_elements; ++i) { m_elems[indices[i]] = rhs[i]; }
@@ -188,22 +269,24 @@ class swizzled_vec {
     }
 
     template<int... OtherIndices>
-    swizzled_vec &operator=(const swizzled_vec<DataT, OtherIndices...> &rhs)
+    swizzled_vec &operator=(const swizzled_vec<value_type, OtherIndices...> &rhs)
         requires(num_elements == sizeof...(OtherIndices) && allow_assign)
     {
         for(size_t i = 0; i < num_elements; ++i) { m_elems[indices[i]] = rhs.m_elems[rhs.indices[i]]; }
         return *this;
     }
 
-    operator sycl::vec<DataT, num_elements>() const { return sycl::vec<DataT, num_elements>(m_elems[Indices]...); }
+    operator sycl::vec<value_type, num_elements>() const {
+        return sycl::vec<value_type, num_elements>(m_elems[Indices]...);
+    }
 
-    operator DataT() const
+    operator value_type() const
         requires(num_elements == 1)
     {
         return m_elems[indices[0]];
     }
 
-    static constexpr size_t byte_size() noexcept { return sycl::vec<DataT, num_elements>::byte_size(); }
+    static constexpr size_t byte_size() noexcept { return sycl::vec<value_type, num_elements>::byte_size(); }
 
     static constexpr size_t size() noexcept { return num_elements; }
 
@@ -213,34 +296,34 @@ class swizzled_vec {
 
     template<typename ConvertT, sycl::rounding_mode RoundingMode = sycl::rounding_mode::automatic>
     sycl::vec<ConvertT, num_elements> convert() const {
-        return sycl::vec<DataT, num_elements>(*this).template convert<ConvertT, RoundingMode>();
+        return sycl::vec<value_type, num_elements>(*this).template convert<ConvertT, RoundingMode>();
     }
 
     template<typename AsT>
     AsT as() const {
-        return sycl::vec<DataT, num_elements>(*this).template as<AsT>();
+        return sycl::vec<value_type, num_elements>(*this).template as<AsT>();
     }
 
     // swizzling
 
-    template<int... SubSwizzleIndexes>
-        requires((num_elements > SubSwizzleIndexes) && ...)
+    template<int... SubSwizzleIndices>
+        requires((num_elements > SubSwizzleIndices) && ...)
     auto swizzle() const {
-        return detail::swizzled_vec<DataT, indices[SubSwizzleIndexes]...>(m_elems);
+        return detail::swizzled_vec<ReferenceDataT, indices[SubSwizzleIndices]...>(m_elems);
     }
 
 #define SIMSYCL_DETAIL_DEFINE_1D_SWIZZLE(req, comp)                                                                    \
     auto comp() const                                                                                                  \
         requires(req && num_elements > sycl::elem::comp)                                                               \
     {                                                                                                                  \
-        return detail::swizzled_vec<DataT, indices[sycl::elem::comp]>(m_elems);                                        \
+        return detail::swizzled_vec<ReferenceDataT, indices[sycl::elem::comp]>(m_elems);                               \
     }
 
 #define SIMSYCL_DETAIL_DEFINE_2D_SWIZZLE(req, comp1, comp2)                                                            \
     auto comp1##comp2() const                                                                                          \
         requires(req && num_elements > sycl::elem::comp1 && num_elements > sycl::elem::comp2)                          \
     {                                                                                                                  \
-        return detail::swizzled_vec<DataT, indices[sycl::elem::comp1], indices[sycl::elem::comp2]>(m_elems);           \
+        return detail::swizzled_vec<ReferenceDataT, indices[sycl::elem::comp1], indices[sycl::elem::comp2]>(m_elems);  \
     }
 
 #define SIMSYCL_DETAIL_DEFINE_3D_SWIZZLE(req, comp1, comp2, comp3)                                                     \
@@ -248,7 +331,7 @@ class swizzled_vec {
         requires(req && num_elements > sycl::elem::comp1 && num_elements > sycl::elem::comp2                           \
             && num_elements > sycl::elem::comp3)                                                                       \
     {                                                                                                                  \
-        return detail::swizzled_vec<DataT, indices[sycl::elem::comp1], indices[sycl::elem::comp2],                     \
+        return detail::swizzled_vec<ReferenceDataT, indices[sycl::elem::comp1], indices[sycl::elem::comp2],            \
             indices[sycl::elem::comp3]>(m_elems);                                                                      \
     }
 
@@ -257,7 +340,7 @@ class swizzled_vec {
         requires(req && num_elements > sycl::elem::comp1 && num_elements > sycl::elem::comp2                           \
             && num_elements > sycl::elem::comp3 && num_elements > sycl::elem::comp4)                                   \
     {                                                                                                                  \
-        return detail::swizzled_vec<DataT, indices[sycl::elem::comp1], indices[sycl::elem::comp2],                     \
+        return detail::swizzled_vec<ReferenceDataT, indices[sycl::elem::comp1], indices[sycl::elem::comp2],            \
             indices[sycl::elem::comp3], indices[sycl::elem::comp4]>(m_elems);                                          \
     }
 
@@ -269,63 +352,39 @@ class swizzled_vec {
 #undef SIMSYCL_DETAIL_DEFINE_1D_SWIZZLE
 
     auto lo() const
-        requires(num_elements == 2)
+        requires(num_elements > 1)
     {
-        return detail::swizzled_vec<DataT, indices[0]>(m_elems);
-    }
-    auto lo() const
-        requires(num_elements >= 3 && num_elements <= 4)
-    {
-        return detail::swizzled_vec<DataT, indices[0], indices[1]>(m_elems);
+        return detail::swizzled_vec_for_lo_indices_t<ReferenceDataT, indices[Indices]...>(m_elems);
     }
 
     auto hi() const
-        requires(num_elements == 2)
+        requires(num_elements > 1)
     {
-        return detail::swizzled_vec<DataT, indices[1]>(m_elems);
-    }
-    auto hi() const
-        requires(num_elements >= 3 && num_elements <= 4)
-    {
-        return detail::swizzled_vec<DataT, indices[2], indices[3]>(m_elems);
+        return detail::swizzled_vec_for_hi_indices_t<ReferenceDataT, indices[Indices]...>(m_elems);
     }
 
     auto odd() const
-        requires(num_elements == 2)
+        requires(num_elements > 1)
     {
-        return detail::swizzled_vec<DataT, indices[1]>(m_elems);
-    }
-    auto odd() const
-        requires(num_elements >= 3 && num_elements <= 4)
-    {
-        return detail::swizzled_vec<DataT, indices[1], indices[3]>(m_elems);
+        return detail::swizzled_vec_for_odd_indices_t<ReferenceDataT, indices[Indices]...>(m_elems);
     }
 
     auto even() const
-        requires(num_elements == 2)
+        requires(num_elements > 1)
     {
-        return detail::swizzled_vec<DataT, indices[0]>(m_elems);
-    }
-    auto even() const
-        requires(num_elements >= 3 && num_elements <= 4)
-    {
-        return detail::swizzled_vec<DataT, indices[0], indices[2]>(m_elems);
+        return detail::swizzled_vec_for_even_indices_t<ReferenceDataT, indices[Indices]...>(m_elems);
     }
 
     // load and store member functions
 
     template<sycl::access::address_space AddressSpace, sycl::access::decorated IsDecorated>
-    void load(size_t offset, sycl::multi_ptr<const DataT, AddressSpace, IsDecorated> ptr);
+    void load(size_t offset, sycl::multi_ptr<const value_type, AddressSpace, IsDecorated> ptr)
+        requires(allow_assign);
 
     template<sycl::access::address_space AddressSpace, sycl::access::decorated IsDecorated>
-    void store(size_t offset, sycl::multi_ptr<DataT, AddressSpace, IsDecorated> ptr) const;
+    void store(size_t offset, sycl::multi_ptr<value_type, AddressSpace, IsDecorated> ptr) const;
 
-    DataT &operator[](int index) {
-        SIMSYCL_CHECK(index >= 0 && index < num_elements && "Index out of range");
-        return m_elems[indices[index]];
-    }
-
-    const DataT &operator[](int index) const {
+    ReferenceDataT &operator[](int index) const {
         SIMSYCL_CHECK(index >= 0 && index < num_elements && "Index out of range");
         return m_elems[indices[index]];
     }
@@ -345,12 +404,12 @@ class swizzled_vec {
     SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_COPY_OPERATOR(-, true)
     SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_COPY_OPERATOR(*, true)
     SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_COPY_OPERATOR(/, true)
-    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_COPY_OPERATOR(%, !detail::is_floating_point_v<DataT>)
-    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_COPY_OPERATOR(&, !detail::is_floating_point_v<DataT>)
-    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_COPY_OPERATOR(|, !detail::is_floating_point_v<DataT>)
-    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_COPY_OPERATOR(^, !detail::is_floating_point_v<DataT>)
-    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_COPY_OPERATOR(<<, !detail::is_floating_point_v<DataT>)
-    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_COPY_OPERATOR(>>, !detail::is_floating_point_v<DataT>)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_COPY_OPERATOR(%, !detail::is_floating_point_v<value_type>)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_COPY_OPERATOR(&, !detail::is_floating_point_v<value_type>)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_COPY_OPERATOR(|, !detail::is_floating_point_v<value_type>)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_COPY_OPERATOR(^, !detail::is_floating_point_v<value_type>)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_COPY_OPERATOR(<<, !detail::is_floating_point_v<value_type>)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_COPY_OPERATOR(>>, !detail::is_floating_point_v<value_type>)
 #undef SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_COPY_OPERATOR
 
 #define SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_INPLACE_OPERATOR(op, enable_if)                                           \
@@ -365,12 +424,12 @@ class swizzled_vec {
     SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_INPLACE_OPERATOR(-, true)
     SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_INPLACE_OPERATOR(*, true)
     SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_INPLACE_OPERATOR(/, true)
-    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_INPLACE_OPERATOR(%, !detail::is_floating_point_v<DataT>)
-    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_INPLACE_OPERATOR(&, !detail::is_floating_point_v<DataT>)
-    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_INPLACE_OPERATOR(|, !detail::is_floating_point_v<DataT>)
-    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_INPLACE_OPERATOR(^, !detail::is_floating_point_v<DataT>)
-    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_INPLACE_OPERATOR(<<, !detail::is_floating_point_v<DataT>)
-    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_INPLACE_OPERATOR(>>, !detail::is_floating_point_v<DataT>)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_INPLACE_OPERATOR(%, !detail::is_floating_point_v<value_type>)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_INPLACE_OPERATOR(&, !detail::is_floating_point_v<value_type>)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_INPLACE_OPERATOR(|, !detail::is_floating_point_v<value_type>)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_INPLACE_OPERATOR(^, !detail::is_floating_point_v<value_type>)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_INPLACE_OPERATOR(<<, !detail::is_floating_point_v<value_type>)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_INPLACE_OPERATOR(>>, !detail::is_floating_point_v<value_type>)
 #undef SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_INPLACE_OPERATOR
 
 #define SIMSYCL_DETAIL_DEFINE_SWIZZLE_UNARY_COPY_OPERATOR(op, enable_if)                                               \
@@ -382,15 +441,15 @@ class swizzled_vec {
 
     SIMSYCL_DETAIL_DEFINE_SWIZZLE_UNARY_COPY_OPERATOR(+, true)
     SIMSYCL_DETAIL_DEFINE_SWIZZLE_UNARY_COPY_OPERATOR(-, true)
-    SIMSYCL_DETAIL_DEFINE_SWIZZLE_UNARY_COPY_OPERATOR(~, !detail::is_floating_point_v<DataT>)
-    SIMSYCL_DETAIL_DEFINE_SWIZZLE_UNARY_COPY_OPERATOR(!, !detail::is_floating_point_v<DataT>)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_UNARY_COPY_OPERATOR(~, !detail::is_floating_point_v<value_type>)
+    SIMSYCL_DETAIL_DEFINE_SWIZZLE_UNARY_COPY_OPERATOR(!, !detail::is_floating_point_v<value_type>)
 #undef SIMSYCL_DETAIL_DEFINE_SWIZZLE_UNARY_COPY_OPERATOR
 
 #define SIMSYCL_DETAIL_DEFINE_SWIZZLE_UNARY_PREFIX_OPERATOR(op)                                                        \
     friend constexpr swizzled_vec &operator op(swizzled_vec && v)                                                      \
-        requires(!std::is_same_v<DataT, bool>)                                                                         \
+        requires(!std::is_same_v<value_type, bool>)                                                                    \
     {                                                                                                                  \
-        for(int d = 0; d < num_elements; ++d) { op v.m_elems[indices[d]]; }                                            \
+        for(int i = 0; i < num_elements; ++i) { op v.m_elems[indices[i]]; }                                            \
         return v;                                                                                                      \
     }
 
@@ -400,10 +459,10 @@ class swizzled_vec {
 
 #define SIMSYCL_DETAIL_DEFINE_SWIZZLE_UNARY_POSTFIX_OPERATOR(op)                                                       \
     friend constexpr auto operator op(swizzled_vec &&v, int)                                                           \
-        requires(!std::is_same_v<DataT, bool>)                                                                         \
+        requires(!std::is_same_v<value_type, bool>)                                                                    \
     {                                                                                                                  \
         auto result = to_vec(v);                                                                                       \
-        for(int d = 0; d < num_elements; ++d) { v.m_elems[indices[d]] op; }                                            \
+        for(int i = 0; i < num_elements; ++i) { v.m_elems[indices[i]] op; }                                            \
         return result;                                                                                                 \
     }
 
@@ -437,9 +496,9 @@ class swizzled_vec {
     template<typename T, int... Is>
     friend class swizzled_vec;
 
-    constexpr swizzled_vec(DataT *elems) : m_elems(elems) {}
+    constexpr swizzled_vec(ReferenceDataT *elems) : m_elems(elems) {}
 
-    DataT *m_elems;
+    ReferenceDataT *m_elems;
 };
 
 } // namespace simsycl::detail
@@ -476,6 +535,15 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
 
     vec &operator=(const DataT &rhs) {
         for(int i = 0; i < NumElements; ++i) { m_elems[i] = rhs; }
+        return *this;
+    }
+
+    // non-standard, but required for disambiguation
+    template<int... Indices>
+    vec &operator=(const detail::swizzled_vec<DataT, Indices...> &rhs)
+        requires(NumElements == sizeof...(Indices))
+    {
+        for(int i = 0; i < NumElements; ++i) { m_elems[i] = rhs.m_elems[rhs.indices[i]]; }
         return *this;
     }
 
@@ -582,87 +650,55 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
 #undef SIMSYCL_DETAIL_DEFINE_1D_SWIZZLE
 
     auto lo() const
-        requires(NumElements == 2)
+        requires(num_elements > 1)
     {
-        return detail::swizzled_vec<const DataT, 0>(m_elems);
+        return detail::apply_to_indices_of_vec_t<detail::swizzled_vec_for_lo_indices_t, const DataT, NumElements>(
+            m_elems);
     }
+
     auto lo()
-        requires(NumElements == 2)
+        requires(num_elements > 1)
     {
-        return detail::swizzled_vec<DataT, 0>(m_elems);
-    }
-    auto lo() const
-        requires(NumElements >= 3 && NumElements <= 4)
-    {
-        return detail::swizzled_vec<const DataT, 0, 1>(m_elems);
-    }
-    auto lo()
-        requires(NumElements >= 3 && NumElements <= 4)
-    {
-        return detail::swizzled_vec<DataT, 0, 1>(m_elems);
+        return detail::apply_to_indices_of_vec_t<detail::swizzled_vec_for_lo_indices_t, DataT, NumElements>(m_elems);
     }
 
     auto hi() const
-        requires(NumElements == 2)
+        requires(num_elements > 1)
     {
-        return detail::swizzled_vec<const DataT, 1>(m_elems);
+        return detail::apply_to_indices_of_vec_t<detail::swizzled_vec_for_hi_indices_t, const DataT, NumElements>(
+            m_elems);
     }
+
     auto hi()
-        requires(NumElements == 2)
+        requires(num_elements > 1)
     {
-        return detail::swizzled_vec<DataT, 1>(m_elems);
-    }
-    auto hi() const
-        requires(NumElements >= 3 && NumElements <= 4)
-    {
-        return detail::swizzled_vec<const DataT, 2, 3>(m_elems);
-    }
-    auto hi()
-        requires(NumElements >= 3 && NumElements <= 4)
-    {
-        return detail::swizzled_vec<DataT, 2, 3>(m_elems);
+        return detail::apply_to_indices_of_vec_t<detail::swizzled_vec_for_hi_indices_t, DataT, NumElements>(m_elems);
     }
 
     auto odd() const
-        requires(NumElements == 2)
+        requires(num_elements > 1)
     {
-        return detail::swizzled_vec<const DataT, 1>(m_elems);
+        return detail::apply_to_indices_of_vec_t<detail::swizzled_vec_for_odd_indices_t, const DataT, NumElements>(
+            m_elems);
     }
+
     auto odd()
-        requires(NumElements == 2)
+        requires(num_elements > 1)
     {
-        return detail::swizzled_vec<DataT, 1>(m_elems);
-    }
-    auto odd() const
-        requires(NumElements >= 3 && NumElements <= 4)
-    {
-        return detail::swizzled_vec<const DataT, 1, 3>(m_elems);
-    }
-    auto odd()
-        requires(NumElements >= 3 && NumElements <= 4)
-    {
-        return detail::swizzled_vec<DataT, 1, 3>(m_elems);
+        return detail::apply_to_indices_of_vec_t<detail::swizzled_vec_for_odd_indices_t, DataT, NumElements>(m_elems);
     }
 
     auto even() const
-        requires(NumElements == 2)
+        requires(num_elements > 1)
     {
-        return detail::swizzled_vec<const DataT, 0>(m_elems);
+        return detail::apply_to_indices_of_vec_t<detail::swizzled_vec_for_even_indices_t, const DataT, NumElements>(
+            m_elems);
     }
+
     auto even()
-        requires(NumElements == 2)
+        requires(num_elements > 1)
     {
-        return detail::swizzled_vec<DataT, 0>(m_elems);
-    }
-    auto even() const
-        requires(NumElements >= 3 && NumElements <= 4)
-    {
-        return detail::swizzled_vec<const DataT, 0, 2>(m_elems);
-    }
-    auto even()
-        requires(NumElements >= 3 && NumElements <= 4)
-    {
-        return detail::swizzled_vec<DataT, 0, 2>(m_elems);
+        return detail::apply_to_indices_of_vec_t<detail::swizzled_vec_for_even_indices_t, DataT, NumElements>(m_elems);
     }
 
     // load and store member functions
@@ -690,21 +726,21 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
         requires(enable_if)                                                                                            \
     {                                                                                                                  \
         vec result;                                                                                                    \
-        for(int d = 0; d < NumElements; ++d) { result.m_elems[d] = lhs.m_elems[d] op rhs.m_elems[d]; }                 \
+        for(int i = 0; i < NumElements; ++i) { result.m_elems[i] = lhs.m_elems[i] op rhs.m_elems[i]; }                 \
         return result;                                                                                                 \
     }                                                                                                                  \
     friend vec operator op(const vec &lhs, const DataT &rhs)                                                           \
         requires(enable_if)                                                                                            \
     {                                                                                                                  \
         vec result;                                                                                                    \
-        for(int d = 0; d < NumElements; ++d) { result.m_elems[d] = lhs.m_elems[d] op rhs; }                            \
+        for(int i = 0; i < NumElements; ++i) { result.m_elems[i] = lhs.m_elems[i] op rhs; }                            \
         return result;                                                                                                 \
     }                                                                                                                  \
     friend vec operator op(const DataT &lhs, const vec &rhs)                                                           \
         requires(enable_if)                                                                                            \
     {                                                                                                                  \
         vec result;                                                                                                    \
-        for(int d = 0; d < NumElements; ++d) { result.m_elems[d] = lhs op rhs.m_elems[d]; }                            \
+        for(int i = 0; i < NumElements; ++i) { result.m_elems[i] = lhs op rhs.m_elems[i]; }                            \
         return result;                                                                                                 \
     }
 
@@ -725,13 +761,20 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
     friend vec &operator op(vec & lhs, const vec & rhs)                                                                \
         requires(enable_if)                                                                                            \
     {                                                                                                                  \
-        for(int d = 0; d < NumElements; ++d) { lhs.m_elems[d] op rhs.m_elems[d]; }                                     \
+        for(int i = 0; i < NumElements; ++i) { lhs.m_elems[i] op rhs.m_elems[i]; }                                     \
+        return lhs;                                                                                                    \
+    }                                                                                                                  \
+    template<int... SwizzleIndices>                                                                                    \
+    friend vec &operator op(vec & lhs, const detail::swizzled_vec<DataT, SwizzleIndices...> &rhs)                      \
+        requires(enable_if && sizeof...(SwizzleIndices) == NumElements)                                                \
+    {                                                                                                                  \
+        for(int i = 0; i < NumElements; ++i) { lhs.m_elems[i] op rhs.m_elems[rhs.indices[i]]; }                        \
         return lhs;                                                                                                    \
     }                                                                                                                  \
     friend vec &operator op(vec & lhs, const DataT & rhs)                                                              \
         requires(enable_if)                                                                                            \
     {                                                                                                                  \
-        for(int d = 0; d < NumElements; ++d) { lhs.m_elems[d] op rhs; }                                                \
+        for(int i = 0; i < NumElements; ++i) { lhs.m_elems[i] op rhs; }                                                \
         return lhs;                                                                                                    \
     }
 
@@ -753,7 +796,7 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
         requires(enable_if)                                                                                            \
     {                                                                                                                  \
         vec result;                                                                                                    \
-        for(int d = 0; d < NumElements; ++d) { result.m_elems[d] = op rhs[d]; }                                        \
+        for(int i = 0; i < NumElements; ++i) { result.m_elems[i] = op rhs[i]; }                                        \
         return result;                                                                                                 \
     }
 
@@ -768,7 +811,7 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
     friend constexpr vec &operator op(vec & rhs)                                                                       \
         requires(!std::is_same_v<DataT, bool>)                                                                         \
     {                                                                                                                  \
-        for(int d = 0; d < NumElements; ++d) { op rhs[d]; }                                                            \
+        for(int i = 0; i < NumElements; ++i) { op rhs[i]; }                                                            \
         return rhs;                                                                                                    \
     }
 
@@ -782,7 +825,7 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
         requires(!std::is_same_v<DataT, bool>)                                                                         \
     {                                                                                                                  \
         vec result = lhs;                                                                                              \
-        for(int d = 0; d < NumElements; ++d) { lhs[d] op; }                                                            \
+        for(int i = 0; i < NumElements; ++i) { lhs[i] op; }                                                            \
         return result;                                                                                                 \
     }
 
@@ -794,17 +837,17 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
 #define SIMSYCL_DETAIL_DEFINE_VEC_COMPARISON_OPERATOR(op)                                                              \
     friend vec<decltype(DataT {} op DataT{}), NumElements> operator op(const vec & lhs, const vec & rhs) {             \
         vec<decltype(DataT {} op DataT{}), NumElements> result;                                                        \
-        for(int d = 0; d < NumElements; ++d) { result.m_elems[d] = lhs.m_elems[d] op rhs.m_elems[d]; }                 \
+        for(int i = 0; i < NumElements; ++i) { result.m_elems[i] = lhs.m_elems[i] op rhs.m_elems[i]; }                 \
         return result;                                                                                                 \
     }                                                                                                                  \
     friend vec<decltype(DataT {} op DataT{}), NumElements> operator op(const vec & lhs, const DataT & rhs) {           \
         vec<decltype(DataT {} op DataT{}), NumElements> result;                                                        \
-        for(int d = 0; d < NumElements; ++d) { result.m_elems[d] = lhs.m_elems[d] op rhs; }                            \
+        for(int i = 0; i < NumElements; ++i) { result.m_elems[i] = lhs.m_elems[i] op rhs; }                            \
         return result;                                                                                                 \
     }                                                                                                                  \
     friend vec<decltype(DataT {} op DataT{}), NumElements> operator op(const DataT & lhs, const vec & rhs) {           \
         vec<decltype(DataT {} op DataT{}), NumElements> result;                                                        \
-        for(int d = 0; d < NumElements; ++d) { result.m_elems[d] = lhs op rhs.m_elems[d]; }                            \
+        for(int i = 0; i < NumElements; ++i) { result.m_elems[i] = lhs op rhs.m_elems[i]; }                            \
         return result;                                                                                                 \
     }
 
