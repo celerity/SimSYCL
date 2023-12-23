@@ -400,4 +400,4 @@ class queue final : public detail::reference_type<queue, detail::queue_state>,
 
 template<>
 struct std::hash<simsycl::sycl::queue>
-    : public std::hash<simsycl::detail::reference_type<simsycl::sycl::queue, simsycl::detail::queue_state>> {};
+    : std::hash<simsycl::detail::reference_type<simsycl::sycl::queue, simsycl::detail::queue_state>> {};

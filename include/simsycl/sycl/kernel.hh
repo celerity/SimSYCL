@@ -4,12 +4,26 @@
 #include "forward.hh"
 #include "property.hh"
 
+#include "../detail/reference_type.hh"
+
 #include <vector>
+
+
+namespace simsycl::detail {
+
+struct kernel_state {};
+struct kernel_id_state {};
+struct kernel_bundle_state {};
+
+} // namespace simsycl::detail
 
 
 namespace simsycl::sycl {
 
-class kernel {
+class kernel : public detail::reference_type<kernel, detail::kernel_state> {
+  private:
+    using reference_type = detail::reference_type<kernel, detail::kernel_state>;
+
   public:
     kernel() = delete;
 
@@ -29,7 +43,10 @@ class kernel {
     typename Param::return_type get_backend_info() const;
 };
 
-class kernel_id {
+class kernel_id : public detail::reference_type<kernel_id, detail::kernel_id_state> {
+  private:
+    using reference_type = detail::reference_type<kernel_id, detail::kernel_id_state>;
+
   public:
     kernel_id() = delete;
 
@@ -37,7 +54,10 @@ class kernel_id {
 };
 
 template<bundle_state State>
-class kernel_bundle {
+class kernel_bundle : public detail::reference_type<kernel_bundle<State>, detail::kernel_bundle_state> {
+  private:
+    using reference_type = detail::reference_type<kernel_bundle<State>, detail::kernel_bundle_state>;
+
   public:
     struct device_image_iterator;
 
@@ -88,6 +108,12 @@ class kernel_bundle {
     device_image_iterator begin() const;
 
     device_image_iterator end() const;
+};
+
+class kernel_handler {
+  public:
+    template<auto &SpecName>
+    typename std::remove_reference_t<decltype(SpecName)>::value_type get_specialization_constant();
 };
 
 template<typename KernelName>
@@ -171,3 +197,17 @@ kernel_bundle<bundle_state::executable> build(const kernel_bundle<bundle_state::
     const std::vector<device> &devs, const property_list &prop_list = {});
 
 } // namespace simsycl::sycl
+
+template<>
+struct std::hash<simsycl::sycl::kernel>
+    : public std::hash<simsycl::detail::reference_type<simsycl::sycl::kernel, simsycl::detail::kernel_state>> {};
+
+template<>
+struct std::hash<simsycl::sycl::kernel_id>
+    : public std::hash<simsycl::detail::reference_type<simsycl::sycl::kernel_id, simsycl::detail::kernel_id_state>> {};
+
+template<simsycl::sycl::bundle_state State>
+struct std::hash<simsycl::sycl::kernel_bundle<State>>
+    : public std::hash<
+          simsycl::detail::reference_type<simsycl::sycl::kernel_bundle<State>, simsycl::detail::kernel_bundle_state>> {
+};

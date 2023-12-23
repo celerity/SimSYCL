@@ -106,7 +106,7 @@ class event : public detail::reference_type<event, detail::event_state> {
 
 template<>
 struct std::hash<simsycl::sycl::event>
-    : public std::hash<simsycl::detail::reference_type<simsycl::sycl::event, simsycl::detail::event_state>> {};
+    : std::hash<simsycl::detail::reference_type<simsycl::sycl::event, simsycl::detail::event_state>> {};
 
 namespace simsycl::detail {
 

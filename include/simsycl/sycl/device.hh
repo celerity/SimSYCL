@@ -56,15 +56,6 @@ using cpu_selector = detail::cpu_selector;
 using gpu_selector = detail::gpu_selector;
 using accelerator_selector = detail::accelerator_selector;
 
-// Returns a selector that selects a device based on desired aspects
-auto aspect_selector(const std::vector<aspect> &aspect_list, const std::vector<aspect> &deny_list = {});
-
-template<class... AspectList>
-auto aspect_selector(AspectList... aspect_list);
-
-template<aspect... AspectList>
-auto aspect_selector();
-
 class device final : public detail::reference_type<device, detail::device_state> {
   private:
     using reference_type = detail::reference_type<device, detail::device_state>;
@@ -117,15 +108,40 @@ class device final : public detail::reference_type<device, detail::device_state>
     device(std::shared_ptr<detail::device_state> &&state) : reference_type(std::move(state)) {}
 };
 
+
 template<aspect Aspect>
-struct any_device_has;
+struct any_device_has: std::false_type {};
+
 template<aspect Aspect>
-struct all_devices_have;
+struct all_devices_have: std::false_type {};
 
 template<aspect A>
 inline constexpr bool any_device_has_v = any_device_has<A>::value;
 template<aspect A>
 inline constexpr bool all_devices_have_v = all_devices_have<A>::value;
+
+// Returns a selector that selects a device based on desired aspects
+inline auto aspect_selector(const std::vector<aspect> &aspect_list, const std::vector<aspect> &deny_list = {}) {
+    return [=](const sycl::device &device) {
+        for(const auto required_aspect : aspect_list) {
+            if(!device.has(required_aspect)) { return -1; }
+        }
+        for(const auto denied_aspect : deny_list) {
+            if(device.has(denied_aspect)) { return -1; }
+        }
+        return 0;
+    };
+}
+
+template<class... AspectList>
+auto aspect_selector(AspectList... aspect_list) {
+    return aspect_selector(std::vector<aspect>{aspect_list...});
+}
+
+template<aspect... AspectList>
+auto aspect_selector() {
+    return aspect_selector(std::vector<aspect>{AspectList...});
+}
 
 } // namespace simsycl::sycl
 

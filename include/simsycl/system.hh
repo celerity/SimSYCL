@@ -2,9 +2,9 @@
 
 #include "detail/check.hh"
 
-#include "sycl/bundle.hh"
 #include "sycl/device.hh"
 #include "sycl/exception.hh"
+#include "sycl/kernel.hh"
 #include "sycl/platform.hh"
 #include "sycl/range.hh"
 

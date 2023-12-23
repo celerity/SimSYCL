@@ -78,15 +78,31 @@ concept Container = is_container_v<C, T>;
 
 template<typename T, int Dimensions, typename AllocatorT>
 struct buffer_state {
+    using write_back_fn = std::function<void(const T *, size_t)>;
+
     sycl::range<Dimensions> range;
     AllocatorT allocator;
     T *buffer;
-    T *write_back_to = nullptr; // TODO has to be an arbitrary output iterator (aka a type-erased lambda)
+    write_back_fn write_back;
+    bool write_back_enabled;
+    std::shared_ptr<const void> shared_host_ptr; // keep the std::shared_ptr host pointer alive
 
-    buffer_state(sycl::range<Dimensions> range, const AllocatorT &allocator = {}, T *write_back_to = nullptr)
-        : range(range), allocator(allocator), buffer(this->allocator.allocate(range.size())),
-          write_back_to(write_back_to) {
-        memset(buffer, static_cast<int>(detail::uninitialized_memory_pattern), range.size() * sizeof(T));
+    buffer_state(sycl::range<Dimensions> range, const AllocatorT &allocator = {}, const T *init_from = nullptr,
+        write_back_fn write_back = {}, const std::shared_ptr<const void> &shared_host_ptr = nullptr)
+        : range(range), allocator(allocator), buffer(this->allocator.allocate(range.size())), write_back(write_back),
+          write_back_enabled(static_cast<bool>(write_back)), shared_host_ptr(shared_host_ptr) {
+        if(init_from) {
+            memcpy(buffer, init_from, range.size() * sizeof(T));
+        } else {
+            memset(buffer, static_cast<int>(detail::uninitialized_memory_pattern), range.size() * sizeof(T));
+        }
+    }
+
+    template<typename InputIterator>
+    buffer_state(InputIterator first, InputIterator last, const AllocatorT &allocator)
+        : range(static_cast<size_t>(std::distance(first, last))), allocator(allocator),
+          buffer(this->allocator.allocate(range.size())), write_back_enabled(false) {
+        std::copy(first, last, buffer);
     }
 
     buffer_state(const buffer_state &) = delete;
@@ -95,7 +111,7 @@ struct buffer_state {
     buffer_state &operator=(buffer_state &&) = delete;
 
     ~buffer_state() {
-        if(write_back_to != nullptr) { std::copy_n(buffer, range.size(), write_back_to); }
+        if(write_back_enabled) { write_back(buffer, range.size()); }
         allocator.deallocate(buffer, range.size());
     }
 };
@@ -109,8 +125,8 @@ class buffer final : public detail::reference_type<buffer<T, Dimensions, Allocat
                          detail::buffer_state<std::remove_const_t<T>, Dimensions, AllocatorT>>,
                      public detail::property_interface {
   private:
-    using reference_type
-        = detail::reference_type<buffer<T, Dimensions, AllocatorT>, detail::buffer_state<T, Dimensions, AllocatorT>>;
+    using reference_type = detail::reference_type<buffer<T, Dimensions, AllocatorT>,
+        detail::buffer_state<std::remove_const_t<T>, Dimensions, AllocatorT>>;
     using property_compatibility = detail::property_compatibility_with<buffer<T, Dimensions, AllocatorT>,
         property::buffer::use_host_ptr, property::buffer::use_mutex, property::buffer::context_bound>;
     using typename reference_type::state_type;
@@ -134,9 +150,7 @@ class buffer final : public detail::reference_type<buffer<T, Dimensions, Allocat
     buffer(
         T *host_data, const range<Dimensions> &buffer_range, AllocatorT allocator, const property_list &prop_list = {})
         : property_interface(prop_list, property_compatibility()),
-          reference_type(std::in_place, buffer_range, allocator, host_data) {
-        std::copy_n(host_data, state().range.size(), state().buffer);
-    }
+          reference_type(std::in_place, buffer_range, allocator, host_data, write_back_to(host_data)) {}
 
     buffer(const T *host_data, const range<Dimensions> &buffer_range, const property_list &prop_list = {})
         : buffer(host_data, buffer_range, AllocatorT(), prop_list) {}
@@ -144,27 +158,32 @@ class buffer final : public detail::reference_type<buffer<T, Dimensions, Allocat
     buffer(const T *host_data, const range<Dimensions> &buffer_range, AllocatorT allocator,
         const property_list &prop_list = {})
         : property_interface(prop_list, property_compatibility()),
-          reference_type(std::in_place, buffer_range, allocator) {
-        std::copy_n(host_data, state().range.size(), state().buffer);
-    }
+          reference_type(std::in_place, buffer_range, allocator, host_data) {}
 
     template<simsycl::detail::Container<T> Container>
         requires(Dimensions == 1)
-    buffer(Container &container, AllocatorT allocator, const property_list &prop_list = {});
+    buffer(Container &container, AllocatorT allocator, const property_list &prop_list = {})
+        : buffer(std::data(container), range(std::size(container)), allocator, prop_list) {}
 
     template<simsycl::detail::Container<T> Container>
         requires(Dimensions == 1)
     buffer(Container &container, const property_list &prop_list = {}) : buffer(container, AllocatorT(), prop_list) {}
 
     buffer(const std::shared_ptr<T> &host_data, const range<Dimensions> &buffer_range, AllocatorT allocator,
-        const property_list &prop_list = {});
+        const property_list &prop_list = {})
+        : property_interface(prop_list, property_compatibility()),
+          reference_type(
+              std::in_place, buffer_range, allocator, host_data.get(), write_back_to(host_data.get()), host_data) {}
 
     buffer(
         const std::shared_ptr<T> &host_data, const range<Dimensions> &buffer_range, const property_list &prop_list = {})
         : buffer(host_data, buffer_range, AllocatorT(), prop_list) {}
 
     buffer(const std::shared_ptr<T[]> &host_data, const range<Dimensions> &buffer_range, AllocatorT allocator,
-        const property_list &prop_list = {});
+        const property_list &prop_list = {})
+        : property_interface(prop_list, property_compatibility()),
+          reference_type(
+              std::in_place, buffer_range, allocator, host_data.get(), write_back_to(host_data.get()), host_data) {}
 
     buffer(const std::shared_ptr<T[]> &host_data, const range<Dimensions> &buffer_range,
         const property_list &prop_list = {})
@@ -172,7 +191,9 @@ class buffer final : public detail::reference_type<buffer<T, Dimensions, Allocat
 
     template<class InputIterator>
         requires(Dimensions == 1)
-    buffer(InputIterator first, InputIterator last, AllocatorT allocator, const property_list &prop_list = {});
+    buffer(InputIterator first, InputIterator last, AllocatorT allocator, const property_list &prop_list = {})
+        : property_interface(prop_list, property_compatibility()),
+          reference_type(std::in_place, first, last, allocator) {}
 
     template<class InputIterator>
         requires(Dimensions == 1)
@@ -232,11 +253,22 @@ class buffer final : public detail::reference_type<buffer<T, Dimensions, Allocat
     }
 
     template<typename Destination = std::nullptr_t>
-    void set_final_data(Destination final_data = nullptr);
+    void set_final_data(Destination final_data = nullptr) {
+        if constexpr(std::is_same_v<Destination, std::nullptr_t>) {
+            state().write_back = {};
+            state().write_back_enabled = false;
+        } else {
+            state().write_back = write_back_to(final_data);
+            state().write_back_enabled = true;
+        }
+    }
 
-    void set_write_back(bool flag = true);
+    void set_write_back(bool flag = true) { state().write_back_enabled = state().write_back && flag; }
 
-    bool is_sub_buffer() const;
+    bool is_sub_buffer() const {
+        // sub-buffers are unimplemented
+        return false;
+    }
 
     template<typename ReinterpretT, int ReinterpretDim>
     buffer<ReinterpretT, ReinterpretDim,
@@ -257,6 +289,21 @@ class buffer final : public detail::reference_type<buffer<T, Dimensions, Allocat
     friend U *simsycl::detail::get_buffer_data(sycl::buffer<U, D, A> &buf);
 
     using reference_type::state;
+
+    static auto write_back_to(T out) {
+        return [out](const T *buffer, size_t size) { return memcpy(out, buffer, size * sizeof(T)); };
+    }
+
+    static auto write_back_to(std::weak_ptr<T> out) {
+        return [out](const T *buffer, size_t size) {
+            if(const auto live = out.lock()) { return memcpy(live.get(), buffer, size * sizeof(T)); }
+        };
+    }
+
+    template<typename OutputIterator>
+    static auto write_back_to(OutputIterator out) {
+        return [out](const T *buffer, size_t size) { return std::copy_n(buffer, size, out); };
+    }
 
     buffer(std::shared_ptr<state_type> &&state) : reference_type(std::move(state)) {}
 };
@@ -290,7 +337,7 @@ buffer(Container &, const property_list & = {}) -> buffer<typename Container::va
 template<typename T, int Dimensions, typename AllocatorT>
 struct std::hash<simsycl::sycl::buffer<T, Dimensions, AllocatorT>>
     : std::hash<simsycl::detail::reference_type<simsycl::sycl::buffer<T, Dimensions, AllocatorT>,
-          simsycl::detail::buffer_state<T, Dimensions, AllocatorT>>> {};
+          simsycl::detail::buffer_state<std::remove_const_t<T>, Dimensions, AllocatorT>>> {};
 
 namespace simsycl::detail {
 

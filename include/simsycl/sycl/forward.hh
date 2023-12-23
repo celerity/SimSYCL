@@ -82,6 +82,8 @@ class kernel_bundle;
 
 class kernel_id;
 
+class kernel_handler;
+
 template<typename DataT, int Dimensions = 1>
 class local_accessor;
 

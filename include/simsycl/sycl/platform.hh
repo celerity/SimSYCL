@@ -72,4 +72,4 @@ class platform final : public detail::reference_type<platform, detail::platform_
 
 template<>
 struct std::hash<simsycl::sycl::platform>
-    : public std::hash<simsycl::detail::reference_type<simsycl::sycl::platform, simsycl::detail::platform_state>> {};
+    : std::hash<simsycl::detail::reference_type<simsycl::sycl::platform, simsycl::detail::platform_state>> {};

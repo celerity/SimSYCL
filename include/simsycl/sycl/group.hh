@@ -103,14 +103,12 @@ class group {
         SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(events...);
     }
 
-    bool operator==(const group<Dimensions> &rhs) const {
-        return (rhs.m_local_id == this->m_local_id) && (rhs.m_local_range == this->m_local_range)
-            && (rhs.m_global_id == this->m_global_id) && (rhs.m_global_range == this->m_global_range)
-            && (rhs.m_group_id == this->m_group_id) && (rhs.m_group_range == this->m_group_range)
-            && (rhs.m_concurrent_group == this->m_concurrent_group);
+    friend bool operator==(const group<Dimensions> &lhs, const group<Dimensions> &rhs) {
+        return lhs.m_local_item == rhs.m_local_item && lhs.m_global_item == rhs.m_global_item
+            && lhs.m_group_item == rhs.m_group_item && lhs.m_concurrent_group == rhs.m_concurrent_group;
     }
 
-    bool operator!=(const group<Dimensions> &rhs) const { return !((*this) == rhs); }
+    friend bool operator!=(const group<Dimensions> &lhs, const group<Dimensions> &rhs) { return !(lhs == rhs); }
 
   private:
     item<Dimensions, false /* WithOffset */> m_local_item;

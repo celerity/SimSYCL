@@ -65,4 +65,4 @@ class context final : public detail::reference_type<context, detail::context_sta
 
 template<>
 struct std::hash<simsycl::sycl::context>
-    : public std::hash<simsycl::detail::reference_type<simsycl::sycl::context, simsycl::detail::context_state>> {};
+    : std::hash<simsycl::detail::reference_type<simsycl::sycl::context, simsycl::detail::context_state>> {};

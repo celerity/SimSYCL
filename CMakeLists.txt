@@ -77,7 +77,6 @@ add_library(simsycl
     include/simsycl/sycl/atomic_ref.hh
     include/simsycl/sycl/backend.hh
     include/simsycl/sycl/buffer.hh
-    include/simsycl/sycl/bundle.hh
     include/simsycl/sycl/concepts.hh
     include/simsycl/sycl/context.hh
     include/simsycl/sycl/device.hh
@@ -95,6 +94,7 @@ add_library(simsycl
     include/simsycl/sycl/interop_handle.hh
     include/simsycl/sycl/image.hh
     include/simsycl/sycl/item.hh
+    include/simsycl/sycl/kernel.hh
     include/simsycl/sycl/math.hh
     include/simsycl/sycl/marray.hh
     include/simsycl/sycl/multi_ptr.hh
