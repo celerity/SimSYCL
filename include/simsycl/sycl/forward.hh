@@ -6,6 +6,7 @@
 #include "../detail/preprocessor.hh"
 #include <simsycl/config.hh>
 
+#include <cstdint>
 #include <functional>
 #include <type_traits>
 
