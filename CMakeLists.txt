@@ -7,6 +7,15 @@ set(SIMSYCL_VERSION_PATCH 0)
 
 project(SimSYCL VERSION "${SIMSYCL_VERSION}" LANGUAGES CXX)
 
+message(STATUS "   _____ _         ______   ______ _     ")
+message(STATUS "  / ___/(_)___ ___/ ___\\ \\ / / ___| |    ")
+message(STATUS "  \\__ \\/ / __ `__ \\___ \\\\ V / |   | |    ")
+message(STATUS " ___/ / / / / / / /___) || || |___| |___ ")
+message(STATUS "/____/_/_/ /_/ /_/_____/ |_| \\____|_____|  v${SIMSYCL_VERSION}")
+message(STATUS "")
+message(STATUS "\"Technically correct is the best kind of correct\"")
+message(STATUS "")
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if(CMAKE_GENERATOR STREQUAL "Ninja")
