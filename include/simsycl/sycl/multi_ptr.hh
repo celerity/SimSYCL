@@ -332,6 +332,18 @@ class multi_ptr<simsycl::detail::void_type<VoidType>, Space, DecorateAddress> {
     pointer m_ptr = nullptr;
 };
 
+template<access::address_space Space, access::decorated DecorateAddress>
+class multi_ptr<void, Space, DecorateAddress>
+    : public multi_ptr<simsycl::detail::void_type<void>, Space, DecorateAddress> {
+    using multi_ptr<simsycl::detail::void_type<void>, Space, DecorateAddress>::multi_ptr;
+};
+
+template<access::address_space Space, access::decorated DecorateAddress>
+class multi_ptr<const void, Space, DecorateAddress>
+    : public multi_ptr<simsycl::detail::void_type<const void>, Space, DecorateAddress> {
+    using multi_ptr<simsycl::detail::void_type<const void>, Space, DecorateAddress>::multi_ptr;
+};
+
 // Legacy interface, inherited from 1.2.1.
 template<typename ElementType, access::address_space Space>
 class [[deprecated]] multi_ptr<ElementType, Space, access::decorated::legacy> {
@@ -577,18 +589,6 @@ class [[deprecated]] multi_ptr<simsycl::detail::void_type<VoidType>, Space, acce
     pointer_t m_ptr = nullptr;
 };
 
-template<access::address_space Space, access::decorated DecorateAddress>
-class multi_ptr<void, Space, DecorateAddress>
-    : public multi_ptr<simsycl::detail::void_type<void>, Space, DecorateAddress> {
-    using multi_ptr<simsycl::detail::void_type<void>, Space, DecorateAddress>::multi_ptr;
-};
-
-template<access::address_space Space, access::decorated DecorateAddress>
-class multi_ptr<const void, Space, DecorateAddress>
-    : public multi_ptr<simsycl::detail::void_type<const void>, Space, DecorateAddress> {
-    using multi_ptr<simsycl::detail::void_type<const void>, Space, DecorateAddress>::multi_ptr;
-};
-
 // need to specialize separately for void + decorated::legacy to avoid ambiguity
 
 template<access::address_space Space>
@@ -616,13 +616,31 @@ template<access::address_space Space, access::decorated DecorateAddress, typenam
     return {ptr};
 }
 
+
 // Deduction guides
-template<typename T, int Dimensions, access_mode Mode, access::placeholder IsPlaceholder>
-multi_ptr(accessor<T, Dimensions, Mode, target::device, IsPlaceholder>)
+template<typename T, int Dimensions, access::placeholder IsPlaceholder>
+multi_ptr(accessor<T, Dimensions, access_mode::read, target::device, IsPlaceholder>)
+    -> multi_ptr<const T, access::address_space::global_space, access::decorated::no>;
+
+template<typename T, int Dimensions, access::placeholder IsPlaceholder>
+multi_ptr(accessor<T, Dimensions, access_mode::write, target::device, IsPlaceholder>)
     -> multi_ptr<T, access::address_space::global_space, access::decorated::no>;
+
+template<typename T, int Dimensions, access::placeholder IsPlaceholder>
+multi_ptr(accessor<T, Dimensions, access_mode::read_write, target::device, IsPlaceholder>)
+    -> multi_ptr<T, access::address_space::global_space, access::decorated::no>;
+
+template<typename T, int Dimensions, access::placeholder IsPlaceholder>
+multi_ptr(accessor<T, Dimensions, access_mode::read, target::constant_buffer, IsPlaceholder>)
+    -> multi_ptr<const T, access::address_space::constant_space, access::decorated::no>;
+
+template<typename T, int Dimensions, access_mode Mode, access::placeholder IsPlaceholder>
+multi_ptr(accessor<T, Dimensions, Mode, target::local, IsPlaceholder>)
+    -> multi_ptr<T, access::address_space::local_space, access::decorated::no>;
 
 template<typename T, int Dimensions>
 multi_ptr(local_accessor<T, Dimensions>) -> multi_ptr<T, access::address_space::local_space, access::decorated::no>;
+
 
 template<typename ElementType, access::decorated IsDecorated = access::decorated::legacy>
 using global_ptr = multi_ptr<ElementType, access::address_space::global_space, IsDecorated>;
