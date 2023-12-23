@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <cstddef>
 #include <cstring>
 #include <memory>
@@ -20,8 +21,11 @@
 
 namespace simsycl::detail {
 
+struct no_offset_t {
+} inline constexpr no_offset;
+
 template<typename Func, typename... Params>
-void sequential_for(const sycl::range<1> &range, Func &&func, Params &&...args) {
+void sequential_for(const sycl::range<1> &range, no_offset_t /* no offset */, Func &&func, Params &&...args) {
     sycl::id<1> id;
     for(id[0] = 0; id[0] < range[0]; ++id[0]) { //
         func(make_item(id, range), std::forward<Params>(args)...);
@@ -29,7 +33,7 @@ void sequential_for(const sycl::range<1> &range, Func &&func, Params &&...args) 
 }
 
 template<typename Func, typename... Params>
-void sequential_for(const sycl::range<2> &range, Func &&func, Params &&...args) {
+void sequential_for(const sycl::range<2> &range, no_offset_t /* no offset */, Func &&func, Params &&...args) {
     sycl::id<2> id;
     for(id[0] = 0; id[0] < range[0]; ++id[0]) {
         for(id[1] = 0; id[1] < range[1]; ++id[1]) { //
@@ -39,7 +43,7 @@ void sequential_for(const sycl::range<2> &range, Func &&func, Params &&...args) 
 }
 
 template<typename Func, typename... Params>
-void sequential_for(const sycl::range<3> &range, Func &&func, Params &&...args) {
+void sequential_for(const sycl::range<3> &range, no_offset_t /* no offset */, Func &&func, Params &&...args) {
     sycl::id<3> id;
     for(id[0] = 0; id[0] < range[0]; ++id[0]) {
         for(id[1] = 0; id[1] < range[1]; ++id[1]) {
@@ -120,7 +124,7 @@ void dispatch_for(const sycl::range<Dimensions> &range, ParamTuple &&params,
     std::index_sequence<ReductionIndices...> /* reduction_indices */,
     std::index_sequence<KernelIndex> /* kernel_index */) {
     const auto &kernel_func = std::get<KernelIndex>(params);
-    detail::sequential_for(range, kernel_func, std::get<ReductionIndices>(params)...);
+    detail::sequential_for(range, no_offset, kernel_func, std::get<ReductionIndices>(params)...);
 }
 
 template<int Dimensions, typename ParamTuple, size_t... ReductionIndices, size_t KernelIndex>
@@ -315,7 +319,9 @@ class handler {
     }
 
     template<typename T, int Dim, access_mode Mode, target Tgt, access::placeholder IsPlaceholder>
-    void update_host(accessor<T, Dim, Mode, Tgt, IsPlaceholder> acc);
+    void update_host(accessor<T, Dim, Mode, Tgt, IsPlaceholder> acc) {
+        acc.update_host();
+    }
 
     template<typename T, int Dim, access_mode Mode, target Tgt, access::placeholder IsPlaceholder>
     void fill(accessor<T, Dim, Mode, Tgt, IsPlaceholder> dest, const T &src) {

@@ -11,6 +11,38 @@
 #include <cstdlib>
 #include <type_traits>
 
+
+namespace simsycl::sycl {
+
+struct elem {
+    static constexpr int x = 0;
+    static constexpr int y = 1;
+    static constexpr int z = 2;
+    static constexpr int w = 3;
+    static constexpr int r = 0;
+    static constexpr int g = 1;
+    static constexpr int b = 2;
+    static constexpr int a = 3;
+    static constexpr int s0 = 0;
+    static constexpr int s1 = 1;
+    static constexpr int s2 = 2;
+    static constexpr int s3 = 3;
+    static constexpr int s4 = 4;
+    static constexpr int s5 = 5;
+    static constexpr int s6 = 6;
+    static constexpr int s7 = 7;
+    static constexpr int s8 = 8;
+    static constexpr int s9 = 9;
+    static constexpr int sA = 10;
+    static constexpr int sB = 11;
+    static constexpr int sC = 12;
+    static constexpr int sD = 13;
+    static constexpr int sE = 14;
+    static constexpr int sF = 15;
+};
+
+} // namespace simsycl::sycl
+
 namespace simsycl::detail {
 
 template<typename DataT, typename... ArgTN>
@@ -37,34 +69,70 @@ constexpr size_t vec_alignment_v = std::min(size_t{64}, sizeof(DataT) * NumEleme
 template<typename DataT>
 constexpr size_t vec_alignment_v<DataT, 3> = std::min(size_t{64}, sizeof(DataT) * 4);
 
+template<typename DataT, int... Indices>
+class swizzled_vec;
+
+template<typename VecOrSwizzle>
+struct num_elements;
+
+template<typename T, int NumElements>
+struct num_elements<sycl::vec<T, NumElements>> : std::integral_constant<int, NumElements> {};
+
+template<typename T, int... Indices>
+struct num_elements<detail::swizzled_vec<T, Indices...>> : std::integral_constant<int, sizeof...(Indices)> {};
+
+template<typename VecOrSwizzle>
+static constexpr bool num_elements_v = num_elements<VecOrSwizzle>::value;
+
 template<int... Is>
-struct no_repeat_indices {
-    static_assert(sizeof...(Is) < 0, "Only implemented for up to 4 indices");
-};
+struct no_repeat_indices;
 
 template<int I1>
 struct no_repeat_indices<I1> : std::true_type {};
+
+template<int I1, int... Is>
+struct no_repeat_indices<I1, Is...> : std::bool_constant<((I1 != Is) && ...) && no_repeat_indices<Is...>::value> {};
+
+template<int At, int... Is>
+struct index_at;
+
+template<int I1, int... Is>
+struct index_at<0, I1, Is...> : std::integral_constant<int, I1> {};
+
+template<int At, int I1, int... Is>
+    requires(At > 0)
+struct index_at<At, I1, Is...> : index_at<At - 1, Is...> {};
+
+template<int... Is>
+struct index_list;
+
+template<>
+struct index_list<> {
+    constexpr int operator[](const int /* at */) const { return -1; }
+};
+
+template<int I1, int... Is>
+struct index_list<I1, Is...> {
+    constexpr int operator[](const int at) const { return at == 0 ? I1 : index_list<Is...>{}[at - 1]; }
+};
+
 template<int... Is>
 static constexpr bool no_repeat_indices_v = no_repeat_indices<Is...>::value;
 
-template<int I1, int I2>
-struct no_repeat_indices<I1, I2> : std::bool_constant<I1 != I2> {};
+template<typename T>
+struct is_vec : std::false_type {};
 
-template<int I1, int I2, int I3>
-struct no_repeat_indices<I1, I2, I3> : std::bool_constant<I1 != I2 && I1 != I3 && I2 != I3> {};
+template<typename DataT, int NumElements>
+struct is_vec<sycl::vec<DataT, NumElements>> : std::true_type {};
 
-template<int I1, int I2, int I3, int I4>
-struct no_repeat_indices<I1, I2, I3, I4>
-    : std::bool_constant<I1 != I2 && I1 != I3 && I1 != I4 && I2 != I3 && I2 != I4 && I3 != I4> {};
+template<typename T>
+static constexpr bool is_vec_v = is_vec<T>::value;
 
 template<typename V1, typename V2>
 static constexpr bool is_compatible_vector_v = requires {
-    V1::dimensions == V2::dimensions;
+    num_elements_v<V1> == num_elements_v<V2>;
     std::is_same_v<typename V1::element_type, typename V2::element_type>;
 } || std::is_same_v<typename V1::element_type, V2>;
-
-template<typename DataT, int... Indices>
-class swizzled_vec;
 
 template<typename T>
 struct is_swizzle : std::false_type {};
@@ -91,13 +159,13 @@ class swizzled_vec {
     static_assert(!std::is_volatile_v<DataT>);
     static_assert(sizeof...(Indices) > 0);
 
-    static constexpr bool allow_assign = no_repeat_indices_v<Indices...>;
+    static constexpr bool allow_assign = !std::is_const_v<DataT> && no_repeat_indices_v<Indices...>;
+    static constexpr int num_elements = sizeof...(Indices);
+    static constexpr index_list<Indices...> indices;
 
   public:
     using element_type = DataT;
     using value_type = DataT;
-
-    static constexpr int dimensions = sizeof...(Indices);
 
     swizzled_vec() = delete;
     swizzled_vec(const swizzled_vec &) = delete;
@@ -108,32 +176,161 @@ class swizzled_vec {
     swizzled_vec &operator=(const DataT &rhs)
         requires(allow_assign)
     {
-        for(size_t i = 0; i < dimensions; ++i) { m_elems[indices[i]] = rhs; }
+        for(size_t i = 0; i < num_elements; ++i) { m_elems[indices[i]] = rhs; }
         return *this;
     }
 
-    swizzled_vec &operator=(const sycl::vec<DataT, dimensions> &rhs)
+    swizzled_vec &operator=(const sycl::vec<DataT, num_elements> &rhs)
         requires(allow_assign)
     {
-        for(size_t i = 0; i < dimensions; ++i) { m_elems[indices[i]] = rhs[i]; }
+        for(size_t i = 0; i < num_elements; ++i) { m_elems[indices[i]] = rhs[i]; }
         return *this;
     }
 
     template<int... OtherIndices>
     swizzled_vec &operator=(const swizzled_vec<DataT, OtherIndices...> &rhs)
-        requires(dimensions == sizeof...(OtherIndices) && allow_assign)
+        requires(num_elements == sizeof...(OtherIndices) && allow_assign)
     {
-        for(size_t i = 0; i < dimensions; ++i) { m_elems[indices[i]] = rhs.m_elems[rhs.indices[i]]; }
+        for(size_t i = 0; i < num_elements; ++i) { m_elems[indices[i]] = rhs.m_elems[rhs.indices[i]]; }
         return *this;
     }
 
-    operator sycl::vec<DataT, dimensions>() const { return sycl::vec<DataT, dimensions>(m_elems[Indices]...); }
+    operator sycl::vec<DataT, num_elements>() const { return sycl::vec<DataT, num_elements>(m_elems[Indices]...); }
 
     operator DataT() const
-        requires(dimensions == 1)
+        requires(num_elements == 1)
     {
-        return m_elems[0];
+        return m_elems[indices[0]];
     }
+
+    static constexpr size_t byte_size() noexcept { return sycl::vec<DataT, num_elements>::byte_size(); }
+
+    static constexpr size_t size() noexcept { return num_elements; }
+
+    [[deprecated]] size_t get_size() const { return byte_size(); }
+
+    [[deprecated]] size_t get_count() const { return size(); }
+
+    template<typename ConvertT, sycl::rounding_mode RoundingMode = sycl::rounding_mode::automatic>
+    sycl::vec<ConvertT, num_elements> convert() const {
+        return sycl::vec<DataT, num_elements>(*this).template convert<ConvertT, RoundingMode>();
+    }
+
+    template<typename AsT>
+    AsT as() const {
+        return sycl::vec<DataT, num_elements>(*this).template as<AsT>();
+    }
+
+    // swizzling
+
+    template<int... SubSwizzleIndexes>
+        requires((num_elements > SubSwizzleIndexes) && ...)
+    auto swizzle() const {
+        return detail::swizzled_vec<DataT, indices[SubSwizzleIndexes]...>(m_elems);
+    }
+
+#define SIMSYCL_DETAIL_DEFINE_1D_SWIZZLE(req, comp)                                                                    \
+    auto comp() const                                                                                                  \
+        requires(req && num_elements > sycl::elem::comp)                                                               \
+    {                                                                                                                  \
+        return detail::swizzled_vec<DataT, indices[sycl::elem::comp]>(m_elems);                                        \
+    }
+
+#define SIMSYCL_DETAIL_DEFINE_2D_SWIZZLE(req, comp1, comp2)                                                            \
+    auto comp1##comp2() const                                                                                          \
+        requires(req && num_elements > sycl::elem::comp1 && num_elements > sycl::elem::comp2)                          \
+    {                                                                                                                  \
+        return detail::swizzled_vec<DataT, indices[sycl::elem::comp1], indices[sycl::elem::comp2]>(m_elems);           \
+    }
+
+#define SIMSYCL_DETAIL_DEFINE_3D_SWIZZLE(req, comp1, comp2, comp3)                                                     \
+    auto comp1##comp2##comp3() const                                                                                   \
+        requires(req && num_elements > sycl::elem::comp1 && num_elements > sycl::elem::comp2                           \
+            && num_elements > sycl::elem::comp3)                                                                       \
+    {                                                                                                                  \
+        return detail::swizzled_vec<DataT, indices[sycl::elem::comp1], indices[sycl::elem::comp2],                     \
+            indices[sycl::elem::comp3]>(m_elems);                                                                      \
+    }
+
+#define SIMSYCL_DETAIL_DEFINE_4D_SWIZZLE(req, comp1, comp2, comp3, comp4)                                              \
+    auto comp1##comp2##comp3##comp4() const                                                                            \
+        requires(req && num_elements > sycl::elem::comp1 && num_elements > sycl::elem::comp2                           \
+            && num_elements > sycl::elem::comp3 && num_elements > sycl::elem::comp4)                                   \
+    {                                                                                                                  \
+        return detail::swizzled_vec<DataT, indices[sycl::elem::comp1], indices[sycl::elem::comp2],                     \
+            indices[sycl::elem::comp3], indices[sycl::elem::comp4]>(m_elems);                                          \
+    }
+
+#include "simsycl/detail/vec_swizzles.inc"
+
+#undef SIMSYCL_DETAIL_DEFINE_4D_SWIZZLE
+#undef SIMSYCL_DETAIL_DEFINE_3D_SWIZZLE
+#undef SIMSYCL_DETAIL_DEFINE_2D_SWIZZLE
+#undef SIMSYCL_DETAIL_DEFINE_1D_SWIZZLE
+
+    auto lo() const
+        requires(num_elements == 2)
+    {
+        return detail::swizzled_vec<DataT, indices[0]>(m_elems);
+    }
+    auto lo() const
+        requires(num_elements >= 3 && num_elements <= 4)
+    {
+        return detail::swizzled_vec<DataT, indices[0], indices[1]>(m_elems);
+    }
+
+    auto hi() const
+        requires(num_elements == 2)
+    {
+        return detail::swizzled_vec<DataT, indices[1]>(m_elems);
+    }
+    auto hi() const
+        requires(num_elements >= 3 && num_elements <= 4)
+    {
+        return detail::swizzled_vec<DataT, indices[2], indices[3]>(m_elems);
+    }
+
+    auto odd() const
+        requires(num_elements == 2)
+    {
+        return detail::swizzled_vec<DataT, indices[1]>(m_elems);
+    }
+    auto odd() const
+        requires(num_elements >= 3 && num_elements <= 4)
+    {
+        return detail::swizzled_vec<DataT, indices[1], indices[3]>(m_elems);
+    }
+
+    auto even() const
+        requires(num_elements == 2)
+    {
+        return detail::swizzled_vec<DataT, indices[0]>(m_elems);
+    }
+    auto even() const
+        requires(num_elements >= 3 && num_elements <= 4)
+    {
+        return detail::swizzled_vec<DataT, indices[0], indices[2]>(m_elems);
+    }
+
+    // load and store member functions
+
+    template<sycl::access::address_space AddressSpace, sycl::access::decorated IsDecorated>
+    void load(size_t offset, sycl::multi_ptr<const DataT, AddressSpace, IsDecorated> ptr);
+
+    template<sycl::access::address_space AddressSpace, sycl::access::decorated IsDecorated>
+    void store(size_t offset, sycl::multi_ptr<DataT, AddressSpace, IsDecorated> ptr) const;
+
+    DataT &operator[](int index) {
+        SIMSYCL_CHECK(index >= 0 && index < num_elements && "Index out of range");
+        return m_elems[indices[index]];
+    }
+
+    const DataT &operator[](int index) const {
+        SIMSYCL_CHECK(index >= 0 && index < num_elements && "Index out of range");
+        return m_elems[indices[index]];
+    }
+
+    // operators
 
 #define SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_COPY_OPERATOR(op, enable_if)                                              \
     template<typename LHS, typename RHS>                                                                               \
@@ -141,7 +338,7 @@ class swizzled_vec {
         requires(enable_if && is_compatible_vector_v<swizzled_vec, RHS> && is_compatible_vector_v<swizzled_vec, LHS>   \
             && (std::is_same_v<swizzled_vec, LHS> || (std::is_same_v<swizzled_vec, RHS> && !is_swizzle_v<LHS>)))       \
     {                                                                                                                  \
-        return to_vec<element_type, dimensions>(lhs) op to_vec<element_type, dimensions>(rhs);                         \
+        return to_vec<element_type, num_elements>(lhs) op to_vec<element_type, num_elements>(rhs);                     \
     }
 
     SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_COPY_OPERATOR(+, true)
@@ -161,7 +358,7 @@ class swizzled_vec {
     friend constexpr swizzled_vec &operator op##=(swizzled_vec && lhs, const RHS & rhs)                                \
         requires(enable_if && allow_assign && is_compatible_vector_v<swizzled_vec, RHS>)                               \
     {                                                                                                                  \
-        return lhs = to_vec<element_type, dimensions>(lhs) op to_vec<element_type, dimensions>(rhs);                   \
+        return lhs = to_vec<element_type, num_elements>(lhs) op to_vec<element_type, num_elements>(rhs);               \
     }
 
     SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_INPLACE_OPERATOR(+, true)
@@ -193,7 +390,7 @@ class swizzled_vec {
     friend constexpr swizzled_vec &operator op(swizzled_vec && v)                                                      \
         requires(!std::is_same_v<DataT, bool>)                                                                         \
     {                                                                                                                  \
-        for(int d = 0; d < dimensions; ++d) { op v.m_elems[indices[d]]; }                                              \
+        for(int d = 0; d < num_elements; ++d) { op v.m_elems[indices[d]]; }                                            \
         return v;                                                                                                      \
     }
 
@@ -206,7 +403,7 @@ class swizzled_vec {
         requires(!std::is_same_v<DataT, bool>)                                                                         \
     {                                                                                                                  \
         auto result = to_vec(v);                                                                                       \
-        for(int d = 0; d < dimensions; ++d) { v.m_elems[indices[d]] op; }                                              \
+        for(int d = 0; d < num_elements; ++d) { v.m_elems[indices[d]] op; }                                            \
         return result;                                                                                                 \
     }
 
@@ -220,7 +417,7 @@ class swizzled_vec {
         requires(is_compatible_vector_v<swizzled_vec, RHS> && is_compatible_vector_v<swizzled_vec, LHS>                \
             && (std::is_same_v<swizzled_vec, LHS> || (std::is_same_v<swizzled_vec, RHS> && !is_swizzle_v<LHS>)))       \
     {                                                                                                                  \
-        return to_vec<element_type, dimensions>(lhs) op to_vec<element_type, dimensions>(rhs);                         \
+        return to_vec<element_type, num_elements>(lhs) op to_vec<element_type, num_elements>(rhs);                     \
     }
 
     SIMSYCL_DETAIL_DEFINE_SWIZZLE_COMPARISON_OPERATOR(==)
@@ -240,15 +437,7 @@ class swizzled_vec {
     template<typename T, int... Is>
     friend class swizzled_vec;
 
-    inline static constexpr int indices[] = {Indices...};
-
-    template<int NumElements>
-        requires(!std::is_const_v<DataT> && NumElements > detail::max(Indices...))
-    swizzled_vec(sycl::vec<DataT, NumElements> &vec) : m_elems(vec.m_elems) {}
-
-    template<int NumElements>
-        requires(std::is_const_v<DataT> && NumElements > detail::max(Indices...))
-    swizzled_vec(const sycl::vec<std::remove_const_t<DataT>, NumElements> &vec) : m_elems(vec.m_elems) {}
+    constexpr swizzled_vec(DataT *elems) : m_elems(elems) {}
 
     DataT *m_elems;
 };
@@ -257,41 +446,16 @@ class swizzled_vec {
 
 namespace simsycl::sycl {
 
-struct elem {
-    static constexpr int x = 0;
-    static constexpr int y = 1;
-    static constexpr int z = 2;
-    static constexpr int w = 3;
-    static constexpr int r = 0;
-    static constexpr int g = 1;
-    static constexpr int b = 2;
-    static constexpr int a = 3;
-    static constexpr int s0 = 0;
-    static constexpr int s1 = 1;
-    static constexpr int s2 = 2;
-    static constexpr int s3 = 3;
-    static constexpr int s4 = 4;
-    static constexpr int s5 = 5;
-    static constexpr int s6 = 6;
-    static constexpr int s7 = 7;
-    static constexpr int s8 = 8;
-    static constexpr int s9 = 9;
-    static constexpr int sA = 10;
-    static constexpr int sB = 11;
-    static constexpr int sC = 12;
-    static constexpr int sD = 13;
-    static constexpr int sE = 14;
-    static constexpr int sF = 15;
-};
-
 template<typename DataT, int NumElements>
 class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
     static_assert(!std::is_const_v<DataT> && !std::is_volatile_v<DataT>);
 
+  private:
+    constexpr static int num_elements = NumElements;
+
   public:
     using element_type = DataT;
     using value_type = DataT;
-    static constexpr int dimensions = NumElements;
 
     using vector_t = vec; // __SYCL_DEVICE_ONLY__
 
@@ -338,193 +502,167 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
     }
 
     template<typename AsT>
-    AsT as() const;
+    AsT as() const {
+        static_assert(detail::is_vec_v<AsT>);
+        static_assert(sizeof(AsT::m_elems) == sizeof(m_elems));
+        AsT reinterpret;
+        memcpy(reinterpret.m_elems, m_elems, sizeof(m_elems));
+        return reinterpret;
+    }
 
     // swizzling
 
     template<int... SwizzleIndexes>
-        requires(NumElements > detail::max(SwizzleIndexes...))
+        requires((NumElements > SwizzleIndexes) && ...)
     auto swizzle() {
-        return detail::swizzled_vec<DataT, SwizzleIndexes...>(*this);
+        return detail::swizzled_vec<DataT, SwizzleIndexes...>(m_elems);
     }
 
     template<int... SwizzleIndexes>
-        requires(NumElements > detail::max(SwizzleIndexes...))
+        requires((NumElements > SwizzleIndexes) && ...)
     auto swizzle() const {
-        return detail::swizzled_vec<const DataT, SwizzleIndexes...>(*this);
+        return detail::swizzled_vec<const DataT, SwizzleIndexes...>(m_elems);
     }
 
-#define SIMSYCL_DETAIL_VEC_DEFINE_SCALAR_SWIZZLE(component, enable_if)                                                 \
-    auto component()                                                                                                   \
-        requires(NumElements > elem::component && enable_if)                                                           \
+#define SIMSYCL_DETAIL_DEFINE_1D_SWIZZLE(req, comp)                                                                    \
+    auto comp()                                                                                                        \
+        requires(req && num_elements > elem::comp)                                                                     \
     {                                                                                                                  \
-        return swizzle<elem::component>();                                                                             \
+        return detail::swizzled_vec<DataT, elem::comp>(m_elems);                                                       \
     }                                                                                                                  \
-    auto component() const                                                                                             \
-        requires(NumElements > elem::component && enable_if)                                                           \
+    auto comp() const                                                                                                  \
+        requires(req && num_elements > elem::comp)                                                                     \
     {                                                                                                                  \
-        return swizzle<elem::component>();                                                                             \
+        return detail::swizzled_vec<const DataT, elem::comp>(m_elems);                                                 \
     }
 
-    SIMSYCL_DETAIL_VEC_DEFINE_SCALAR_SWIZZLE(x, NumElements <= 4)
-    SIMSYCL_DETAIL_VEC_DEFINE_SCALAR_SWIZZLE(y, NumElements <= 4)
-    SIMSYCL_DETAIL_VEC_DEFINE_SCALAR_SWIZZLE(z, NumElements <= 4)
-    SIMSYCL_DETAIL_VEC_DEFINE_SCALAR_SWIZZLE(w, NumElements <= 4)
-
-    SIMSYCL_DETAIL_VEC_DEFINE_SCALAR_SWIZZLE(r, NumElements == 4)
-    SIMSYCL_DETAIL_VEC_DEFINE_SCALAR_SWIZZLE(g, NumElements == 4)
-    SIMSYCL_DETAIL_VEC_DEFINE_SCALAR_SWIZZLE(b, NumElements == 4)
-    SIMSYCL_DETAIL_VEC_DEFINE_SCALAR_SWIZZLE(a, NumElements == 4)
-
-    SIMSYCL_DETAIL_VEC_DEFINE_SCALAR_SWIZZLE(s0, true)
-    SIMSYCL_DETAIL_VEC_DEFINE_SCALAR_SWIZZLE(s1, true)
-    SIMSYCL_DETAIL_VEC_DEFINE_SCALAR_SWIZZLE(s2, true)
-    SIMSYCL_DETAIL_VEC_DEFINE_SCALAR_SWIZZLE(s3, true)
-    SIMSYCL_DETAIL_VEC_DEFINE_SCALAR_SWIZZLE(s4, true)
-    SIMSYCL_DETAIL_VEC_DEFINE_SCALAR_SWIZZLE(s5, true)
-    SIMSYCL_DETAIL_VEC_DEFINE_SCALAR_SWIZZLE(s6, true)
-    SIMSYCL_DETAIL_VEC_DEFINE_SCALAR_SWIZZLE(s7, true)
-    SIMSYCL_DETAIL_VEC_DEFINE_SCALAR_SWIZZLE(s8, true)
-    SIMSYCL_DETAIL_VEC_DEFINE_SCALAR_SWIZZLE(s9, true)
-    SIMSYCL_DETAIL_VEC_DEFINE_SCALAR_SWIZZLE(sA, true)
-    SIMSYCL_DETAIL_VEC_DEFINE_SCALAR_SWIZZLE(sB, true)
-    SIMSYCL_DETAIL_VEC_DEFINE_SCALAR_SWIZZLE(sC, true)
-    SIMSYCL_DETAIL_VEC_DEFINE_SCALAR_SWIZZLE(sD, true)
-    SIMSYCL_DETAIL_VEC_DEFINE_SCALAR_SWIZZLE(sE, true)
-    SIMSYCL_DETAIL_VEC_DEFINE_SCALAR_SWIZZLE(sF, true)
-
-#undef SIMSYCL_DETAIL_VEC_DEFINE_SCALAR_SWIZZLE
-
-#ifdef SYCL_SIMPLE_SWIZZLES
-
-#define SIMSYCL_SWIZZLE_2(req, comp1, comp2)                                                                           \
+#define SIMSYCL_DETAIL_DEFINE_2D_SWIZZLE(req, comp1, comp2)                                                            \
     auto comp1##comp2()                                                                                                \
-        requires(req && NumElements > elem::comp1 && NumElements > elem::comp2)                                        \
+        requires(req && num_elements > elem::comp1 && num_elements > elem::comp2)                                      \
     {                                                                                                                  \
-        return detail::swizzled_vec<DataT, elem::comp1, elem::comp2>(*this);                                           \
+        return detail::swizzled_vec<DataT, elem::comp1, elem::comp2>(m_elems);                                         \
     }                                                                                                                  \
     auto comp1##comp2() const                                                                                          \
-        requires(req && NumElements > elem::comp1 && NumElements > elem::comp2)                                        \
+        requires(req && num_elements > elem::comp1 && num_elements > elem::comp2)                                      \
     {                                                                                                                  \
-        return detail::swizzled_vec<const DataT, elem::comp1, elem::comp2>(*this);                                     \
+        return detail::swizzled_vec<const DataT, elem::comp1, elem::comp2>(m_elems);                                   \
     }
 
-#define SIMSYCL_SWIZZLE_3(req, comp1, comp2, comp3)                                                                    \
+#define SIMSYCL_DETAIL_DEFINE_3D_SWIZZLE(req, comp1, comp2, comp3)                                                     \
     auto comp1##comp2##comp3()                                                                                         \
-        requires(req && NumElements > elem::comp1 && NumElements > elem::comp2 && NumElements > elem::comp3)           \
+        requires(req && num_elements > elem::comp1 && num_elements > elem::comp2 && num_elements > elem::comp3)        \
     {                                                                                                                  \
-        return detail::swizzled_vec<DataT, elem::comp1, elem::comp2, elem::comp3>(*this);                              \
+        return detail::swizzled_vec<DataT, elem::comp1, elem::comp2, elem::comp3>(m_elems);                            \
     }                                                                                                                  \
     auto comp1##comp2##comp3() const                                                                                   \
-        requires(req && NumElements > elem::comp1 && NumElements > elem::comp2 && NumElements > elem::comp3)           \
+        requires(req && num_elements > elem::comp1 && num_elements > elem::comp2 && num_elements > elem::comp3)        \
     {                                                                                                                  \
-        return detail::swizzled_vec<const DataT, elem::comp1, elem::comp2, elem::comp3>(*this);                        \
+        return detail::swizzled_vec<const DataT, elem::comp1, elem::comp2, elem::comp3>(m_elems);                      \
     }
 
-#define SIMSYCL_SWIZZLE_4(req, comp1, comp2, comp3, comp4)                                                             \
+#define SIMSYCL_DETAIL_DEFINE_4D_SWIZZLE(req, comp1, comp2, comp3, comp4)                                              \
     auto comp1##comp2##comp3##comp4()                                                                                  \
-        requires(req && NumElements > elem::comp1 && NumElements > elem::comp2 && NumElements > elem::comp3            \
-            && NumElements > elem::comp4)                                                                              \
+        requires(req && num_elements > elem::comp1 && num_elements > elem::comp2 && num_elements > elem::comp3         \
+            && num_elements > elem::comp4)                                                                             \
     {                                                                                                                  \
-        return detail::swizzled_vec<DataT, elem::comp1, elem::comp2, elem::comp3, elem::comp4>(*this);                 \
+        return detail::swizzled_vec<DataT, elem::comp1, elem::comp2, elem::comp3, elem::comp4>(m_elems);               \
     }                                                                                                                  \
-    auto comp1##comp2##comp3() const                                                                                   \
-        requires(req && NumElements > elem::comp1 && NumElements > elem::comp2 && NumElements > elem::comp3            \
-            && NumElements > elem::comp4)                                                                              \
+    auto comp1##comp2##comp3##comp4() const                                                                            \
+        requires(req && num_elements > elem::comp1 && num_elements > elem::comp2 && num_elements > elem::comp3         \
+            && num_elements > elem::comp4)                                                                             \
     {                                                                                                                  \
-        return detail::swizzled_vec<const DataT, elem::comp1, elem::comp2, elem::comp3, elem::comp4>(*this);           \
+        return detail::swizzled_vec<const DataT, elem::comp1, elem::comp2, elem::comp3, elem::comp4>(m_elems);         \
     }
 
 #include "simsycl/detail/vec_swizzles.inc"
 
-#undef SIMSYCL_SWIZZLE_2
-#undef SIMSYCL_SWIZZLE_3
-#undef SIMSYCL_SWIZZLE_4
-
-#endif // #ifdef SYCL_SIMPLE_SWIZZLES
+#undef SIMSYCL_DETAIL_DEFINE_4D_SWIZZLE
+#undef SIMSYCL_DETAIL_DEFINE_3D_SWIZZLE
+#undef SIMSYCL_DETAIL_DEFINE_2D_SWIZZLE
+#undef SIMSYCL_DETAIL_DEFINE_1D_SWIZZLE
 
     auto lo() const
         requires(NumElements == 2)
     {
-        return detail::swizzled_vec<const DataT, 0>(*this);
+        return detail::swizzled_vec<const DataT, 0>(m_elems);
     }
     auto lo()
         requires(NumElements == 2)
     {
-        return detail::swizzled_vec<DataT, 0>(*this);
+        return detail::swizzled_vec<DataT, 0>(m_elems);
     }
     auto lo() const
         requires(NumElements >= 3 && NumElements <= 4)
     {
-        return detail::swizzled_vec<const DataT, 0, 1>(*this);
+        return detail::swizzled_vec<const DataT, 0, 1>(m_elems);
     }
     auto lo()
         requires(NumElements >= 3 && NumElements <= 4)
     {
-        return detail::swizzled_vec<DataT, 0, 1>(*this);
+        return detail::swizzled_vec<DataT, 0, 1>(m_elems);
     }
 
     auto hi() const
         requires(NumElements == 2)
     {
-        return detail::swizzled_vec<const DataT, 1>(*this);
+        return detail::swizzled_vec<const DataT, 1>(m_elems);
     }
     auto hi()
         requires(NumElements == 2)
     {
-        return detail::swizzled_vec<DataT, 1>(*this);
+        return detail::swizzled_vec<DataT, 1>(m_elems);
     }
     auto hi() const
         requires(NumElements >= 3 && NumElements <= 4)
     {
-        return detail::swizzled_vec<const DataT, 2, 3>(*this);
+        return detail::swizzled_vec<const DataT, 2, 3>(m_elems);
     }
     auto hi()
         requires(NumElements >= 3 && NumElements <= 4)
     {
-        return detail::swizzled_vec<DataT, 2, 3>(*this);
+        return detail::swizzled_vec<DataT, 2, 3>(m_elems);
     }
 
     auto odd() const
         requires(NumElements == 2)
     {
-        return detail::swizzled_vec<const DataT, 1>(*this);
+        return detail::swizzled_vec<const DataT, 1>(m_elems);
     }
     auto odd()
         requires(NumElements == 2)
     {
-        return detail::swizzled_vec<DataT, 1>(*this);
+        return detail::swizzled_vec<DataT, 1>(m_elems);
     }
     auto odd() const
         requires(NumElements >= 3 && NumElements <= 4)
     {
-        return detail::swizzled_vec<const DataT, 1, 3>(*this);
+        return detail::swizzled_vec<const DataT, 1, 3>(m_elems);
     }
     auto odd()
         requires(NumElements >= 3 && NumElements <= 4)
     {
-        return detail::swizzled_vec<DataT, 1, 3>(*this);
+        return detail::swizzled_vec<DataT, 1, 3>(m_elems);
     }
 
     auto even() const
         requires(NumElements == 2)
     {
-        return detail::swizzled_vec<const DataT, 0>(*this);
+        return detail::swizzled_vec<const DataT, 0>(m_elems);
     }
     auto even()
         requires(NumElements == 2)
     {
-        return detail::swizzled_vec<DataT, 0>(*this);
+        return detail::swizzled_vec<DataT, 0>(m_elems);
     }
     auto even() const
         requires(NumElements >= 3 && NumElements <= 4)
     {
-        return detail::swizzled_vec<const DataT, 0, 2>(*this);
+        return detail::swizzled_vec<const DataT, 0, 2>(m_elems);
     }
     auto even()
         requires(NumElements >= 3 && NumElements <= 4)
     {
-        return detail::swizzled_vec<DataT, 0, 2>(*this);
+        return detail::swizzled_vec<DataT, 0, 2>(m_elems);
     }
 
     // load and store member functions
@@ -684,7 +822,7 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
   private:
     template<typename T, int... Indices>
     friend class detail::swizzled_vec;
-    template<typename T, int Dimensions>
+    template<typename T, int N>
     friend class vec;
 
     template<int Offset, typename... ArgTN>
