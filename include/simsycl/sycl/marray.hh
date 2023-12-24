@@ -78,7 +78,10 @@ class marray {
         return m_elems[0];
     }
 
-    static constexpr std::size_t size() noexcept { return sizeof(marray); }
+    // Non-conformant: Spec requires this to return the number of _bytes_, but we assume this is unintentional. DPC++
+    // implements it by returning NumElements, and the CTS assumes it does exactly that, so we follow suit.
+    // See https://github.com/KhronosGroup/SYCL-Docs/issues/525 .
+    static constexpr std::size_t size() noexcept { return NumElements; }
 
     reference operator[](const size_t index) {
         SIMSYCL_CHECK(index < NumElements && "Index out of range");
