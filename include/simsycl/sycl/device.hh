@@ -110,10 +110,10 @@ class device final : public detail::reference_type<device, detail::device_state>
 
 
 template<aspect Aspect>
-struct any_device_has: std::false_type {};
+struct any_device_has : std::false_type {};
 
 template<aspect Aspect>
-struct all_devices_have: std::false_type {};
+struct all_devices_have : std::false_type {};
 
 template<aspect A>
 inline constexpr bool any_device_has_v = any_device_has<A>::value;

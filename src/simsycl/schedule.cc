@@ -11,8 +11,25 @@
 
 namespace simsycl::detail {
 
-void concurrent_nd_item::yield_to_scheduler() { // NOLINT(readability-make-member-function-const)
-    *scheduler = scheduler->resume();
+boost::context::continuation g_scheduler;
+
+void enter_kernel_fiber(boost::context::continuation &&from_scheduler) {
+    assert(!g_scheduler && "attempting to enter a nd_range kernel fiber from within another fiber");
+    g_scheduler = std::move(from_scheduler);
+}
+
+boost::context::continuation &&leave_kernel_fiber() {
+    assert(g_scheduler && "attempting to leave a nd_range kernel fiber, but none is active");
+    return std::move(g_scheduler);
+}
+
+void yield_to_kernel_scheduler() {
+    assert(g_scheduler && "attempting to yield from outside a nd_range kernel fiber");
+    g_scheduler = g_scheduler.resume();
+}
+
+void maybe_yield_to_kernel_scheduler() {
+    if(g_scheduler) { g_scheduler = g_scheduler.resume(); }
 }
 
 template<int Dimensions>
@@ -93,8 +110,8 @@ void dispatch_for_nd_range(const sycl::device &device, const sycl::nd_range<Dime
                 &caught_exceptions, &range](boost::context::continuation &&scheduler) //
             {
                 // yield immediately to allow the scheduling loop to set up local memory pointers
-                concurrent_nd_item.scheduler = &scheduler;
-                concurrent_nd_item.yield_to_scheduler();
+                enter_kernel_fiber(std::move(scheduler));
+                yield_to_kernel_scheduler();
 
                 for(size_t group_linear_id = concurrent_group_idx; group_linear_id < group_linear_range;
                     group_linear_id += num_concurrent_groups) //
@@ -141,13 +158,12 @@ void dispatch_for_nd_range(const sycl::device &device, const sycl::nd_range<Dime
                     // items have exited, we are the fiber to proceed to the next iteration.
                     while(concurrent_group.instance.group_linear_id == group_linear_id
                         && concurrent_group.instance.num_items_exited < local_linear_range) {
-                        concurrent_nd_item.yield_to_scheduler();
+                        yield_to_kernel_scheduler();
                     }
                 }
 
                 ++concurrent_items_exited;
-                concurrent_nd_item.scheduler = nullptr;
-                return std::move(scheduler);
+                return leave_kernel_fiber();
             }));
     }
 

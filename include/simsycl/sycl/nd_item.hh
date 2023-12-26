@@ -11,11 +11,6 @@
 #include "simsycl/detail/check.hh"
 
 
-// forward
-namespace boost::context {
-class continuation;
-}
-
 namespace simsycl::detail {
 
 struct nd_item_instance {
@@ -25,9 +20,6 @@ struct nd_item_instance {
 
 struct concurrent_nd_item {
   public:
-    void yield_to_scheduler(); // implemented in handler.cc
-
-    boost::context::continuation *scheduler = nullptr;
     detail::concurrent_group *concurrent_group = nullptr;
     nd_item_instance instance;
 };
@@ -100,7 +92,7 @@ class nd_item {
     [[deprecated("use sycl::group_barrier() free function instead")]] void barrier(
         access::fence_space access_space = access::fence_space::global_and_local) const {
         (void)access_space;
-        m_impl->yield_to_scheduler();
+        detail::yield_to_kernel_scheduler();
     }
 
     template<access::mode AccessMode = access_mode::read_write>

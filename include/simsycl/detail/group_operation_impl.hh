@@ -251,7 +251,7 @@ auto perform_group_operation(G g, group_operation_id id, const Spec &spec) {
 
     // wait for all work items to enter this group operation
     for(;;) {
-        this_concurrent_nd_item.yield_to_scheduler();
+        detail::yield_to_kernel_scheduler();
         // we cannot preserve a reference into `operations` across a yield since it might be resized by another item
         const auto &op = group_instance.operations[new_op_index];
         if(op.num_work_items_participating == op.expected_num_work_items) break;
