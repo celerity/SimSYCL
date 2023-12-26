@@ -10,14 +10,21 @@ namespace simsycl::sycl {
 template<typename T, int Dimensions = 1>
 class private_memory {
   public:
-    // Construct based directly off the number of work-items
-    private_memory(const group<Dimensions> &group) { m_data.resize(group.get_local_linear_range()); }
+    private_memory(const group<Dimensions> &group) : m_group(group) {}
 
     // Access the instance for the current work-item
-    T &operator()(const h_item<Dimensions> &id) { return m_data[id.get_local_linear_id()]; }
+    // Construct the storage if it has not yet been constructed
+    T &operator()(const h_item<Dimensions> &id) {
+        if(m_data.empty()) {
+            size_t num_items = simsycl::detail::get_concurrent_group(m_group).cur_hier_local_size;
+            m_data.resize(num_items);
+        }
+        return m_data[id.get_local().get_linear_id()];
+    }
 
   private:
     std::vector<T> m_data;
+    const group<Dimensions> &m_group;
 };
 
 } // namespace simsycl::sycl

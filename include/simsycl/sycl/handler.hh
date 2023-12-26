@@ -156,6 +156,47 @@ void parallel_for(const sycl::device &device, sycl::nd_range<Dimensions> executi
         std::make_index_sequence<sizeof...(Rest) - 1>(), std::index_sequence<sizeof...(Rest) - 1>());
 }
 
+template<typename WorkgroupFunctionType>
+void parallel_for_work_group(sycl::range<1> num_work_groups, std::optional<sycl::range<1>> work_group_size,
+    const WorkgroupFunctionType &kernel_func) {
+    sycl::id<1> group_id;
+    for(group_id[0] = 0; group_id[0] < num_work_groups[0]; ++group_id[0]) {
+        concurrent_group impl;
+        sycl::group<1> group = make_hierarchical_group(make_item(group_id, num_work_groups), work_group_size, &impl);
+        kernel_func(group);
+    }
+}
+
+template<typename WorkgroupFunctionType>
+void parallel_for_work_group(sycl::range<2> num_work_groups, std::optional<sycl::range<2>> work_group_size,
+    const WorkgroupFunctionType &kernel_func) {
+    sycl::id<2> group_id;
+    for(group_id[0] = 0; group_id[0] < num_work_groups[0]; ++group_id[0]) {
+        for(group_id[1] = 0; group_id[1] < num_work_groups[1]; ++group_id[1]) {
+            concurrent_group impl;
+            sycl::group<2> group
+                = make_hierarchical_group(make_item(group_id, num_work_groups), work_group_size, &impl);
+            kernel_func(group);
+        }
+    }
+}
+
+template<typename WorkgroupFunctionType>
+void parallel_for_work_group(sycl::range<3> num_work_groups, std::optional<sycl::range<3>> work_group_size,
+    const WorkgroupFunctionType &kernel_func) {
+    sycl::id<3> group_id;
+    for(group_id[0] = 0; group_id[0] < num_work_groups[0]; ++group_id[0]) {
+        for(group_id[1] = 0; group_id[1] < num_work_groups[1]; ++group_id[1]) {
+            for(group_id[2] = 0; group_id[2] < num_work_groups[2]; ++group_id[2]) {
+                concurrent_group impl;
+                sycl::group<3> group
+                    = make_hierarchical_group(make_item(group_id, num_work_groups), work_group_size, &impl);
+                kernel_func(group);
+            }
+        }
+    }
+}
+
 } // namespace simsycl::detail
 
 
@@ -243,11 +284,15 @@ class handler {
     }
 
     template<typename KernelName = simsycl::detail::unnamed_kernel, typename WorkgroupFunctionType, int Dimensions>
-    void parallel_for_work_group(range<Dimensions> num_work_groups, const WorkgroupFunctionType &kernel_func);
+    void parallel_for_work_group(range<Dimensions> num_work_groups, const WorkgroupFunctionType &kernel_func) {
+        simsycl::detail::parallel_for_work_group(num_work_groups, {}, kernel_func);
+    }
 
     template<typename KernelName = simsycl::detail::unnamed_kernel, typename WorkgroupFunctionType, int Dimensions>
-    void parallel_for_work_group(
-        range<Dimensions> num_work_groups, range<Dimensions> work_group_size, const WorkgroupFunctionType &kernel_func);
+    void parallel_for_work_group(range<Dimensions> num_work_groups, range<Dimensions> work_group_size,
+        const WorkgroupFunctionType &kernel_func) {
+        simsycl::detail::parallel_for_work_group(num_work_groups, work_group_size, kernel_func);
+    }
 
     void single_task(const kernel &kernel_object);
 

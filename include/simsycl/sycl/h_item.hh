@@ -2,7 +2,18 @@
 
 #include "item.hh"
 
+namespace simsycl::detail {
+
+template<int Dimensions>
+sycl::h_item<Dimensions> make_h_item(const sycl::item<Dimensions, false> &global_item,
+    const sycl::item<Dimensions, false> &logical_local_item, const sycl::item<Dimensions, false> &physical_local_item) {
+    return sycl::h_item<Dimensions>(global_item, logical_local_item, physical_local_item);
+}
+
+} // namespace simsycl::detail
+
 namespace simsycl::sycl {
+
 template<int Dimensions>
 class h_item {
   public:
@@ -10,46 +21,58 @@ class h_item {
 
     h_item() = delete;
 
-    /* -- common interface members -- */
+    item<Dimensions, false> get_global() const { return m_global_item; }
 
-    item<Dimensions, false> get_global() const;
+    item<Dimensions, false> get_local() const { return m_logical_local_item; }
 
-    item<Dimensions, false> get_local() const;
+    item<Dimensions, false> get_logical_local() const { return m_logical_local_item; }
 
-    item<Dimensions, false> get_logical_local() const;
+    item<Dimensions, false> get_physical_local() const { return m_physical_local_item; }
 
-    item<Dimensions, false> get_physical_local() const;
+    range<Dimensions> get_global_range() const { return m_global_item.get_range(); }
 
-    range<Dimensions> get_global_range() const;
+    size_t get_global_range(int dimension) const { return m_global_item.get_range(dimension); }
 
-    size_t get_global_range(int dimension) const;
+    id<Dimensions> get_global_id() const { return m_global_item.get_id(); }
 
-    id<Dimensions> get_global_id() const;
+    size_t get_global_id(int dimension) const { return m_global_item.get_id(dimension); }
 
-    size_t get_global_id(int dimension) const;
+    range<Dimensions> get_local_range() const { return m_logical_local_item.get_range(); }
 
-    range<Dimensions> get_local_range() const;
+    size_t get_local_range(int dimension) const { return m_logical_local_item.get_range(dimension); }
 
-    size_t get_local_range(int dimension) const;
+    id<Dimensions> get_local_id() const { return m_logical_local_item.get_id(); }
 
-    id<Dimensions> get_local_id() const;
+    size_t get_local_id(int dimension) const { return m_logical_local_item.get_id(dimension); }
 
-    size_t get_local_id(int dimension) const;
+    range<Dimensions> get_logical_local_range() const { return m_logical_local_item.get_range(); }
 
-    range<Dimensions> get_logical_local_range() const;
+    size_t get_logical_local_range(int dimension) const { return m_logical_local_item.get_range(dimension); }
 
-    size_t get_logical_local_range(int dimension) const;
+    id<Dimensions> get_logical_local_id() const { return m_logical_local_item.get_id(); }
 
-    id<Dimensions> get_logical_local_id() const;
+    size_t get_logical_local_id(int dimension) const { return m_logical_local_item.get_id(dimension); }
 
-    size_t get_logical_local_id(int dimension) const;
+    range<Dimensions> get_physical_local_range() const { return m_physical_local_item.get_range(); }
 
-    range<Dimensions> get_physical_local_range() const;
+    size_t get_physical_local_range(int dimension) const { return m_physical_local_item.get_range(dimension); }
 
-    size_t get_physical_local_range(int dimension) const;
+    id<Dimensions> get_physical_local_id() const { return m_physical_local_item.get_id(); }
 
-    id<Dimensions> get_physical_local_id() const;
+    size_t get_physical_local_id(int dimension) const { return m_physical_local_item.get_id(dimension); }
 
-    size_t get_physical_local_id(int dimension) const;
+  private:
+    item<Dimensions, false> m_global_item;
+    item<Dimensions, false> m_logical_local_item;
+    item<Dimensions, false> m_physical_local_item;
+
+    friend sycl::h_item<Dimensions> simsycl::detail::make_h_item<Dimensions>(const sycl::item<Dimensions, false> &,
+        const sycl::item<Dimensions, false> &, const sycl::item<Dimensions, false> &);
+
+    h_item(const sycl::item<Dimensions, false> &global_item, const sycl::item<Dimensions, false> &logical_local_item,
+        const sycl::item<Dimensions, false> &physical_local_item)
+        : m_global_item(global_item), m_logical_local_item(logical_local_item),
+          m_physical_local_item(physical_local_item) {}
 };
+
 } // namespace simsycl::sycl

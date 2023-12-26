@@ -76,6 +76,9 @@ class item;
 template<int Dimensions = 1>
 class nd_item;
 
+template<int Dimensions = 1>
+class h_item;
+
 class kernel;
 
 template<bundle_state State>
