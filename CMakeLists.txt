@@ -67,6 +67,7 @@ add_library(simsycl
     include/simsycl/detail/config.hh
     include/simsycl/detail/coordinate.hh
     include/simsycl/detail/hash.hh
+    include/simsycl/detail/schedule.hh
     include/simsycl/detail/subscript.hh
     include/simsycl/detail/utils.hh
     include/simsycl/detail/vec_swizzles.inc
@@ -116,7 +117,7 @@ add_library(simsycl
     src/simsycl/check.cc
     src/simsycl/context.cc
     src/simsycl/device.cc
-    src/simsycl/handler.cc
+    src/simsycl/schedule.cc
     src/simsycl/platform.cc
     src/simsycl/queue.cc
     src/simsycl/system.cc

@@ -147,7 +147,7 @@ class coordinate {
 
 #define SIMSYCL_DETAIL_DEFINE_COORDINATE_UNARY_POSTFIX_OPERATOR(op)                                                    \
     friend constexpr Interface operator op(Interface &lhs, int) {                                                      \
-        Interface result = lhs = make_interface_type();                                                                \
+        Interface result = lhs;                                                                                        \
         for(int d = 0; d < Dimensions; ++d) { lhs[d] op; }                                                             \
         return result;                                                                                                 \
     }

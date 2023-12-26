@@ -1,5 +1,6 @@
 #pragma once
 
+#include "atomic_fence.hh"
 #include "enums.hh"
 
 #include "../detail/utils.hh"
@@ -55,74 +56,66 @@ class atomic_ref_base {
     atomic_ref_base &operator=(const atomic_ref_base &) = delete;
 
     void store(T operand, memory_order order = default_write_order, memory_scope scope = default_scope) noexcept {
-        (void)order;
-        (void)scope;
         m_ref = operand;
+        atomic_fence(order, scope);
     }
 
     T operator=(T desired) noexcept {
-        m_ref = desired;
+        store(desired);
         return desired;
     }
 
     T load(memory_order order = default_read_order, memory_scope scope = default_scope) const noexcept {
-        (void)order;
-        (void)scope;
+        atomic_fence(order, scope);
         return m_ref;
     }
 
-    operator T() const noexcept { return m_ref; }
+    operator T() const noexcept { return load(); }
 
     T exchange(
         T operand, memory_order order = default_read_modify_write_order, memory_scope scope = default_scope) noexcept {
         using std::swap;
-        (void)order;
-        (void)scope;
         swap(m_ref, operand);
+        atomic_fence(order, scope);
         return operand;
     }
 
     bool compare_exchange_weak(T &expected, T desired, memory_order success, memory_order failure,
         memory_scope scope = default_scope) noexcept {
-        (void)success;
-        (void)failure;
-        (void)scope;
-        return compare_exchange(expected, desired);
+        return compare_exchange(expected, desired, success, failure, scope);
     }
 
     bool compare_exchange_weak(T &expected, T desired, memory_order order = default_read_modify_write_order,
         memory_scope scope = default_scope) noexcept {
-        (void)order;
-        (void)scope;
-        return compare_exchange(expected, desired);
+        return compare_exchange(expected, desired, order, order, scope);
     }
 
     bool compare_exchange_strong(T &expected, T desired, memory_order success, memory_order failure,
         memory_scope scope = default_scope) noexcept {
-        (void)success;
-        (void)failure;
-        (void)scope;
-        return compare_exchange(expected, desired);
+        return compare_exchange(expected, desired, success, failure, scope);
     }
 
     bool compare_exchange_strong(T &expected, T desired, memory_order order = default_read_modify_write_order,
         memory_scope scope = default_scope) noexcept {
-        (void)order;
-        (void)scope;
-        return compare_exchange(expected, desired);
+        return compare_exchange(expected, desired, order, order, scope);
     }
 
   protected:
     T &m_ref;
 
   private:
-    bool compare_exchange(T &expected, T desired) noexcept {
+    bool compare_exchange(
+        T &expected, T desired, memory_order success, memory_order failure, memory_scope scope) noexcept {
+        // TODO randomly fail a weak compare_exchange
         if(m_ref == expected) {
             m_ref = desired;
+            atomic_fence(success, scope);
             return true;
+        } else {
+            expected = m_ref;
+            atomic_fence(failure, scope);
+            return false;
         }
-        expected = m_ref;
-        return false;
     }
 };
 
@@ -161,64 +154,57 @@ class atomic_ref<Integral, DefaultOrder, DefaultScope, AddressSpace>
 
     Integral fetch_add(Integral operand, memory_order order = default_read_modify_write_order,
         memory_scope scope = default_scope) noexcept {
-        (void)order;
-        (void)scope;
         const auto original = m_ref;
         m_ref += operand;
+        atomic_fence(order, scope);
         return original;
     }
 
     Integral fetch_sub(Integral operand, memory_order order = default_read_modify_write_order,
         memory_scope scope = default_scope) noexcept {
-        (void)order;
-        (void)scope;
         const auto original = m_ref;
         m_ref -= operand;
+        atomic_fence(order, scope);
         return original;
     }
 
     Integral fetch_and(Integral operand, memory_order order = default_read_modify_write_order,
         memory_scope scope = default_scope) noexcept {
-        (void)order;
-        (void)scope;
         const auto original = m_ref;
         m_ref &= operand;
+        atomic_fence(order, scope);
         return original;
     }
 
     Integral fetch_or(Integral operand, memory_order order = default_read_modify_write_order,
         memory_scope scope = default_scope) noexcept {
-        (void)order;
-        (void)scope;
         const auto original = m_ref;
         m_ref |= operand;
+        atomic_fence(order, scope);
         return original;
     }
 
     Integral fetch_xor(Integral operand, memory_order order = default_read_modify_write_order,
         memory_scope scope = default_scope) noexcept {
-        (void)order;
-        (void)scope;
         const auto original = m_ref;
         m_ref ^= operand;
+        atomic_fence(order, scope);
         return original;
     }
 
     Integral fetch_min(Integral operand, memory_order order = default_read_modify_write_order,
         memory_scope scope = default_scope) noexcept {
-        (void)order;
-        (void)scope;
         const auto original = m_ref;
         m_ref = detail::min(m_ref, operand);
+        atomic_fence(order, scope);
         return original;
     }
 
     Integral fetch_max(Integral operand, memory_order order = default_read_modify_write_order,
         memory_scope scope = default_scope) noexcept {
-        (void)order;
-        (void)scope;
         const auto original = m_ref;
         m_ref = detail::max(m_ref, operand);
+        atomic_fence(order, scope);
         return original;
     }
 
@@ -256,37 +242,33 @@ class atomic_ref<Floating, DefaultOrder, DefaultScope, AddressSpace>
 
     Floating fetch_add(Floating operand, memory_order order = default_read_modify_write_order,
         memory_scope scope = default_scope) noexcept {
-        (void)order;
-        (void)scope;
         const auto original = m_ref;
         m_ref += operand;
+        atomic_fence(order, scope);
         return original;
     }
 
     Floating fetch_sub(Floating operand, memory_order order = default_read_modify_write_order,
         memory_scope scope = default_scope) noexcept {
-        (void)order;
-        (void)scope;
         const auto original = m_ref;
         m_ref -= operand;
+        atomic_fence(order, scope);
         return original;
     }
 
     Floating fetch_min(Floating operand, memory_order order = default_read_modify_write_order,
         memory_scope scope = default_scope) noexcept {
-        (void)order;
-        (void)scope;
         const auto original = m_ref;
         m_ref = detail::min(m_ref, operand);
+        atomic_fence(order, scope);
         return original;
     }
 
     Floating fetch_max(Floating operand, memory_order order = default_read_modify_write_order,
         memory_scope scope = default_scope) noexcept {
-        (void)order;
-        (void)scope;
         const auto original = m_ref;
         m_ref = detail::max(m_ref, operand);
+        atomic_fence(order, scope);
         return original;
     }
 
@@ -316,19 +298,17 @@ class atomic_ref<T *, DefaultOrder, DefaultScope, AddressSpace>
 
     T *fetch_add(difference_type operand, memory_order order = default_read_modify_write_order,
         memory_scope scope = default_scope) noexcept {
-        (void)order;
-        (void)scope;
         const auto original = m_ref;
         m_ref += operand;
+        atomic_fence(order, scope);
         return original;
     }
 
     T *fetch_sub(difference_type operand, memory_order order = default_read_modify_write_order,
         memory_scope scope = default_scope) noexcept {
-        (void)order;
-        (void)scope;
         const auto original = m_ref;
         m_ref -= operand;
+        atomic_fence(order, scope);
         return original;
     }
 
