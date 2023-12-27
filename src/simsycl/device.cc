@@ -8,7 +8,9 @@ namespace simsycl::detail {
 
 struct device_state {
     device_config config;
+    size_t bytes_free = 0;
     weak_ref<sycl::platform> platform;
+    weak_ref<sycl::device> parent;
 };
 
 int default_selector::operator()(const sycl::device &device) const {
@@ -358,7 +360,9 @@ SIMSYCL_STOP_IGNORING_DEPRECATIONS
 
 template<>
 std::vector<sycl::kernel_id> device::get_info<info::device::built_in_kernel_ids>() const {
-    return state().config.built_in_kernel_ids;
+    std::vector<sycl::kernel_id> ids;
+    for(auto &string_id : state().config.built_in_kernel_ids) { ids.push_back(detail::make_kernel_id(string_id)); }
+    return ids;
 }
 
 template<>
@@ -420,7 +424,8 @@ bool device::get_info<info::device::preferred_interop_user_sync>() const {
 
 template<>
 sycl::device device::get_info<info::device::parent_device>() const {
-    return state().config.parent_device.value();
+    abort();
+    // return state().config.parent_device.value();
 }
 
 template<>
@@ -460,9 +465,9 @@ bool device::has(aspect asp) const {
 }
 
 std::vector<device> device::get_devices(info::device_type type) {
-    auto &system = get_system_config();
+    auto &devices = detail::get_devices();
     std::vector<device> result;
-    std::copy_if(system.devices.begin(), system.devices.end(), std::back_inserter(result),
+    std::copy_if(devices.begin(), devices.end(), std::back_inserter(result),
         [type](const device &dev) { return dev.get_info<info::device::device_type>() == type; });
 
     return result;
@@ -472,13 +477,18 @@ std::vector<device> device::get_devices(info::device_type type) {
 
 namespace simsycl {
 
-sycl::device create_device(sycl::platform &platform, const device_config &config) {
+sycl::device make_device(sycl::platform &platform, const device_config &config) {
     auto state = std::make_shared<detail::device_state>();
     state->config = config;
     state->platform = detail::weak_ref(platform);
+    state->bytes_free = config.global_mem_size;
     sycl::device device(std::move(state));
     platform.add_device(device);
     return device;
+}
+
+void set_parent_device(sycl::device &device, const sycl::device &parent) {
+    device.state().parent = detail::weak_ref<sycl::device>(parent);
 }
 
 } // namespace simsycl

@@ -87,6 +87,7 @@ const device_config rtx_3090{
     .execution_capabilities = {sycl::info::execution_capability::exec_kernel},
     .queue_profiling = true,
     .built_in_kernels = {},
+    .platform_id = "CUDA",
     .name = "NVIDIA GeForce RTX 3090",
     .vendor = "NVIDIA",
     .driver_version = "12010",

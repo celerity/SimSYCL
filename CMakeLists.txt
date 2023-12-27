@@ -140,7 +140,7 @@ add_library(simsycl
 )
 target_link_libraries(simsycl PRIVATE
     Boost::context
-    nlohmann_json::nlohmann_json
+    $<BUILD_INTERFACE:nlohmann_json::nlohmann_json>
 )
 target_include_directories(simsycl PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

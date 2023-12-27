@@ -84,9 +84,9 @@ TEST_CASE(
     simsycl::system_config system;
     simsycl::device_config device = simsycl::templates::device::nvidia::rtx_3090;
     device.max_compute_units = 2; // we currently allocate #max_compute_units groups worth of fibers
-    system.platforms.push_back(simsycl::create_platform(simsycl::templates::platform::cuda_12_2));
-    system.devices.push_back(simsycl::create_device(system.platforms[0], device));
-    simsycl::configure_system(std::move(system));
+    system.platforms.emplace("CUDA", simsycl::templates::platform::cuda_12_2);
+    system.devices.emplace("GPU", device);
+    simsycl::configure_system(system);
 
     sycl::range<1> global_range(256);
     sycl::range<1> local_range(16);

@@ -13,6 +13,9 @@
 
 namespace simsycl {
 
+using platform_id = std::string;
+using device_id = std::string;
+
 struct device_config {
     sycl::info::device_type device_type{};
     uint32_t vendor_id{};
@@ -78,7 +81,8 @@ struct device_config {
     std::vector<sycl::info::execution_capability> execution_capabilities{};
     bool queue_profiling{};
     std::vector<std::string> built_in_kernels{};
-    std::vector<sycl::kernel_id> built_in_kernel_ids{};
+    std::vector<std::string> built_in_kernel_ids{};
+    simsycl::platform_id platform_id{};
     std::string name{};
     std::string vendor{};
     std::string driver_version{};
@@ -89,7 +93,7 @@ struct device_config {
     std::vector<std::string> extensions{};
     size_t printf_buffer_size{};
     bool preferred_interop_user_sync{};
-    std::optional<sycl::device> parent_device{};
+    std::optional<simsycl::device_id> parent_device_id{};
     uint32_t partition_max_sub_devices{};
     std::vector<sycl::info::partition_property> partition_properties{};
     std::vector<sycl::info::partition_affinity_domain> partition_affinity_domains{};
@@ -106,17 +110,18 @@ struct platform_config {
 };
 
 struct system_config {
-    std::vector<sycl::platform> platforms{};
-    std::vector<sycl::device> devices{};
+    std::unordered_map<platform_id, platform_config> platforms{};
+    std::unordered_map<device_id, device_config> devices{};
 };
 
-const system_config &get_system_config();
-void configure_system(system_config system);
+void configure_system(const system_config &system);
 
 } // namespace simsycl
 
 namespace simsycl::detail {
 
+const std::vector<sycl::platform> &get_platforms();
+const std::vector<sycl::device> &get_devices();
 sycl::device select_device(const device_selector &selector);
 
 } // namespace simsycl::detail

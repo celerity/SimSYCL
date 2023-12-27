@@ -65,7 +65,7 @@ bool platform::has_extension(const std::string &extension) const {
         != state().config.extensions.end();
 }
 
-std::vector<platform> platform::get_platforms() { return get_system_config().platforms; }
+std::vector<platform> platform::get_platforms() { return detail::get_platforms(); }
 
 void platform::add_device(const device &dev) { state().devices.push_back(dev); }
 
@@ -73,7 +73,7 @@ void platform::add_device(const device &dev) { state().devices.push_back(dev); }
 
 namespace simsycl {
 
-sycl::platform create_platform(const platform_config &config) {
+sycl::platform make_platform(const platform_config &config) {
     auto state = std::make_shared<detail::platform_state>();
     state->config = std::move(config);
     return sycl::platform(std::move(state));

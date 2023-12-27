@@ -12,8 +12,14 @@
 namespace simsycl::detail {
 
 struct kernel_state {};
-struct kernel_id_state {};
+
+struct kernel_id_state {
+    std::string name;
+};
+
 struct kernel_bundle_state {};
+
+sycl::kernel_id make_kernel_id(std::string name);
 
 } // namespace simsycl::detail
 
@@ -50,7 +56,12 @@ class kernel_id : public detail::reference_type<kernel_id, detail::kernel_id_sta
   public:
     kernel_id() = delete;
 
-    const char *get_name() const noexcept;
+    const char *get_name() const noexcept { return state().name.c_str(); }
+
+  private:
+    friend kernel_id detail::make_kernel_id(std::string name);
+
+    explicit kernel_id(std::string name) : reference_type(std::in_place, name) {}
 };
 
 template<bundle_state State>
@@ -211,3 +222,9 @@ struct std::hash<simsycl::sycl::kernel_bundle<State>>
     : public std::hash<
           simsycl::detail::reference_type<simsycl::sycl::kernel_bundle<State>, simsycl::detail::kernel_bundle_state>> {
 };
+
+namespace simsycl::detail {
+
+inline sycl::kernel_id make_kernel_id(std::string name) { return sycl::kernel_id(std::move(name)); }
+
+} // namespace simsycl::detail

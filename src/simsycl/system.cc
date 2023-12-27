@@ -13,20 +13,6 @@
 
 namespace simsycl::detail {
 
-sycl::device select_device(const device_selector &selector) {
-    auto &system = simsycl::get_system_config();
-    SIMSYCL_CHECK(!system.devices.empty());
-    int max_rating = std::numeric_limits<int>::lowest();
-    for(const auto &device : system.devices) {
-        if(int rating = selector(device); rating > max_rating) { max_rating = rating; }
-    }
-    if(max_rating < 0) { throw sycl::exception(sycl::errc::runtime, "No suitable device found"); }
-    const auto device = std::find_if(system.devices.begin(), system.devices.end(),
-        [&](const auto &device) { return selector(device) == max_rating; });
-    assert(device != system.devices.end());
-    return *device;
-}
-
 class error_category : public std::error_category {
     const char *name() const noexcept override { return "sycl"; }
 
@@ -119,14 +105,28 @@ struct memory_state {
 };
 
 struct system_state {
-    system_config config;
+    std::vector<sycl::platform> platforms;
+    std::vector<sycl::device> devices;
     std::unordered_map<sycl::device, size_t> device_bytes_free;
     std::set<usm_allocation, usm_allocation_order> usm_allocations;
 
-    explicit system_state(system_config config) : config(std::move(config)) {
-        for(const auto &device : this->config.devices) {
-            device_bytes_free.emplace(device, device.get_info<sycl::info::device::global_mem_size>());
+    explicit system_state(const system_config &config) {
+        std::unordered_map<platform_id, sycl::platform> platforms_by_id;
+        for(const auto &[id, platform_config] : config.platforms) {
+            platforms_by_id.emplace(id, make_platform(platform_config));
         }
+        std::unordered_map<device_id, sycl::device> devices_by_id;
+        for(const auto &[id, device_config] : config.devices) {
+            auto &platform = platforms_by_id.at(device_config.platform_id);
+            devices_by_id.emplace(id, make_device(platform, device_config));
+        }
+        for(const auto &[id, device_config] : config.devices) {
+            if(device_config.parent_device_id.has_value()) {
+                set_parent_device(devices_by_id.at(id), devices_by_id.at(*device_config.parent_device_id));
+            }
+        }
+        for(auto &[_, platform] : platforms_by_id) { platforms.push_back(std::move(platform)); }
+        for(auto &[_, device] : devices_by_id) { devices.push_back(std::move(device)); }
     }
 };
 
@@ -135,13 +135,30 @@ std::optional<system_state> system;
 system_state &get_system() {
     if(!detail::system.has_value()) {
         system_config config;
-        auto platform = config.platforms.emplace_back(create_platform(simsycl::templates::platform::cuda_12_2));
+        config.platforms.emplace("CUDA", simsycl::templates::platform::cuda_12_2);
         for(int i = 0; i < 4; ++i) {
-            config.devices.push_back(create_device(platform, simsycl::templates::device::nvidia::rtx_3090));
+            config.devices.emplace("GPU#" + std::to_string(i), simsycl::templates::device::nvidia::rtx_3090);
         }
-        configure_system(std::move(config));
+        configure_system(config);
     }
     return system.value();
+}
+
+const std::vector<sycl::platform> &get_platforms() { return get_system().platforms; }
+const std::vector<sycl::device> &get_devices() { return get_system().devices; }
+
+sycl::device select_device(const device_selector &selector) {
+    auto &devices = get_devices();
+    SIMSYCL_CHECK(!devices.empty());
+    int max_rating = std::numeric_limits<int>::lowest();
+    for(const auto &device : devices) {
+        if(int rating = selector(device); rating > max_rating) { max_rating = rating; }
+    }
+    if(max_rating < 0) { throw sycl::exception(sycl::errc::runtime, "No suitable device found"); }
+    const auto device = std::find_if(
+        devices.begin(), devices.end(), [&](const sycl::device &device) { return selector(device) == max_rating; });
+    assert(device != devices.end());
+    return *device;
 }
 
 void *usm_alloc(const sycl::context &context, sycl::usm::alloc kind, std::optional<sycl::device> device,
@@ -248,8 +265,6 @@ device get_pointer_device(const void *ptr, const context &sycl_context) {
 
 namespace simsycl {
 
-const system_config &get_system_config() { return detail::get_system().config; }
-
-void configure_system(system_config system) { detail::system.emplace(std::move(system)); }
+void configure_system(const system_config &system) { detail::system.emplace(system); }
 
 } // namespace simsycl

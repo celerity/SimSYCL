@@ -16,7 +16,8 @@ namespace simsycl {
 
 struct device_config;
 
-sycl::device create_device(sycl::platform &platform, const device_config &config);
+sycl::device make_device(sycl::platform &platform, const device_config &config);
+void set_parent_device(sycl::device &device, const sycl::device &parent);
 
 } // namespace simsycl
 
@@ -102,7 +103,8 @@ class device final : public detail::reference_type<device, detail::device_state>
     template<typename>
     friend class detail::weak_ref;
 
-    friend device simsycl::create_device(sycl::platform &platform, const device_config &config);
+    friend device simsycl::make_device(sycl::platform &platform, const device_config &config);
+    friend void simsycl::set_parent_device(sycl::device &device, const sycl::device &parent);
 
     device(const detail::device_selector &selector);
     device(std::shared_ptr<detail::device_state> &&state) : reference_type(std::move(state)) {}
