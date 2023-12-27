@@ -16,8 +16,8 @@ namespace simsycl {
 // forward
 struct platform_config;
 
-sycl::platform create_platform(const platform_config &config);
-sycl::device create_device(sycl::platform &platform, const device_config &config);
+sycl::platform make_platform(const platform_config &config);
+sycl::device make_device(sycl::platform &platform, const device_config &config);
 
 } // namespace simsycl
 
@@ -59,8 +59,8 @@ class platform final : public detail::reference_type<platform, detail::platform_
     template<typename>
     friend class detail::weak_ref;
 
-    friend sycl::platform simsycl::create_platform(const platform_config &config);
-    friend device simsycl::create_device(platform &platform, const device_config &config);
+    friend sycl::platform simsycl::make_platform(const platform_config &config);
+    friend device simsycl::make_device(platform &platform, const device_config &config);
 
     platform(const detail::device_selector &selector);
     platform(std::shared_ptr<detail::platform_state> &&state) : reference_type(std::move(state)) {}

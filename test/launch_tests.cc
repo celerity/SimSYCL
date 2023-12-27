@@ -1,9 +1,11 @@
+#include "test_utils.hh"
+
+#include <simsycl/sycl.hh>
+#include <simsycl/system.hh>
+
 #include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
-
-#include <simsycl/system.hh>
-#include <simsycl/templates.hh>
-#include <sycl/sycl.hpp>
+#include <catch2/generators/catch_generators.hpp>
 
 
 using namespace simsycl;
@@ -81,25 +83,53 @@ TEMPLATE_TEST_CASE_SIG(
 TEST_CASE(
     "parallel_for(nd_range) correctly will re-use fibers and local allocations when the number of groups is large",
     "[launch]") {
-    simsycl::system_config system;
-    simsycl::device_config device = simsycl::templates::device::nvidia::rtx_3090;
-    device.max_compute_units = 2; // we currently allocate #max_compute_units groups worth of fibers
-    system.platforms.push_back(simsycl::create_platform(simsycl::templates::platform::cuda_12_2));
-    system.devices.push_back(simsycl::create_device(system.platforms[0], device));
-    simsycl::configure_system(std::move(system));
+    // we currently allocate #max_compute_units groups worth of fibers
+    test::configure_device_with([](simsycl::device_config &device) { device.max_compute_units = 2; });
 
     sycl::range<1> global_range(256);
     sycl::range<1> local_range(16);
 
     std::vector<bool> visited(global_range.size(), false);
-    sycl::queue()
-        .submit([&](sycl::handler &cgh) {
-            cgh.parallel_for(sycl::nd_range(global_range, local_range), [=, &visited](sycl::nd_item<1> it) {
-                CHECK(!visited[it.get_global_id()]);
-                visited[it.get_global_id()] = true;
-            });
-        })
-        .wait();
+    sycl::queue().parallel_for(sycl::nd_range(global_range, local_range), [=, &visited](sycl::nd_item<1> it) {
+        CHECK(!visited[it.get_global_id()]);
+        visited[it.get_global_id()] = true;
+    });
 
     for(size_t i = 0; i < global_range.size(); ++i) { CHECK(visited[i]); }
+}
+
+TEST_CASE("partial sub-groups are generated if local size is not divisible by device sub-group size", "[launch]") {
+    const size_t local_size = GENERATE(values<size_t>({3, 10}));
+    const size_t num_groups = 3;
+    const size_t global_size = num_groups * local_size;
+    const size_t max_sub_group_size = 4;
+
+    CAPTURE(local_size);
+
+    // this is the default, but better be safe and forward-compatible
+    test::configure_device_with([=](simsycl::device_config &device) { device.sub_group_sizes = {max_sub_group_size}; });
+
+    std::vector<bool> visited(global_size);
+    sycl::queue().parallel_for(sycl::nd_range<1>(global_size, local_size), [&](sycl::nd_item<1> it) {
+        auto group = it.get_group();
+        CHECK(group.get_local_range() == local_size);
+
+        auto sg = it.get_sub_group();
+        if(sg.get_group_linear_id() == sg.get_group_linear_range() - 1) {
+            CHECK(sg.get_local_range().size() == local_size % max_sub_group_size);
+        } else {
+            CHECK(sg.get_local_range().size() == max_sub_group_size);
+        }
+        CHECK(sg.get_local_linear_id() == it.get_local_linear_id() % max_sub_group_size);
+        CHECK(sg.get_max_local_range().size() == max_sub_group_size);
+
+        // barriers should continue to work when partial sub-groups are involved
+        sycl::group_barrier(sg);
+        sycl::group_barrier(group);
+
+        CHECK(it.get_global_linear_id() < global_size);
+        CHECK(it.get_global_linear_id() == it.get_group_linear_id() * local_size + it.get_local_linear_id());
+        CHECK(!visited[it.get_global_linear_id()]);
+        visited[it.get_global_linear_id()] = true;
+    });
 }

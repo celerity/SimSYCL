@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.13)
+cmake_policy(SET CMP0135 NEW) # ExternalProject downloads will have archive timestamps
 
 set(SIMSYCL_VERSION 0.1)
 set(SIMSYCL_VERSION_MAJOR 0)
@@ -25,6 +26,23 @@ if(CMAKE_GENERATOR STREQUAL "Ninja")
 endif()
 
 find_package(Boost 1.70 COMPONENTS context REQUIRED)
+
+include(FetchContent)
+
+set(LIBENVPP_INSTALL ON CACHE BOOL "" FORCE) # If installation is desired.
+FetchContent_Declare(libenvpp
+    GIT_REPOSITORY https://github.com/ph3at/libenvpp.git
+    GIT_TAG v1.4.0
+)
+FetchContent_MakeAvailable(libenvpp)
+
+set(JSON_BuildTests OFF CACHE INTERNAL "")
+set(JSON_Install ON CACHE INTERNAL "")
+FetchContent_Declare(nlohmann_json
+  URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
+  URL_HASH SHA256=d6c65aca6b1ed68e7a182f4757257b107ae403032760ed6ef121c9d55e81757d
+)
+FetchContent_MakeAvailable(nlohmann_json)
 
 include(CheckTypeSize)
 check_type_size(_Float16 FLOAT16 BUILTIN_TYPES_ONLY LANGUAGE CXX)
@@ -64,7 +82,6 @@ add_library(simsycl
     include/simsycl/sycl.hh
     include/simsycl/detail/allocation.hh
     include/simsycl/detail/check.hh
-    include/simsycl/detail/config.hh
     include/simsycl/detail/coordinate.hh
     include/simsycl/detail/hash.hh
     include/simsycl/detail/schedule.hh
@@ -115,7 +132,6 @@ add_library(simsycl
     include/simsycl/sycl/usm.hh
     include/simsycl/sycl/vec.hh
     include/simsycl/system.hh
-    include/simsycl/templates.hh
     ${CONFIG_PATH}
     src/simsycl/check.cc
     src/simsycl/context.cc
@@ -124,9 +140,13 @@ add_library(simsycl
     src/simsycl/platform.cc
     src/simsycl/queue.cc
     src/simsycl/system.cc
-    src/simsycl/templates.cc
+    src/simsycl/system_config.cc
 )
-target_link_libraries(simsycl Boost::context)
+target_link_libraries(simsycl PRIVATE
+    Boost::context
+    nlohmann_json::nlohmann_json
+    libenvpp::libenvpp
+)
 target_include_directories(simsycl PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>

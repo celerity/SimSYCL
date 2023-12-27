@@ -6,7 +6,6 @@
 #include "type_traits.hh"
 
 #include "simsycl/detail/check.hh"
-#include "simsycl/detail/config.hh"
 #include "simsycl/detail/group_operation_impl.hh"
 
 namespace simsycl::sycl {
@@ -25,7 +24,7 @@ class sub_group {
 
     range_type get_local_range() const { return m_local_range; }
 
-    range_type get_max_local_range() const { return range<1>(detail::config::max_sub_group_size); }
+    range_type get_max_local_range() const { return m_max_local_range; }
 
     id_type get_group_id() const { return m_group_id; }
 
@@ -96,18 +95,20 @@ class sub_group {
   private:
     id_type m_local_id;
     range_type m_local_range;
+    range_type m_max_local_range;
     id_type m_group_id;
     range_type m_group_range;
 
     detail::concurrent_sub_group *m_concurrent_group; // NOLINT
 
-    sub_group(const id_type &local_id, const range_type &local_range, const id_type &group_id,
-        const range_type &group_range, detail::concurrent_sub_group *concurrent_group)
-        : m_local_id(local_id), m_local_range(local_range), m_group_id(group_id), m_group_range(group_range),
-          m_concurrent_group(concurrent_group) {}
+    sub_group(const id_type &local_id, const range_type &local_range, const range_type &max_local_range,
+        const id_type &group_id, const range_type &group_range, detail::concurrent_sub_group *concurrent_group)
+        : m_local_id(local_id), m_local_range(local_range), m_max_local_range(max_local_range), m_group_id(group_id),
+          m_group_range(group_range), m_concurrent_group(concurrent_group) {}
 
     friend sycl::sub_group detail::make_sub_group(const sycl::id<1> &local_id, const sycl::range<1> &local_range,
-        const sycl::id<1> &group_id, const sycl::range<1> &group_range, detail::concurrent_sub_group *impl);
+        const sycl::range<1> &max_local_range, const sycl::id<1> &group_id, const sycl::range<1> &group_range,
+        detail::concurrent_sub_group *impl);
 
     friend detail::concurrent_sub_group &detail::get_concurrent_group(const sycl::sub_group &g);
 };
@@ -123,8 +124,9 @@ template<>
 struct is_sub_group<sycl::sub_group> : std::true_type {};
 
 inline sycl::sub_group make_sub_group(const sycl::id<1> &local_id, const sycl::range<1> &local_range,
-    const sycl::id<1> &group_id, const sycl::range<1> &group_range, detail::concurrent_sub_group *impl) {
-    return sycl::sub_group(local_id, local_range, group_id, group_range, impl);
+    const sycl::range<1> &max_local_range, const sycl::id<1> &group_id, const sycl::range<1> &group_range,
+    detail::concurrent_sub_group *impl) {
+    return sycl::sub_group(local_id, local_range, max_local_range, group_id, group_range, impl);
 }
 
 } // namespace simsycl::detail

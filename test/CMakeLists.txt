@@ -9,6 +9,8 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(Catch2)
 
 add_executable(tests
+  test_utils.hh
+  test_setup.cc
   ambiguity_tests.cc
   group_op_tests.cc
   hierarchical_tests.cc
@@ -18,6 +20,7 @@ add_executable(tests
   reduction_tests.cc
   vec_tests.cc
 )
+
 target_link_libraries(tests PRIVATE Catch2::Catch2WithMain simsycl)
 set_simsycl_target_options(tests)
 

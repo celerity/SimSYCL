@@ -36,10 +36,14 @@ template<int Dimensions>
 void dispatch_for_nd_range(const sycl::device &device, const sycl::nd_range<Dimensions> &range,
     const std::vector<local_memory_requirement> &local_memory, const nd_kernel<Dimensions> &kernel) //
 {
+    if(Dimensions > device.get_info<sycl::info::device::max_work_item_dimensions>()) {
+        throw sycl::exception(sycl::errc::nd_range, "Work item dimensionality exceeds device limit");
+    }
+
     const auto required_local_memory = std::accumulate(local_memory.begin(), local_memory.end(), size_t{0},
         [](size_t sum, const local_memory_requirement &req) { return sum + req.size; });
     if(required_local_memory > device.get_info<sycl::info::device::local_mem_size>()) {
-        throw sycl::exception(sycl::errc::accessor, "total required local memory exceeds device limit");
+        throw sycl::exception(sycl::errc::accessor, "Total required local memory exceeds device limit");
     }
 
     const auto &global_range = range.get_global_range();
@@ -51,12 +55,22 @@ void dispatch_for_nd_range(const sycl::device &device, const sycl::nd_range<Dime
     const auto &local_range = range.get_local_range();
     const auto local_linear_range = local_range.size();
     assert(local_linear_range > 0);
-    const auto sub_group_local_linear_range = config::max_sub_group_size;
-    const auto sub_group_local_range = sycl::range<1>(sub_group_local_linear_range);
-    assert(sub_group_local_linear_range > 0);
-    const auto sub_group_linear_range_in_group = detail::div_ceil(local_linear_range, sub_group_local_linear_range);
+
+    if(local_linear_range > device.get_info<sycl::info::device::max_work_group_size>()
+        || !all_true(local_range <= device.get_info<sycl::info::device::max_work_item_sizes<Dimensions>>())) {
+        throw sycl::exception(sycl::errc::nd_range, "Work group size exceeds device limit");
+    }
+
+    const auto sub_group_max_local_linear_range = device.get_info<sycl::info::device::sub_group_sizes>().at(0);
+    const auto sub_group_max_local_range = sycl::range<1>(sub_group_max_local_linear_range);
+    assert(sub_group_max_local_linear_range > 0);
+    const auto sub_group_linear_range_in_group = detail::div_ceil(local_linear_range, sub_group_max_local_linear_range);
     const sycl::range<1> sub_group_range_in_group{sub_group_linear_range_in_group};
     assert(sub_group_linear_range_in_group > 0);
+
+    if(sub_group_linear_range_in_group > device.get_info<sycl::info::device::max_num_sub_groups>()) {
+        throw sycl::exception(sycl::errc::nd_range, "Number of sub-groups in work group exceeds device limit");
+    }
 
     // limit the number of concurrent groups to avoid allocating excessive numbers of fibers
     const size_t max_num_concurrent_groups = device.get_info<sycl::info::device::max_compute_units>();
@@ -84,8 +98,8 @@ void dispatch_for_nd_range(const sycl::device &device, const sycl::nd_range<Dime
         // all these ids and linear ids are persistent between all groups this fiber iterates over
         const auto local_linear_id = concurrent_global_idx % local_linear_range;
         const auto local_id = linear_index_to_id(local_range, local_linear_id);
-        const auto sub_group_linear_id_in_group = local_linear_id / sub_group_local_linear_range;
-        const auto thread_linear_id_in_sub_group = local_linear_id % sub_group_local_linear_range;
+        const auto sub_group_linear_id_in_group = local_linear_id / sub_group_max_local_linear_range;
+        const auto thread_linear_id_in_sub_group = local_linear_id % sub_group_max_local_linear_range;
         const auto sub_group_id_in_group = sycl::id<1>(sub_group_linear_id_in_group);
         const auto thread_id_in_sub_group = sycl::id<1>(thread_linear_id_in_sub_group);
 
@@ -105,9 +119,10 @@ void dispatch_for_nd_range(const sycl::device &device, const sycl::nd_range<Dime
         fibers.push_back(boost::context::callcc(
             [concurrent_group_idx, num_concurrent_groups, local_id, local_range, local_linear_range, group_range,
                 group_linear_range, sub_group_linear_id_in_group, sub_group_linear_range_in_group,
-                sub_group_local_range, thread_id_in_sub_group, sub_group_id_in_group, sub_group_range_in_group,
-                &concurrent_nd_item, &concurrent_group, &concurrent_sub_group, &kernel, &concurrent_items_exited,
-                &caught_exceptions, &range](boost::context::continuation &&scheduler) //
+                sub_group_max_local_linear_range, sub_group_max_local_range, thread_id_in_sub_group,
+                sub_group_id_in_group, sub_group_range_in_group, &concurrent_nd_item, &concurrent_group,
+                &concurrent_sub_group, &kernel, &concurrent_items_exited, &caught_exceptions,
+                &range](boost::context::continuation &&scheduler) //
             {
                 // yield immediately to allow the scheduling loop to set up local memory pointers
                 enter_kernel_fiber(std::move(scheduler));
@@ -132,6 +147,11 @@ void dispatch_for_nd_range(const sycl::device &device, const sycl::nd_range<Dime
                     const auto group_id = linear_index_to_id(group_range, group_linear_id);
                     const auto global_id = group_id * sycl::id<Dimensions>(local_range) + local_id;
 
+                    // if sub-group range is not divisible by local range, the last sub-group will be smaller
+                    const auto sub_group_local_linear_range = std::min(sub_group_max_local_linear_range,
+                        local_linear_range - sub_group_linear_id_in_group * sub_group_max_local_linear_range);
+                    const auto sub_group_local_range = sycl::range<1>(sub_group_local_linear_range);
+
                     SIMSYCL_START_IGNORING_DEPRECATIONS;
                     const auto global_item = detail::make_item(global_id, range.get_global_range(), range.get_offset());
                     SIMSYCL_STOP_IGNORING_DEPRECATIONS
@@ -140,7 +160,8 @@ void dispatch_for_nd_range(const sycl::device &device, const sycl::nd_range<Dime
 
                     const auto group = detail::make_group(local_item, global_item, group_item, &concurrent_group);
                     const auto sub_group = detail::make_sub_group(thread_id_in_sub_group, sub_group_local_range,
-                        sub_group_id_in_group, sub_group_range_in_group, &concurrent_sub_group);
+                        sub_group_max_local_range, sub_group_id_in_group, sub_group_range_in_group,
+                        &concurrent_sub_group);
                     const auto nd_item
                         = detail::make_nd_item(global_item, local_item, group, sub_group, &concurrent_nd_item);
 

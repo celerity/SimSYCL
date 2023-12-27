@@ -147,8 +147,8 @@ struct concurrent_sub_group;
 
 using device_selector = std::function<int(const sycl::device &)>;
 
-sycl::sub_group make_sub_group(
-    const sycl::id<1> &, const sycl::range<1> &, const sycl::id<1> &, const sycl::range<1> &, concurrent_sub_group *);
+sycl::sub_group make_sub_group(const sycl::id<1> &, const sycl::range<1> &, const sycl::range<1> &, const sycl::id<1> &,
+    const sycl::range<1> &, concurrent_sub_group *);
 
 concurrent_sub_group &get_concurrent_group(const sycl::sub_group &g);
 template<int Dimensions>

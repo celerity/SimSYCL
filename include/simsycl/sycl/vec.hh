@@ -242,7 +242,7 @@ class swizzled_vec {
 
     static constexpr bool allow_assign = !std::is_const_v<ReferenceDataT> && no_repeat_indices_v<Indices...>;
     static constexpr int num_elements = sizeof...(Indices);
-    static constexpr index_list<Indices...> indices = {};
+    static constexpr index_list<Indices...> indices{};
 
   public:
     using element_type = std::remove_const_t<ReferenceDataT>;

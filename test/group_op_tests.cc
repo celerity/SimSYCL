@@ -2,6 +2,8 @@
 
 #include <sycl/sycl.hpp>
 
+#include "test_utils.hh"
+
 using namespace simsycl;
 
 template<sycl::Group G>
@@ -58,7 +60,7 @@ TEST_CASE("Group barriers behave as expected", "[group_op]") {
     }
 
     SECTION("For subgroups") {
-        detail::configure_temporarily cfg{detail::config::max_sub_group_size, 2u};
+        test::configure_device_with([](device_config &dev) { dev.sub_group_sizes = {2u}; });
         sycl::queue().submit([&actual](sycl::handler &cgh) {
             cgh.parallel_for(sycl::nd_range<1>{4, 4}, [&actual](sycl::nd_item<1> it) {
                 const auto &sg = it.get_sub_group();
@@ -105,7 +107,7 @@ TEST_CASE("Group broadcasts behave as expected", "[group_op][broadcast]") {
     }
 
     SECTION("For subgroups") {
-        detail::configure_temporarily cfg{detail::config::max_sub_group_size, 4u};
+        test::configure_device_with([](device_config &dev) { dev.sub_group_sizes = {4u}; });
         sycl::queue().submit([&actual](sycl::handler &cgh) {
             cgh.parallel_for(sycl::nd_range<1>{8, 8}, [&actual](sycl::nd_item<1> it) {
                 actual[it.get_global_linear_id()]
@@ -134,7 +136,7 @@ TEST_CASE("Group joint_any_of behaves as expected", "[group_op][joint_any_of]") 
     }
 
     SECTION("For subgroups") {
-        detail::configure_temporarily cfg{detail::config::max_sub_group_size, 4u};
+        test::configure_device_with([](device_config &dev) { dev.sub_group_sizes = {4u}; });
         sycl::queue().submit([&inputs](sycl::handler &cgh) {
             cgh.parallel_for(sycl::nd_range<1>{8, 8}, [&inputs](sycl::nd_item<1> it) {
                 CHECK(sycl::joint_any_of(it.get_sub_group(), inputs, inputs + 4, [](int i) { return i == 3; }));
@@ -173,7 +175,7 @@ TEST_CASE("Group any_of_group behaves as expected", "[group_op][any_of_group]") 
     }
 
     SECTION("For subgroups") {
-        detail::configure_temporarily cfg{detail::config::max_sub_group_size, 4u};
+        test::configure_device_with([](device_config &dev) { dev.sub_group_sizes = {4u}; });
         sycl::queue().submit([&inputs](sycl::handler &cgh) {
             cgh.parallel_for(sycl::nd_range<1>{8, 8}, [&inputs](sycl::nd_item<1> it) {
                 auto id = it.get_sub_group().get_local_linear_id();
@@ -201,7 +203,7 @@ TEST_CASE("Group joint_all_of behaves as expected", "[group_op][joint_all_of]") 
     }
 
     SECTION("For subgroups") {
-        detail::configure_temporarily cfg{detail::config::max_sub_group_size, 4u};
+        test::configure_device_with([](device_config &dev) { dev.sub_group_sizes = {4u}; });
         sycl::queue().submit([&inputs](sycl::handler &cgh) {
             cgh.parallel_for(sycl::nd_range<1>{8, 8}, [&inputs](sycl::nd_item<1> it) {
                 CHECK(sycl::joint_all_of(it.get_sub_group(), inputs, inputs + 4, [](int i) { return i <= 4; }));
@@ -240,7 +242,7 @@ TEST_CASE("Group all_of_group behaves as expected", "[group_op][all_of_group]") 
     }
 
     SECTION("For subgroups") {
-        detail::configure_temporarily cfg{detail::config::max_sub_group_size, 4u};
+        test::configure_device_with([](device_config &dev) { dev.sub_group_sizes = {4u}; });
         sycl::queue().submit([&inputs](sycl::handler &cgh) {
             cgh.parallel_for(sycl::nd_range<1>{8, 8}, [&inputs](sycl::nd_item<1> it) {
                 auto id = it.get_sub_group().get_local_linear_id();
@@ -268,7 +270,7 @@ TEST_CASE("Group joint_none_of behaves as expected", "[group_op][joint_none_of]"
     }
 
     SECTION("For subgroups") {
-        detail::configure_temporarily cfg{detail::config::max_sub_group_size, 4u};
+        test::configure_device_with([](device_config &dev) { dev.sub_group_sizes = {4u}; });
         sycl::queue().submit([&inputs](sycl::handler &cgh) {
             cgh.parallel_for(sycl::nd_range<1>{8, 8}, [&inputs](sycl::nd_item<1> it) {
                 CHECK(sycl::joint_none_of(it.get_sub_group(), inputs, inputs + 4, [](int i) { return i > 4; }));
@@ -307,7 +309,7 @@ TEST_CASE("Group none_of_group behaves as expected", "[group_op][none_of_group]"
     }
 
     SECTION("For subgroups") {
-        detail::configure_temporarily cfg{detail::config::max_sub_group_size, 4u};
+        test::configure_device_with([](device_config &dev) { dev.sub_group_sizes = {4u}; });
         sycl::queue().submit([&inputs](sycl::handler &cgh) {
             cgh.parallel_for(sycl::nd_range<1>{8, 8}, [&inputs](sycl::nd_item<1> it) {
                 auto id = it.get_sub_group().get_local_linear_id();
@@ -322,7 +324,7 @@ TEST_CASE("Group none_of_group behaves as expected", "[group_op][none_of_group]"
 
 TEST_CASE("Group shift operation behave as expected", "[group_op][shift]") {
     int inputs[4] = {1, 2, 3, 4};
-    detail::configure_temporarily cfg{detail::config::max_sub_group_size, 4u};
+    test::configure_device_with([](device_config &dev) { dev.sub_group_sizes = {4u}; });
 
     SECTION("Left shift") {
         sycl::queue().submit([&inputs](sycl::handler &cgh) {
@@ -356,7 +358,7 @@ TEST_CASE("Group shift operation behave as expected", "[group_op][shift]") {
 
 TEST_CASE("Group permute behaves as expected", "[group_op][permute]") {
     int inputs[4] = {1, 2, 3, 4};
-    detail::configure_temporarily cfg{detail::config::max_sub_group_size, 4u};
+    test::configure_device_with([](device_config &dev) { dev.sub_group_sizes = {4u}; });
 
     sycl::queue().submit([&inputs](sycl::handler &cgh) {
         cgh.parallel_for(sycl::nd_range<1>{8, 8}, [&inputs](sycl::nd_item<1> it) {
@@ -375,7 +377,7 @@ TEST_CASE("Group permute behaves as expected", "[group_op][permute]") {
 
 TEST_CASE("Group select behaves as expected", "[group_op][select]") {
     int inputs[4] = {1, 2, 3, 4};
-    detail::configure_temporarily cfg{detail::config::max_sub_group_size, 4u};
+    test::configure_device_with([](device_config &dev) { dev.sub_group_sizes = {4u}; });
 
     sycl::queue().submit([&inputs](sycl::handler &cgh) {
         cgh.parallel_for(sycl::nd_range<1>{8, 8}, [&inputs](sycl::nd_item<1> it) {
@@ -404,7 +406,7 @@ TEST_CASE("Group joint_reduce behaves as expected", "[group_op][joint_reduce]") 
     }
 
     SECTION("For subgroups") {
-        detail::configure_temporarily cfg{detail::config::max_sub_group_size, 4u};
+        test::configure_device_with([](device_config &dev) { dev.sub_group_sizes = {4u}; });
         sycl::queue().submit([&inputs](sycl::handler &cgh) {
             cgh.parallel_for(sycl::nd_range<1>{8, 8}, [&inputs](sycl::nd_item<1> it) {
                 CHECK(sycl::joint_reduce(it.get_sub_group(), inputs, inputs + 4, sycl::plus<int>{}) == 10);
@@ -436,7 +438,7 @@ TEST_CASE("Group reduce_over_group behaves as expected", "[group_op][reduce_over
     }
 
     SECTION("For subgroups") {
-        detail::configure_temporarily cfg{detail::config::max_sub_group_size, 4u};
+        test::configure_device_with([](device_config &dev) { dev.sub_group_sizes = {4u}; });
         sycl::queue().submit([&inputs](sycl::handler &cgh) {
             cgh.parallel_for(sycl::nd_range<1>{8, 8}, [&inputs](sycl::nd_item<1> it) {
                 auto id = it.get_sub_group().get_local_linear_id();
@@ -476,7 +478,7 @@ TEST_CASE("Group joint scans behave as expected", "[group_op][joint_exclusive_sc
     }
 
     SECTION("For subgroups") {
-        detail::configure_temporarily cfg{detail::config::max_sub_group_size, 4u};
+        test::configure_device_with([](device_config &dev) { dev.sub_group_sizes = {4u}; });
         sycl::queue().submit([&inputs](sycl::handler &cgh) {
             cgh.parallel_for(sycl::nd_range<1>{8, 8}, [&inputs](sycl::nd_item<1> it) {
                 std::vector<int> outputs = {0, 0, 0, 0};
@@ -546,7 +548,7 @@ TEST_CASE("Group scans behave as expected", "[group_op][exclusive_scan_over_grou
     }
 
     SECTION("For subgroups") {
-        detail::configure_temporarily cfg{detail::config::max_sub_group_size, 4u};
+        test::configure_device_with([](device_config &dev) { dev.sub_group_sizes = {4u}; });
         sycl::queue().submit([&inputs](sycl::handler &cgh) {
             cgh.parallel_for(sycl::nd_range<1>{8, 8}, [&inputs](sycl::nd_item<1> it) {
                 const auto id = it.get_sub_group().get_local_linear_id();
