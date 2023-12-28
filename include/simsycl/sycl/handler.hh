@@ -253,21 +253,9 @@ class handler {
         simsycl::detail::parallel_for(range<1>(num_work_items), std::forward<Rest>(rest)...);
     }
 
-    template<typename KernelName = simsycl::detail::unnamed_kernel, typename... Rest>
-        requires(sizeof...(Rest) > 0)
-    void parallel_for(range<1> num_work_items, Rest &&...rest) {
-        simsycl::detail::parallel_for(num_work_items, std::forward<Rest>(rest)...);
-    }
-
-    template<typename KernelName = simsycl::detail::unnamed_kernel, typename... Rest>
-        requires(sizeof...(Rest) > 0)
-    void parallel_for(range<2> num_work_items, Rest &&...rest) {
-        simsycl::detail::parallel_for(num_work_items, std::forward<Rest>(rest)...);
-    }
-
-    template<typename KernelName = simsycl::detail::unnamed_kernel, typename... Rest>
-        requires(sizeof...(Rest) > 0)
-    void parallel_for(range<3> num_work_items, Rest &&...rest) {
+    template<typename KernelName = simsycl::detail::unnamed_kernel, int Dimensions, typename... Rest>
+        requires(sizeof...(Rest) > 0 && Dimensions > 0)
+    void parallel_for(range<Dimensions> num_work_items, Rest &&...rest) {
         simsycl::detail::parallel_for(num_work_items, std::forward<Rest>(rest)...);
     }
 

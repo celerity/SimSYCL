@@ -9,6 +9,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(Catch2)
 
 add_executable(tests
+  ambiguity_tests.cc
   group_op_tests.cc
   hierarchical_tests.cc
   launch_tests.cc
