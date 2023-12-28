@@ -14,6 +14,7 @@ add_executable(tests
   hierarchical_tests.cc
   launch_tests.cc
   marray_tests.cc
+  math_tests.cc
   reduction_tests.cc
   vec_tests.cc
 )

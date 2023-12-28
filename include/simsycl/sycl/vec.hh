@@ -85,7 +85,7 @@ template<typename T, int... Indices>
 struct num_elements<detail::swizzled_vec<T, Indices...>> : std::integral_constant<int, sizeof...(Indices)> {};
 
 template<typename VecOrSwizzle>
-static constexpr bool num_elements_v = num_elements<VecOrSwizzle>::value;
+static constexpr int num_elements_v = num_elements<VecOrSwizzle>::value;
 
 
 template<int... Is>
