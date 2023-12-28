@@ -160,7 +160,7 @@ class group {
             for(size_t i = 0; i < flexible_range[0]; ++i) {
                 const auto global_id = m_group_item.get_id() * flexible_range[0] + i;
                 const auto global_range = m_group_item.get_range() * flexible_range[0];
-                const auto local_id = global_id[0] % flexible_range[0];
+                const auto local_id = id<1>(global_id[0] % flexible_range[0]);
                 const auto global_item = simsycl::detail::make_item(global_id, global_range);
                 const auto local_item = simsycl::detail::make_item(local_id, flexible_range);
                 func(detail::make_h_item(global_item, local_item, local_item));
