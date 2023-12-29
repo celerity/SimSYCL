@@ -75,8 +75,10 @@ template<typename DataT, int... Indices>
 class swizzled_vec;
 
 
-template<typename VecOrSwizzle>
-struct num_elements : std::integral_constant<int, 1> {};
+template<typename T>
+struct num_elements {
+    static_assert(sizeof(T) < 0, "num_elements instantiated with unsupported type");
+};
 
 template<typename T, int NumElements>
 struct num_elements<sycl::vec<T, NumElements>> : std::integral_constant<int, NumElements> {};
@@ -84,8 +86,11 @@ struct num_elements<sycl::vec<T, NumElements>> : std::integral_constant<int, Num
 template<typename T, int... Indices>
 struct num_elements<detail::swizzled_vec<T, Indices...>> : std::integral_constant<int, sizeof...(Indices)> {};
 
-template<typename VecOrSwizzle>
-static constexpr int num_elements_v = num_elements<VecOrSwizzle>::value;
+template<typename T, int NumElements>
+struct num_elements<sycl::marray<T, NumElements>> : std::integral_constant<int, NumElements> {};
+
+template<typename T>
+static constexpr int num_elements_v = num_elements<T>::value;
 
 
 template<int... Is>
