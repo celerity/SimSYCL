@@ -67,6 +67,7 @@ add_library(simsycl
     include/simsycl/detail/config.hh
     include/simsycl/detail/coordinate.hh
     include/simsycl/detail/hash.hh
+    include/simsycl/detail/math_utils.hh
     include/simsycl/detail/subscript.hh
     include/simsycl/detail/utils.hh
     include/simsycl/detail/vec_swizzles.inc
@@ -76,11 +77,12 @@ add_library(simsycl
     include/simsycl/sycl/atomic_fence.hh
     include/simsycl/sycl/atomic_ref.hh
     include/simsycl/sycl/backend.hh
+    include/simsycl/sycl/binary_ops.hh
     include/simsycl/sycl/buffer.hh
     include/simsycl/sycl/concepts.hh
     include/simsycl/sycl/context.hh
-    include/simsycl/sycl/device.hh
     include/simsycl/sycl/device_selector.hh
+    include/simsycl/sycl/device.hh
     include/simsycl/sycl/enums.hh
     include/simsycl/sycl/event.hh
     include/simsycl/sycl/exception.hh
@@ -91,18 +93,18 @@ add_library(simsycl
     include/simsycl/sycl/h_item.hh
     include/simsycl/sycl/handler.hh
     include/simsycl/sycl/id.hh
+    include/simsycl/sycl/image.hh
     include/simsycl/sycl/info.hh
     include/simsycl/sycl/interop_handle.hh
-    include/simsycl/sycl/image.hh
     include/simsycl/sycl/item.hh
     include/simsycl/sycl/kernel.hh
-    include/simsycl/sycl/math.hh
-    include/simsycl/sycl/math_geometric.hh
     include/simsycl/sycl/marray.hh
+    include/simsycl/sycl/math_common.hh
+    include/simsycl/sycl/math_geometric.hh
+    include/simsycl/sycl/math.hh
     include/simsycl/sycl/multi_ptr.hh
     include/simsycl/sycl/nd_item.hh
     include/simsycl/sycl/nd_range.hh
-    include/simsycl/sycl/binary_ops.hh
     include/simsycl/sycl/platform.hh
     include/simsycl/sycl/private_memory.hh
     include/simsycl/sycl/property.hh

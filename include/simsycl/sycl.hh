@@ -27,6 +27,7 @@
 #include "sycl/kernel.hh"
 #include "sycl/marray.hh"
 #include "sycl/math.hh"
+#include "sycl/math_common.hh"
 #include "sycl/math_geometric.hh"
 #include "sycl/multi_ptr.hh"
 #include "sycl/nd_item.hh"

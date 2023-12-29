@@ -28,11 +28,11 @@ struct marray_init_arg_traits<DataT, sycl::marray<DataT, N>, ArgTN...> {
     static constexpr size_t num_elements = N + marray_init_arg_traits<DataT, ArgTN...>::num_elements;
 };
 
-template<typename MArray, typename DataT>
+template<typename T>
 constexpr bool is_marray_v = false;
 
 template<typename DataT, size_t NumElements>
-constexpr bool is_marray_v<sycl::marray<DataT, NumElements>, DataT> = true;
+constexpr bool is_marray_v<sycl::marray<DataT, NumElements>> = true;
 
 } // namespace simsycl::detail
 

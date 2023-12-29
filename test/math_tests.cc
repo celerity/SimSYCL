@@ -27,6 +27,9 @@ TEST_CASE("Length function works as expected", "[math][geometric]") {
     CHECK(length(v1.xx()) == Catch::Approx(1.4142135624));
     CHECK(length(v6.argb()) == Catch::Approx(33.07567f));
 
+    marray<float, 4> m1 = {1.0f, 2.0f, 3.0f, 4.0f};
+    CHECK(length(m1) == Catch::Approx(5.4772255751f));
+
 #if SIMSYCL_FEATURE_HALF_TYPE
     using sycl::half;
     half h = 7.0f;
@@ -58,4 +61,13 @@ TEST_CASE("Distance function works as expected", "[math][geometric]") {
     CHECK(distance(v1.xx(), v1.yx()) == Catch::Approx(1.0));
     CHECK(distance(v6.argb(), vec<float, 4>{0.0f, 0.0f, 0.0f, 0.0f}) == Catch::Approx(33.07567f));
     CHECK(distance(v6.argb(), v2.xyxy()) == Catch::Approx(26.15339f));
+}
+
+TEST_CASE("Clamp function works as expected", "[math]") {
+    int x = 8;
+    CHECK(clamp(x, 0, 10) == 8);
+    CHECK(clamp(x, 0, 5) == 5);
+    CHECK(clamp(x, 10, 20) == 10);
+    // vec<int, 4> v1 = {1, 2, 3, 4};
+    // CHECK(clamp(v1, 0, 10) == v1);
 }
