@@ -114,6 +114,10 @@ struct system_config {
     std::unordered_map<device_id, device_config> devices{};
 };
 
+extern const platform_config default_platform;
+extern const device_config default_device;
+extern const system_config default_system;
+
 void configure_system(const system_config &system);
 
 } // namespace simsycl

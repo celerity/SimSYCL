@@ -126,7 +126,6 @@ add_library(simsycl
     include/simsycl/sycl/usm.hh
     include/simsycl/sycl/vec.hh
     include/simsycl/system.hh
-    include/simsycl/templates.hh
     ${CONFIG_PATH}
     src/simsycl/check.cc
     src/simsycl/context.cc
@@ -136,7 +135,6 @@ add_library(simsycl
     src/simsycl/queue.cc
     src/simsycl/system.cc
     src/simsycl/system_config.cc
-    src/simsycl/templates.cc
 )
 target_link_libraries(simsycl PRIVATE
     Boost::context

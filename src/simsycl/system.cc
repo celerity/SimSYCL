@@ -3,7 +3,6 @@
 #include "simsycl/detail/check.hh"
 #include "simsycl/sycl/device.hh"
 #include "simsycl/sycl/platform.hh"
-#include "simsycl/templates.hh"
 
 #include <assert.h>
 #include <limits>
@@ -133,14 +132,7 @@ struct system_state {
 std::optional<system_state> system;
 
 system_state &get_system() {
-    if(!detail::system.has_value()) {
-        system_config config;
-        config.platforms.emplace("CUDA", simsycl::templates::platform::cuda_12_2);
-        for(int i = 0; i < 4; ++i) {
-            config.devices.emplace("GPU#" + std::to_string(i), simsycl::templates::device::nvidia::rtx_3090);
-        }
-        configure_system(config);
-    }
+    if(!system.has_value()) { system.emplace(default_system); }
     return system.value();
 }
 
@@ -266,5 +258,107 @@ device get_pointer_device(const void *ptr, const context &sycl_context) {
 namespace simsycl {
 
 void configure_system(const system_config &system) { detail::system.emplace(system); }
+
+const platform_config default_platform{
+    .version = "0.1",
+    .name = "SimSYCL",
+    .vendor = "SimSYCL",
+    .extensions = {},
+};
+
+const device_config default_device{
+    .device_type = sycl::info::device_type::gpu,
+    .vendor_id = 0,
+    .max_compute_units = 16,
+    .max_work_item_dimensions = 3,
+    .max_work_item_sizes_1 = {1024},
+    .max_work_item_sizes_2 = {1024, 1024},
+    .max_work_item_sizes_3 = {64, 1024, 1024},
+    .max_work_group_size = 1024,
+    .max_num_sub_groups = 32,
+    .sub_group_sizes = {32},
+    .preferred_vector_width_char = 4,
+    .preferred_vector_width_short = 2,
+    .preferred_vector_width_int = 1,
+    .preferred_vector_width_long = 1,
+    .preferred_vector_width_float = 1,
+    .preferred_vector_width_double = 1,
+    .preferred_vector_width_half = 2,
+    .native_vector_width_char = 4,
+    .native_vector_width_short = 2,
+    .native_vector_width_int = 1,
+    .native_vector_width_long = 1,
+    .native_vector_width_float = 1,
+    .native_vector_width_double = 1,
+    .native_vector_width_half = 2,
+    .max_clock_frequency = 1000,
+    .address_bits = 64,
+    .max_mem_alloc_size = std::numeric_limits<std::size_t>::max(),
+    .image_support = false,
+    .max_read_image_args = 0,
+    .max_write_image_args = 0,
+    .image2d_max_height = 0,
+    .image2d_max_width = 0,
+    .image3d_max_height = 0,
+    .image3d_max_width = 0,
+    .image3d_max_depth = 0,
+    .image_max_buffer_size = 0,
+    .max_samplers = 0,
+    .max_parameter_size = std::numeric_limits<std::size_t>::max(),
+    .mem_base_addr_align = 8,
+    .half_fp_config
+    = {sycl::info::fp_config::denorm, sycl::info::fp_config::inf_nan, sycl::info::fp_config::round_to_nearest,
+        sycl::info::fp_config::round_to_zero, sycl::info::fp_config::round_to_inf, sycl::info::fp_config::fma,
+        sycl::info::fp_config::correctly_rounded_divide_sqrt},
+    .single_fp_config
+    = {sycl::info::fp_config::denorm, sycl::info::fp_config::inf_nan, sycl::info::fp_config::round_to_nearest,
+        sycl::info::fp_config::round_to_zero, sycl::info::fp_config::round_to_inf, sycl::info::fp_config::fma,
+        sycl::info::fp_config::correctly_rounded_divide_sqrt},
+    .double_fp_config
+    = {sycl::info::fp_config::denorm, sycl::info::fp_config::inf_nan, sycl::info::fp_config::round_to_nearest,
+        sycl::info::fp_config::round_to_zero, sycl::info::fp_config::round_to_inf, sycl::info::fp_config::fma,
+        sycl::info::fp_config::correctly_rounded_divide_sqrt},
+    .global_mem_cache_type = sycl::info::global_mem_cache_type::read_write,
+    .global_mem_cache_line_size = 128,
+    .global_mem_cache_size = 16 << 20,
+    .global_mem_size = std::numeric_limits<std::size_t>::max(),
+    .max_constant_buffer_size = 1 << 16,
+    .max_constant_args = std::numeric_limits<uint32_t>::max(),
+    .local_mem_type = sycl::info::local_mem_type::local,
+    .local_mem_size = 64 << 10,
+    .error_correction_support = false,
+    .host_unified_memory = false,
+    .profiling_timer_resolution = 1,
+    .is_endian_little = true,
+    .is_available = true,
+    .is_compiler_available = true,
+    .is_linker_available = true,
+    .execution_capabilities = {sycl::info::execution_capability::exec_kernel},
+    .queue_profiling = true,
+    .built_in_kernels = {},
+    .platform_id = "SimSYCL",
+    .name = "SimSYCL virtual GPU",
+    .vendor = "SimSYCL",
+    .driver_version = "0.1",
+    .profile = "FULL_PROFILE",
+    .version = "0.1",
+    .aspects
+    = { sycl::aspect::gpu, sycl::aspect::accelerator, sycl::aspect::fp64, sycl::aspect::atomic64,
+        sycl::aspect::queue_profiling, sycl::aspect::usm_device_allocations, sycl::aspect::usm_host_allocations,
+        sycl::aspect::usm_shared_allocations, },
+    .extensions = {},
+    .printf_buffer_size = std::numeric_limits<std::size_t>::max(),
+    .preferred_interop_user_sync = true,
+    .partition_max_sub_devices = 0,
+    .partition_properties = {},
+    .partition_affinity_domains = {sycl::info::partition_affinity_domain::not_applicable},
+    .partition_type_property = sycl::info::partition_property::no_partition,
+    .partition_type_affinity_domain = sycl::info::partition_affinity_domain::not_applicable,
+};
+
+const system_config default_system{
+    .platforms = {{"SimSYCL", default_platform}},
+    .devices = {{"GPU", default_device}},
+};
 
 } // namespace simsycl

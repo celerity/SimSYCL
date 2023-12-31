@@ -2,7 +2,6 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <simsycl/system.hh>
-#include <simsycl/templates.hh>
 #include <sycl/sycl.hpp>
 
 
@@ -81,12 +80,12 @@ TEMPLATE_TEST_CASE_SIG(
 TEST_CASE(
     "parallel_for(nd_range) correctly will re-use fibers and local allocations when the number of groups is large",
     "[launch]") {
-    simsycl::system_config system;
-    simsycl::device_config device = simsycl::templates::device::nvidia::rtx_3090;
+    simsycl::device_config device = simsycl::default_device;
     device.max_compute_units = 2; // we currently allocate #max_compute_units groups worth of fibers
-    system.platforms.emplace("CUDA", simsycl::templates::platform::cuda_12_2);
-    system.devices.emplace("GPU", device);
-    simsycl::configure_system(system);
+    simsycl::configure_system({
+        .platforms = {{"SimSYCL", simsycl::default_platform}},
+        .devices = {{"GPU", device}},
+    });
 
     sycl::range<1> global_range(256);
     sycl::range<1> local_range(16);
