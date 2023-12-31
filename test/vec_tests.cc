@@ -16,11 +16,11 @@ bool check_bool_vec(sycl::vec<bool, Dimensions> a) {
 }
 
 TEST_CASE("Compile time vector operations work as expected", "[vec]") {
-    CHECK(detail::num_elements_v<float> == 1);
-    CHECK(detail::num_elements_v<sycl::vec<float, 1>> == 1);
-    CHECK(detail::num_elements_v<sycl::vec<double, 2>> == 2);
-    CHECK(detail::num_elements_v<sycl::vec<int, 3>> == 3);
-    CHECK(detail::num_elements_v<sycl::vec<float, 4>> == 4);
+    CHECK(detail::generic_num_elements_v<float> == 1);
+    CHECK(detail::generic_num_elements_v<sycl::vec<float, 1>> == 1);
+    CHECK(detail::generic_num_elements_v<sycl::vec<double, 2>> == 2);
+    CHECK(detail::generic_num_elements_v<sycl::vec<int, 3>> == 3);
+    CHECK(detail::generic_num_elements_v<sycl::vec<float, 4>> == 4);
 }
 
 TEST_CASE("Basic vector operations work as expected", "[vec]") {

@@ -45,52 +45,29 @@ struct elem {
 
 namespace simsycl::detail {
 
-template<typename DataT, typename... ArgTN>
-struct vec_init_arg_traits {};
-
-template<typename DataT>
-struct vec_init_arg_traits<DataT> {
-    static constexpr int num_elements = 0;
-};
-
-template<typename DataT, std::convertible_to<DataT> ElementT, typename... ArgTN>
-struct vec_init_arg_traits<DataT, ElementT, ArgTN...> {
-    static constexpr int num_elements = 1 + vec_init_arg_traits<DataT, ArgTN...>::num_elements;
-};
-
-template<typename DataT, int N, typename... ArgTN>
-struct vec_init_arg_traits<DataT, sycl::vec<DataT, N>, ArgTN...> {
-    static constexpr int num_elements = N + vec_init_arg_traits<DataT, ArgTN...>::num_elements;
-};
-
-
-template<typename DataT, int NumElements>
-constexpr size_t vec_alignment_v = std::min(size_t{64}, sizeof(DataT) * NumElements);
-
-template<typename DataT>
-constexpr size_t vec_alignment_v<DataT, 3> = std::min(size_t{64}, sizeof(DataT) * 4);
-
-
 template<typename DataT, int... Indices>
 class swizzled_vec;
 
 
-template<typename T>
-struct num_elements {
-    static_assert(sizeof(T) < 0, "num_elements instantiated with unsupported type");
+template<typename DataT, typename VecLike>
+struct vec_like_num_elements {};
+
+template<typename DataT, std::convertible_to<DataT> ElementT>
+struct vec_like_num_elements<DataT, ElementT> : std::integral_constant<int, 1> {};
+
+template<typename DataT, int... Indices>
+struct vec_like_num_elements<DataT, swizzled_vec<DataT, Indices...>> : std::integral_constant<int, sizeof...(Indices)> {
 };
 
-template<typename T, int NumElements>
-struct num_elements<sycl::vec<T, NumElements>> : std::integral_constant<int, NumElements> {};
+template<typename DataT, int N>
+struct vec_like_num_elements<DataT, sycl::vec<DataT, N>> : std::integral_constant<int, N> {};
 
-template<typename T, int... Indices>
-struct num_elements<detail::swizzled_vec<T, Indices...>> : std::integral_constant<int, sizeof...(Indices)> {};
+template<typename T, typename DataT>
+concept VecLike = vec_like_num_elements<DataT, T>::value > 0;
 
-template<typename T, int NumElements>
-struct num_elements<sycl::marray<T, NumElements>> : std::integral_constant<int, NumElements> {};
-
-template<typename T>
-static constexpr int num_elements_v = num_elements<T>::value;
+template<typename T, typename DataT, int NumElements>
+concept VecCompatible
+    = vec_like_num_elements<DataT, T>::value == 1 || vec_like_num_elements<DataT, T>::value == NumElements;
 
 
 template<int... Is>
@@ -128,13 +105,6 @@ struct is_vec<sycl::vec<DataT, NumElements>> : std::true_type {};
 
 template<typename T>
 static constexpr bool is_vec_v = is_vec<T>::value;
-
-
-template<typename V1, typename V2>
-static constexpr bool is_compatible_vector_v = requires {
-    num_elements_v<V1> == num_elements_v<V2>;
-    std::is_same_v<typename V1::element_type, typename V2::element_type>;
-} || std::is_same_v<typename V1::element_type, V2>;
 
 
 template<typename T>
@@ -397,9 +367,9 @@ class swizzled_vec {
     // operators
 
 #define SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_COPY_OPERATOR(op, enable_if)                                              \
-    template<typename LHS, typename RHS>                                                                               \
+    template<VecCompatible<element_type, num_elements> LHS, VecCompatible<element_type, num_elements> RHS>             \
     friend constexpr auto operator op(const LHS &lhs, const RHS &rhs)                                                  \
-        requires(enable_if && is_compatible_vector_v<swizzled_vec, RHS> && is_compatible_vector_v<swizzled_vec, LHS>   \
+        requires(enable_if                                                                                             \
             && (std::is_same_v<swizzled_vec, LHS> || (std::is_same_v<swizzled_vec, RHS> && !is_swizzle_v<LHS>)))       \
     {                                                                                                                  \
         return to_vec<element_type, num_elements>(lhs) op to_vec<element_type, num_elements>(rhs);                     \
@@ -418,9 +388,9 @@ class swizzled_vec {
 #undef SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_COPY_OPERATOR
 
 #define SIMSYCL_DETAIL_DEFINE_SWIZZLE_BINARY_INPLACE_OPERATOR(op, enable_if)                                           \
-    template<typename RHS>                                                                                             \
+    template<VecCompatible<element_type, num_elements> RHS>                                                            \
     friend constexpr swizzled_vec &operator op##=(swizzled_vec && lhs, const RHS & rhs)                                \
-        requires(enable_if && allow_assign && is_compatible_vector_v<swizzled_vec, RHS>)                               \
+        requires(enable_if && allow_assign)                                                                            \
     {                                                                                                                  \
         return lhs = to_vec<element_type, num_elements>(lhs) op to_vec<element_type, num_elements>(rhs);               \
     }
@@ -441,7 +411,7 @@ class swizzled_vec {
     friend constexpr auto operator op(const swizzled_vec &v)                                                           \
         requires(enable_if)                                                                                            \
     {                                                                                                                  \
-        return op to_vec(v);                                                                                           \
+        return op to_vec<element_type, num_elements>(v);                                                               \
     }
 
     SIMSYCL_DETAIL_DEFINE_SWIZZLE_UNARY_COPY_OPERATOR(+, true)
@@ -476,10 +446,9 @@ class swizzled_vec {
 #undef SIMSYCL_DETAIL_DEFINE_SWIZZLE_UNARY_POSTFIX_OPERATOR
 
 #define SIMSYCL_DETAIL_DEFINE_SWIZZLE_COMPARISON_OPERATOR(op)                                                          \
-    template<typename LHS, typename RHS>                                                                               \
+    template<VecCompatible<element_type, num_elements> LHS, VecCompatible<element_type, num_elements> RHS>             \
     friend constexpr auto operator op(const LHS &lhs, const RHS &rhs)                                                  \
-        requires(is_compatible_vector_v<swizzled_vec, RHS> && is_compatible_vector_v<swizzled_vec, LHS>                \
-            && (std::is_same_v<swizzled_vec, LHS> || (std::is_same_v<swizzled_vec, RHS> && !is_swizzle_v<LHS>)))       \
+        requires(std::is_same_v<swizzled_vec, LHS> || (std::is_same_v<swizzled_vec, RHS> && !is_swizzle_v<LHS>))       \
     {                                                                                                                  \
         return to_vec<element_type, num_elements>(lhs) op to_vec<element_type, num_elements>(rhs);                     \
     }
@@ -506,6 +475,12 @@ class swizzled_vec {
     ReferenceDataT *m_elems;
 };
 
+template<typename DataT, int NumElements>
+constexpr size_t vec_alignment_v = std::min(size_t{64}, sizeof(DataT) * NumElements);
+
+template<typename DataT>
+constexpr size_t vec_alignment_v<DataT, 3> = std::min(size_t{64}, sizeof(DataT) * 4);
+
 } // namespace simsycl::detail
 
 namespace simsycl::sycl {
@@ -529,8 +504,8 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
         for(int i = 0; i < NumElements; ++i) { m_elems[i] = arg; }
     }
 
-    template<typename... ArgTN>
-        requires(detail::vec_init_arg_traits<DataT, ArgTN...>::num_elements == NumElements)
+    template<detail::VecLike<DataT>... ArgTN>
+        requires((detail::vec_like_num_elements<DataT, ArgTN>::value + ...) == NumElements)
     constexpr vec(const ArgTN &...args) {
         init_with_offset<0>(args...);
     }
