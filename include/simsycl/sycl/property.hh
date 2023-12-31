@@ -34,14 +34,14 @@ class property_list {
         requires(is_property_v<Properties> && ...)
     property_list(Properties... props) : m_properties{props...} {}
 
-    // Implemented by hipSYCL and DPC++ although the spec does not mention any members beside the constructor
+    // Provided as per 4.5.4.1
     template<typename Property>
     bool has_property() const noexcept {
         return std::any_of(m_properties.begin(), m_properties.end(),
             [](const std::any &prop) { return prop.type() == typeid(Property); });
     }
 
-    // Implemented by hipSYCL and DPC++ although the spec does not mention any members beside the constructor
+    // Provided as per 4.5.4.1
     template<typename Property>
     Property get_property() const {
         const auto iter = std::find_if(m_properties.begin(), m_properties.end(),
