@@ -10,23 +10,15 @@
 
 namespace simsycl::detail {
 
-template<typename DataT, typename... ArgTN>
-struct marray_init_arg_traits {};
+template<typename DataT, typename VecLike>
+struct marray_like_num_elements {};
 
-template<typename DataT>
-struct marray_init_arg_traits<DataT> {
-    static constexpr size_t num_elements = 0;
-};
+template<typename DataT, std::convertible_to<DataT> ElementT>
+struct marray_like_num_elements<DataT, ElementT> : std::integral_constant<int, 1> {};
 
-template<typename DataT, std::convertible_to<DataT> ElementT, typename... ArgTN>
-struct marray_init_arg_traits<DataT, ElementT, ArgTN...> {
-    static constexpr size_t num_elements = 1 + marray_init_arg_traits<DataT, ArgTN...>::num_elements;
-};
+template<typename DataT, int N>
+struct marray_like_num_elements<DataT, sycl::vec<DataT, N>> : std::integral_constant<int, N> {};
 
-template<typename DataT, size_t N, typename... ArgTN>
-struct marray_init_arg_traits<DataT, sycl::marray<DataT, N>, ArgTN...> {
-    static constexpr size_t num_elements = N + marray_init_arg_traits<DataT, ArgTN...>::num_elements;
-};
 
 template<typename T>
 constexpr bool is_marray_v = false;
@@ -56,7 +48,7 @@ class marray {
     }
 
     template<typename... ArgTN>
-        requires(detail::marray_init_arg_traits<DataT, ArgTN...>::num_elements == NumElements)
+        requires((detail::marray_like_num_elements<DataT, ArgTN>::value + ...) == NumElements)
     constexpr marray(const ArgTN &...args) {
         init_with_offset<0>(args...);
     }

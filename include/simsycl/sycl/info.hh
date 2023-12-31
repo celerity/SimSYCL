@@ -173,8 +173,8 @@ struct command_end : detail::info_descriptor<uint64_t> {};
 
 namespace simsycl::sycl::info::kernel {
 
-struct num_args: detail::info_descriptor<uint32_t> {};
-struct attributes: detail::info_descriptor<std::string> {};
+struct num_args : detail::info_descriptor<uint32_t> {};
+struct attributes : detail::info_descriptor<std::string> {};
 
 } // namespace simsycl::sycl::info::kernel
 
