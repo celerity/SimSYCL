@@ -15,6 +15,7 @@ namespace simsycl {
 
 using platform_id = std::string;
 using device_id = std::string;
+using system_id = std::string;
 
 struct device_config {
     sycl::info::device_type device_type{};
@@ -114,10 +115,13 @@ struct system_config {
     std::unordered_map<device_id, device_config> devices{};
 };
 
-extern const platform_config default_platform;
-extern const device_config default_device;
-extern const system_config default_system;
+extern const platform_config builtin_platform;
+extern const device_config builtin_device;
+extern const system_config builtin_system;
 
+const system_config &get_default_system_config();
+system_config read_system_config(const std::string &path_to_json_file);
+void write_system_config(const std::string &path_to_json_file, const system_config &config);
 void configure_system(const system_config &system);
 
 } // namespace simsycl

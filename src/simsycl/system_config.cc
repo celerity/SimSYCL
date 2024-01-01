@@ -360,14 +360,15 @@ void from_json(const nlohmann::json &json, system_config &system) {
     json.at("devices").get_to(system.devices);
 };
 
-
-} // namespace simsycl
-
-namespace simsycl::detail {
-
-system_config load_device_config(const std::string &path_to_json_file) {
+system_config read_system_config(const std::string &path_to_json_file) {
     std::ifstream ifs(path_to_json_file);
     return nlohmann::json::parse(ifs).get<system_config>();
 }
 
-} // namespace simsycl::detail
+void write_system_config(const std::string &path_to_json_file, const system_config &config) {
+    nlohmann::json json;
+    to_json(json, config);
+    std::ofstream(path_to_json_file) << std::setw(4) << json;
+}
+
+} // namespace simsycl

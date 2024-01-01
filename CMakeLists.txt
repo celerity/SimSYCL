@@ -29,15 +29,19 @@ find_package(Boost 1.70 COMPONENTS context REQUIRED)
 
 include(FetchContent)
 
+set(LIBENVPP_INSTALL ON CACHE BOOL "" FORCE) # If installation is desired.
+FetchContent_Declare(libenvpp
+    GIT_REPOSITORY https://github.com/ph3at/libenvpp.git
+    GIT_TAG v1.4.0
+)
+FetchContent_MakeAvailable(libenvpp)
+
 set(JSON_BuildTests OFF CACHE INTERNAL "")
 set(JSON_Install ON CACHE INTERNAL "")
-
-FetchContent_Declare(
-  nlohmann_json
+FetchContent_Declare(nlohmann_json
   URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
   URL_HASH SHA256=d6c65aca6b1ed68e7a182f4757257b107ae403032760ed6ef121c9d55e81757d
 )
-
 FetchContent_MakeAvailable(nlohmann_json)
 
 include(CheckTypeSize)
@@ -138,7 +142,8 @@ add_library(simsycl
 )
 target_link_libraries(simsycl PRIVATE
     Boost::context
-    $<BUILD_INTERFACE:nlohmann_json::nlohmann_json>
+    nlohmann_json::nlohmann_json
+    libenvpp::libenvpp
 )
 target_include_directories(simsycl PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

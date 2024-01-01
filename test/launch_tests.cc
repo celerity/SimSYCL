@@ -80,10 +80,10 @@ TEMPLATE_TEST_CASE_SIG(
 TEST_CASE(
     "parallel_for(nd_range) correctly will re-use fibers and local allocations when the number of groups is large",
     "[launch]") {
-    simsycl::device_config device = simsycl::default_device;
+    simsycl::device_config device = simsycl::builtin_device;
     device.max_compute_units = 2; // we currently allocate #max_compute_units groups worth of fibers
     simsycl::configure_system({
-        .platforms = {{"SimSYCL", simsycl::default_platform}},
+        .platforms = {{"SimSYCL", simsycl::builtin_platform}},
         .devices = {{"GPU", device}},
     });
 

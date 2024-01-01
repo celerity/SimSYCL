@@ -4,10 +4,13 @@
 #include "simsycl/sycl/device.hh"
 #include "simsycl/sycl/platform.hh"
 
-#include <assert.h>
+#include <cassert>
+#include <iostream>
 #include <limits>
 #include <set>
 #include <unordered_map>
+
+#include <libenvpp/env.hpp>
 
 
 namespace simsycl::detail {
@@ -132,7 +135,7 @@ struct system_state {
 std::optional<system_state> system;
 
 system_state &get_system() {
-    if(!system.has_value()) { system.emplace(default_system); }
+    if(!system.has_value()) { system.emplace(get_default_system_config()); }
     return system.value();
 }
 
@@ -255,18 +258,52 @@ device get_pointer_device(const void *ptr, const context &sycl_context) {
 
 } // namespace simsycl::sycl
 
+namespace simsycl::detail {
+
+bool g_environment_parsed = false;
+std::optional<std::string> g_env_config;
+
+void parse_environment() {
+    if(g_environment_parsed) return;
+
+    auto prefix = env::prefix("SIMSYCL");
+    const auto config = prefix.register_variable<std::string>("CONFIG");
+    if(const auto parsed = prefix.parse_and_validate(); parsed.ok()) {
+        g_env_config = parsed.get(config);
+    } else {
+        std::cerr << parsed.warning_message() << parsed.error_message();
+    }
+    g_environment_parsed = true;
+}
+
+std::optional<system_config> g_default_system_config;
+
+} // namespace simsycl::detail
+
 namespace simsycl {
+
+const system_config &get_default_system_config() {
+    if(!detail::g_default_system_config.has_value()) {
+        detail::parse_environment();
+        if(detail::g_env_config.has_value()) {
+            detail::g_default_system_config.emplace(read_system_config(*detail::g_env_config));
+        } else {
+            detail::g_default_system_config.emplace(builtin_system);
+        }
+    }
+    return detail::g_default_system_config.value();
+}
 
 void configure_system(const system_config &system) { detail::system.emplace(system); }
 
-const platform_config default_platform{
+const platform_config builtin_platform{
     .version = "0.1",
     .name = "SimSYCL",
     .vendor = "SimSYCL",
     .extensions = {},
 };
 
-const device_config default_device{
+const device_config builtin_device{
     .device_type = sycl::info::device_type::gpu,
     .vendor_id = 0,
     .max_compute_units = 16,
@@ -356,9 +393,9 @@ const device_config default_device{
     .partition_type_affinity_domain = sycl::info::partition_affinity_domain::not_applicable,
 };
 
-const system_config default_system{
-    .platforms = {{"SimSYCL", default_platform}},
-    .devices = {{"GPU", default_device}},
+const system_config builtin_system{
+    .platforms = {{"SimSYCL", builtin_platform}},
+    .devices = {{"GPU", builtin_device}},
 };
 
 } // namespace simsycl
