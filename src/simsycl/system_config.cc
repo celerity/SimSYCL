@@ -247,13 +247,11 @@ void to_json(nlohmann::json &json, const device_config &device) {
         {"name", device.name},
         {"vendor", device.vendor},
         {"driver_version", device.driver_version},
-        {"profile", device.profile},
         {"version", device.version},
         {"backend_version", device.backend_version},
         {"aspects", device.aspects},
         {"extensions", device.extensions},
         {"printf_buffer_size", device.printf_buffer_size},
-        {"preferred_interop_user_sync", device.preferred_interop_user_sync},
         {"parent_device_id", device.parent_device_id},
         {"partition_max_sub_devices", device.partition_max_sub_devices},
         {"partition_properties", device.partition_properties},
@@ -333,13 +331,11 @@ void from_json(const nlohmann::json &json, device_config &device) {
     json.at("name").get_to(device.name);
     json.at("vendor").get_to(device.vendor);
     json.at("driver_version").get_to(device.driver_version);
-    json.at("profile").get_to(device.profile);
     json.at("version").get_to(device.version);
     json.at("backend_version").get_to(device.backend_version);
     json.at("aspects").get_to(device.aspects);
     json.at("extensions").get_to(device.extensions);
     json.at("printf_buffer_size").get_to(device.printf_buffer_size);
-    json.at("preferred_interop_user_sync").get_to(device.preferred_interop_user_sync);
     json.at("parent_device_id").get_to(device.parent_device_id);
     json.at("partition_max_sub_devices").get_to(device.partition_max_sub_devices);
     json.at("partition_properties").get_to(device.partition_properties);

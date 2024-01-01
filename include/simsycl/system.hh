@@ -87,13 +87,11 @@ struct device_config {
     std::string name{};
     std::string vendor{};
     std::string driver_version{};
-    std::string profile{};
     std::string version{};
     std::string backend_version{};
     std::vector<sycl::aspect> aspects{};
     std::vector<std::string> extensions{};
     size_t printf_buffer_size{};
-    bool preferred_interop_user_sync{};
     std::optional<simsycl::device_id> parent_device_id{};
     uint32_t partition_max_sub_devices{};
     std::vector<sycl::info::partition_property> partition_properties{};

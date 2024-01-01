@@ -2,6 +2,7 @@
 #include "simsycl/sycl/range.hh"
 #include "simsycl/system.hh"
 
+#include <cassert>
 #include <iterator>
 
 namespace simsycl::detail {
@@ -387,7 +388,7 @@ std::string device::get_info<info::device::driver_version>() const {
 
 template<>
 std::string device::get_info<info::device::profile>() const {
-    return state().config.profile;
+    throw exception(errc::invalid, "not an OpenCL backend");
 }
 
 template<>
@@ -419,13 +420,15 @@ size_t device::get_info<info::device::printf_buffer_size>() const {
 
 template<>
 bool device::get_info<info::device::preferred_interop_user_sync>() const {
-    return state().config.preferred_interop_user_sync;
+    throw exception(errc::invalid, "not an OpenCL backend");
 }
 
 template<>
 sycl::device device::get_info<info::device::parent_device>() const {
-    abort();
-    // return state().config.parent_device.value();
+    const auto parent_instance = state().parent.lock();
+    assert(parent_instance.has_value() == state().config.parent_device_id.has_value());
+    if(!parent_instance.has_value()) { throw exception(errc::invalid, "not a sub-device"); }
+    return *parent_instance;
 }
 
 template<>

@@ -3,7 +3,9 @@
 #include "simsycl/detail/check.hh"
 #include "simsycl/sycl/device.hh"
 #include "simsycl/sycl/platform.hh"
+#include "simsycl/sycl/vec.hh"
 
+#include <bit>
 #include <cassert>
 #include <iostream>
 #include <limits>
@@ -303,15 +305,16 @@ const platform_config builtin_platform{
     .extensions = {},
 };
 
-const device_config builtin_device{
-    .device_type = sycl::info::device_type::gpu,
-    .vendor_id = 0,
-    .max_compute_units = 16,
-    .max_work_item_dimensions = 3,
-    .max_work_item_sizes_1 = {1024},
-    .max_work_item_sizes_2 = {1024, 1024},
-    .max_work_item_sizes_3 = {64, 1024, 1024},
-    .max_work_group_size = 1024,
+// clang-format off
+const device_config builtin_device {
+    .device_type = sycl::info::device_type::gpu, //
+    .vendor_id = 0, //
+    .max_compute_units = 16, //
+    .max_work_item_dimensions = 3, //
+    .max_work_item_sizes_1 = {1024}, //
+    .max_work_item_sizes_2 = {1024, 1024}, //
+    .max_work_item_sizes_3 = {1024, 1024, 1024}, //
+    .max_work_group_size = 1024, //
     .max_num_sub_groups = 32,
     .sub_group_sizes = {32},
     .preferred_vector_width_char = 4,
@@ -342,21 +345,20 @@ const device_config builtin_device{
     .image_max_buffer_size = 0,
     .max_samplers = 0,
     .max_parameter_size = std::numeric_limits<std::size_t>::max(),
-    .mem_base_addr_align = 8,
+    .mem_base_addr_align = 8 * sizeof(sycl::long16),
     .half_fp_config
-    = {sycl::info::fp_config::denorm, sycl::info::fp_config::inf_nan, sycl::info::fp_config::round_to_nearest,
-        sycl::info::fp_config::round_to_zero, sycl::info::fp_config::round_to_inf, sycl::info::fp_config::fma,
-        sycl::info::fp_config::correctly_rounded_divide_sqrt},
-    .single_fp_config
-    = {sycl::info::fp_config::denorm, sycl::info::fp_config::inf_nan, sycl::info::fp_config::round_to_nearest,
-        sycl::info::fp_config::round_to_zero, sycl::info::fp_config::round_to_inf, sycl::info::fp_config::fma,
-        sycl::info::fp_config::correctly_rounded_divide_sqrt},
-    .double_fp_config
-    = {sycl::info::fp_config::denorm, sycl::info::fp_config::inf_nan, sycl::info::fp_config::round_to_nearest,
-        sycl::info::fp_config::round_to_zero, sycl::info::fp_config::round_to_inf, sycl::info::fp_config::fma,
-        sycl::info::fp_config::correctly_rounded_divide_sqrt},
+#if SIMSYCL_FEATURE_HALF_TYPE
+        = {sycl::info::fp_config::denorm, sycl::info::fp_config::inf_nan,
+            sycl::info::fp_config::fma, sycl::info::fp_config::correctly_rounded_divide_sqrt},
+#else
+        = {},
+#endif
+    .single_fp_config = {sycl::info::fp_config::denorm, sycl::info::fp_config::inf_nan,
+        sycl::info::fp_config::fma, sycl::info::fp_config::correctly_rounded_divide_sqrt},
+    .double_fp_config = {sycl::info::fp_config::denorm, sycl::info::fp_config::inf_nan,
+        sycl::info::fp_config::fma, sycl::info::fp_config::correctly_rounded_divide_sqrt},
     .global_mem_cache_type = sycl::info::global_mem_cache_type::read_write,
-    .global_mem_cache_line_size = 128,
+    .global_mem_cache_line_size = 64,
     .global_mem_cache_size = 16 << 20,
     .global_mem_size = std::numeric_limits<std::size_t>::max(),
     .max_constant_buffer_size = 1 << 16,
@@ -364,12 +366,22 @@ const device_config builtin_device{
     .local_mem_type = sycl::info::local_mem_type::local,
     .local_mem_size = 64 << 10,
     .error_correction_support = false,
-    .host_unified_memory = false,
+    .host_unified_memory = true,
+    .atomic_memory_order_capabilities = {sycl::memory_order::relaxed, sycl::memory_order::acquire,
+        sycl::memory_order::release, sycl::memory_order::acq_rel, sycl::memory_order::seq_cst},
+    .atomic_fence_order_capabilities = {sycl::memory_order::relaxed, sycl::memory_order::acquire,
+        sycl::memory_order::release, sycl::memory_order::acq_rel, sycl::memory_order::seq_cst},
+    .atomic_memory_scope_capabilities = {sycl::memory_scope::work_item,
+        sycl::memory_scope::sub_group, sycl::memory_scope::work_group, sycl::memory_scope::device,
+        sycl::memory_scope::system },
+    .atomic_fence_scope_capabilities = {sycl::memory_scope::work_item,
+        sycl::memory_scope::sub_group, sycl::memory_scope::work_group, sycl::memory_scope::device,
+        sycl::memory_scope::system },
     .profiling_timer_resolution = 1,
-    .is_endian_little = true,
+    .is_endian_little = std::endian::native == std::endian::little,
     .is_available = true,
-    .is_compiler_available = true,
-    .is_linker_available = true,
+    .is_compiler_available = false,
+    .is_linker_available = false,
     .execution_capabilities = {sycl::info::execution_capability::exec_kernel},
     .queue_profiling = true,
     .built_in_kernels = {},
@@ -377,21 +389,31 @@ const device_config builtin_device{
     .name = "SimSYCL virtual GPU",
     .vendor = "SimSYCL",
     .driver_version = "0.1",
-    .profile = "FULL_PROFILE",
     .version = "0.1",
-    .aspects
-    = { sycl::aspect::gpu, sycl::aspect::accelerator, sycl::aspect::fp64, sycl::aspect::atomic64,
-        sycl::aspect::queue_profiling, sycl::aspect::usm_device_allocations, sycl::aspect::usm_host_allocations,
-        sycl::aspect::usm_shared_allocations, },
-    .extensions = {},
+    .aspects = { sycl::aspect::gpu, sycl::aspect::accelerator, sycl::aspect::emulated,
+        sycl::aspect::host_debuggable,
+#if SIMSYCL_FEATURE_HALF_TYPE
+        sycl::aspect::fp16,
+#endif
+        sycl::aspect::fp64, sycl::aspect::atomic64, sycl::aspect::queue_profiling,
+        sycl::aspect::usm_device_allocations, sycl::aspect::usm_host_allocations,
+        sycl::aspect::usm_atomic_host_allocations, sycl::aspect::usm_shared_allocations,
+        sycl::aspect::usm_atomic_shared_allocations, sycl::aspect::usm_system_allocations },
+    .extensions = {
+        "cl_khr_int64_base_atomics",
+        "cl_khr_int64_extended_atomics",
+#if SIMSYCL_FEATURE_HALF_TYPE
+        "cl_khr_fp16",
+#endif
+    },
     .printf_buffer_size = std::numeric_limits<std::size_t>::max(),
-    .preferred_interop_user_sync = true,
     .partition_max_sub_devices = 0,
     .partition_properties = {},
     .partition_affinity_domains = {sycl::info::partition_affinity_domain::not_applicable},
     .partition_type_property = sycl::info::partition_property::no_partition,
     .partition_type_affinity_domain = sycl::info::partition_affinity_domain::not_applicable,
 };
+// clang-format off
 
 const system_config builtin_system{
     .platforms = {{"SimSYCL", builtin_platform}},
