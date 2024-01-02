@@ -37,6 +37,7 @@
 #include "sycl/queue.hh"
 #include "sycl/range.hh"
 #include "sycl/reduction.hh"
+#include "sycl/stream.hh"
 #include "sycl/sub_group.hh"
 #include "sycl/type_traits.hh"
 #include "sycl/usm.hh"
