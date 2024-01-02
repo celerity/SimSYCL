@@ -102,25 +102,25 @@ class nd_item {
     template<typename DataT>
     SIMSYCL_DETAIL_DEPRECATED_IN_SYCL device_event async_work_group_copy(
         local_ptr<DataT> dest, global_ptr<DataT> src, size_t num_elements) const {
-        m_group.async_work_group_copy(dest, src, num_elements);
+        return m_group.async_work_group_copy(dest, src, num_elements);
     }
 
     template<typename DataT>
     SIMSYCL_DETAIL_DEPRECATED_IN_SYCL device_event async_work_group_copy(
         global_ptr<DataT> dest, local_ptr<DataT> src, size_t num_elements) const {
-        m_group.async_work_group_copy(dest, src, num_elements);
+        return m_group.async_work_group_copy(dest, src, num_elements);
     }
 
     template<typename DataT>
     SIMSYCL_DETAIL_DEPRECATED_IN_SYCL device_event async_work_group_copy(
         local_ptr<DataT> dest, global_ptr<DataT> src, size_t num_elements, size_t src_stride) const {
-        m_group.async_work_group_copy(dest, src, num_elements, src_stride);
+        return m_group.async_work_group_copy(dest, src, num_elements, src_stride);
     }
 
     template<typename DataT>
     SIMSYCL_DETAIL_DEPRECATED_IN_SYCL device_event async_work_group_copy(
         global_ptr<DataT> dest, local_ptr<DataT> src, size_t num_elements, size_t dest_stride) const {
-        m_group.async_work_group_copy(dest, src, num_elements, dest_stride);
+        return m_group.async_work_group_copy(dest, src, num_elements, dest_stride);
     }
 
     SIMSYCL_STOP_IGNORING_DEPRECATIONS

@@ -228,24 +228,28 @@ class group {
     SIMSYCL_DETAIL_DEPRECATED_IN_SYCL device_event async_work_group_copy(
         local_ptr<DataT> dest, global_ptr<DataT> src, size_t num_elements) const {
         std::copy_n(src.get(), num_elements, dest.get());
+        return device_event{};
     }
 
     template<typename DataT>
     SIMSYCL_DETAIL_DEPRECATED_IN_SYCL device_event async_work_group_copy(
         global_ptr<DataT> dest, local_ptr<DataT> src, size_t num_elements) const {
         std::copy_n(src.get(), num_elements, dest.get());
+        return device_event{};
     }
 
     template<typename DataT>
     SIMSYCL_DETAIL_DEPRECATED_IN_SYCL device_event async_work_group_copy(
         local_ptr<DataT> dest, global_ptr<DataT> src, size_t num_elements, size_t src_stride) const {
         for(size_t i = 0; i < num_elements; ++i) { dest[i] = src[i * src_stride]; }
+        return device_event{};
     }
 
     template<typename DataT>
     SIMSYCL_DETAIL_DEPRECATED_IN_SYCL device_event async_work_group_copy(
         global_ptr<DataT> dest, local_ptr<DataT> src, size_t num_elements, size_t dest_stride) const {
         for(size_t i = 0; i < num_elements; ++i) { dest[i * dest_stride] = src[i]; }
+        return device_event{};
     }
 
     template<typename DestDataT, typename SrcDataT>
@@ -253,6 +257,7 @@ class group {
     device_event async_work_group_copy(
         decorated_local_ptr<DestDataT> dest, decorated_global_ptr<SrcDataT> src, size_t num_elements) const {
         std::copy_n(src.get(), num_elements, dest.get());
+        return device_event{};
     }
 
     template<typename DestDataT, typename SrcDataT>
@@ -260,6 +265,7 @@ class group {
     device_event async_work_group_copy(
         decorated_global_ptr<DestDataT> dest, decorated_local_ptr<SrcDataT> src, size_t num_elements) const {
         std::copy_n(src.get(), num_elements, dest.get());
+        return device_event{};
     }
 
     template<typename DestDataT, typename SrcDataT>
@@ -267,6 +273,7 @@ class group {
     device_event async_work_group_copy(decorated_local_ptr<DestDataT> dest, decorated_global_ptr<SrcDataT> src,
         size_t num_elements, size_t src_stride) const {
         for(size_t i = 0; i < num_elements; ++i) { dest[i] = src[i * src_stride]; }
+        return device_event{};
     }
 
     template<typename DestDataT, typename SrcDataT>
@@ -274,6 +281,7 @@ class group {
     device_event async_work_group_copy(decorated_global_ptr<DestDataT> dest, decorated_local_ptr<SrcDataT> src,
         size_t num_elements, size_t dest_stride) const {
         for(size_t i = 0; i < num_elements; ++i) { dest[i * dest_stride] = src[i]; }
+        return device_event{};
     }
 
     friend bool operator==(const group<Dimensions> &lhs, const group<Dimensions> &rhs) {
