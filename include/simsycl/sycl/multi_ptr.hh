@@ -60,7 +60,8 @@ class multi_ptr {
 
     template<int Dimensions, access_mode Mode, access::placeholder IsPlaceholder>
         requires(Space == access::address_space::local_space || Space == access::address_space::generic_space)
-    [[deprecated]] multi_ptr(accessor<value_type, Dimensions, Mode, target::local, IsPlaceholder> acc)
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL multi_ptr(
+        accessor<value_type, Dimensions, Mode, target::local, IsPlaceholder> acc)
         : m_ptr(acc.get_pointer()) {}
 
     // Assignment and access operators
@@ -94,7 +95,7 @@ class multi_ptr {
     pointer get_decorated() const { return m_ptr; }
 
     // Conversion to the underlying pointer type
-    [[deprecated]] operator pointer() const { return m_ptr; }
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL operator pointer() const { return m_ptr; }
 
     // Cast to private_ptr
     explicit operator multi_ptr<value_type, access::address_space::private_space, DecorateAddress>()
@@ -261,7 +262,8 @@ class multi_ptr<simsycl::detail::void_type<VoidType>, Space, DecorateAddress> {
 
     template<typename ElementType, int Dimensions, access_mode Mode, access::placeholder IsPlaceholder>
         requires(Space == access::address_space::local_space)
-    [[deprecated]] multi_ptr(accessor<ElementType, Dimensions, Mode, target::local, IsPlaceholder> acc)
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL multi_ptr(
+        accessor<ElementType, Dimensions, Mode, target::local, IsPlaceholder> acc)
         : m_ptr(acc.get_pointer()) {}
 
     // Assignment operators
@@ -346,7 +348,7 @@ class multi_ptr<const void, Space, DecorateAddress>
 
 // Legacy interface, inherited from 1.2.1.
 template<typename ElementType, access::address_space Space>
-class [[deprecated]] multi_ptr<ElementType, Space, access::decorated::legacy> {
+class SIMSYCL_DETAIL_DEPRECATED_IN_SYCL multi_ptr<ElementType, Space, access::decorated::legacy> {
   public:
     using value_type = ElementType;
     using element_type = ElementType;
@@ -490,7 +492,8 @@ class [[deprecated]] multi_ptr<ElementType, Space, access::decorated::legacy> {
 
 // Legacy interface, inherited from 1.2.1.
 template<typename VoidType, access::address_space Space>
-class [[deprecated]] multi_ptr<simsycl::detail::void_type<VoidType>, Space, access::decorated::legacy> {
+class SIMSYCL_DETAIL_DEPRECATED_IN_SYCL
+    multi_ptr<simsycl::detail::void_type<VoidType>, Space, access::decorated::legacy> {
   public:
     using value_type = VoidType;
     using element_type = VoidType;
@@ -605,14 +608,14 @@ class multi_ptr<const void, Space, access::decorated::legacy>
 
 // Deprecated, address_space_cast should be used instead.
 template<typename ElementType, access::address_space Space, access::decorated DecorateAddress>
-[[deprecated("use address_space_cast instead")]] multi_ptr<ElementType, Space, DecorateAddress> make_ptr(
-    ElementType *ptr) {
+SIMSYCL_DETAIL_DEPRECATED_IN_SYCL_V("use address_space_cast instead")
+multi_ptr<ElementType, Space, DecorateAddress> make_ptr(ElementType *ptr) {
     return {ptr};
 }
 
 template<access::address_space Space, access::decorated DecorateAddress, typename ElementType>
-[[deprecated("use address_space_cast instead")]] multi_ptr<ElementType, Space, DecorateAddress> address_space_cast(
-    ElementType *ptr) {
+SIMSYCL_DETAIL_DEPRECATED_IN_SYCL_V("use address_space_cast instead")
+multi_ptr<ElementType, Space, DecorateAddress> address_space_cast(ElementType *ptr) {
     return {ptr};
 }
 
@@ -649,8 +652,8 @@ template<typename ElementType, access::decorated IsDecorated = access::decorated
 using local_ptr = multi_ptr<ElementType, access::address_space::local_space, IsDecorated>;
 
 template<typename ElementType>
-using constant_ptr [[deprecated]]
-= multi_ptr<ElementType, access::address_space::constant_space, access::decorated::legacy>;
+using constant_ptr SIMSYCL_DETAIL_DEPRECATED_IN_SYCL
+    = multi_ptr<ElementType, access::address_space::constant_space, access::decorated::legacy>;
 
 template<typename ElementType, access::decorated IsDecorated = access::decorated::legacy>
 using private_ptr = multi_ptr<ElementType, access::address_space::private_space, IsDecorated>;

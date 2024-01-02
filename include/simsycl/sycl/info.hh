@@ -99,7 +99,7 @@ struct native_vector_width_half : detail::info_descriptor<uint32_t> {};
 struct max_clock_frequency : detail::info_descriptor<uint32_t> {};
 struct address_bits : detail::info_descriptor<uint32_t> {};
 struct max_mem_alloc_size : detail::info_descriptor<uint64_t> {};
-struct [[deprecated]] image_support : detail::info_descriptor<bool> {};
+struct SIMSYCL_DETAIL_DEPRECATED_IN_SYCL image_support : detail::info_descriptor<bool> {};
 struct max_read_image_args : detail::info_descriptor<uint32_t> {};
 struct max_write_image_args : detail::info_descriptor<uint32_t> {};
 struct image2d_max_height : detail::info_descriptor<size_t> {};
@@ -118,8 +118,8 @@ struct global_mem_cache_type : detail::info_descriptor<info::global_mem_cache_ty
 struct global_mem_cache_line_size : detail::info_descriptor<uint32_t> {};
 struct global_mem_cache_size : detail::info_descriptor<uint64_t> {};
 struct global_mem_size : detail::info_descriptor<uint64_t> {};
-struct [[deprecated]] max_constant_buffer_size : detail::info_descriptor<uint64_t> {};
-struct [[deprecated]] max_constant_args : detail::info_descriptor<uint32_t> {};
+struct SIMSYCL_DETAIL_DEPRECATED_IN_SYCL max_constant_buffer_size : detail::info_descriptor<uint64_t> {};
+struct SIMSYCL_DETAIL_DEPRECATED_IN_SYCL max_constant_args : detail::info_descriptor<uint32_t> {};
 struct local_mem_type : detail::info_descriptor<info::local_mem_type> {};
 struct local_mem_size : detail::info_descriptor<uint64_t> {};
 struct error_correction_support : detail::info_descriptor<bool> {};
@@ -131,11 +131,11 @@ struct atomic_fence_scope_capabilities : detail::info_descriptor<std::vector<syc
 struct profiling_timer_resolution : detail::info_descriptor<size_t> {};
 struct is_endian_little : detail::info_descriptor<bool> {};
 struct is_available : detail::info_descriptor<bool> {};
-struct [[deprecated]] is_compiler_available : detail::info_descriptor<bool> {};
-struct [[deprecated]] is_linker_available : detail::info_descriptor<bool> {};
+struct SIMSYCL_DETAIL_DEPRECATED_IN_SYCL is_compiler_available : detail::info_descriptor<bool> {};
+struct SIMSYCL_DETAIL_DEPRECATED_IN_SYCL is_linker_available : detail::info_descriptor<bool> {};
 struct execution_capabilities : detail::info_descriptor<std::vector<info::execution_capability>> {};
-struct [[deprecated]] queue_profiling : detail::info_descriptor<bool> {};
-struct [[deprecated]] built_in_kernels : detail::info_descriptor<std::vector<std::string>> {};
+struct SIMSYCL_DETAIL_DEPRECATED_IN_SYCL queue_profiling : detail::info_descriptor<bool> {};
+struct SIMSYCL_DETAIL_DEPRECATED_IN_SYCL built_in_kernels : detail::info_descriptor<std::vector<std::string>> {};
 struct built_in_kernel_ids : detail::info_descriptor<std::vector<sycl::kernel_id>> {};
 struct platform : detail::info_descriptor<sycl::platform> {};
 struct name : detail::info_descriptor<std::string> {};
@@ -145,7 +145,7 @@ struct profile : detail::info_descriptor<std::string> {};
 struct version : detail::info_descriptor<std::string> {};
 struct backend_version : detail::info_descriptor<std::string> {};
 struct aspects : detail::info_descriptor<std::vector<sycl::aspect>> {};
-struct [[deprecated]] extensions : detail::info_descriptor<std::vector<std::string>> {};
+struct SIMSYCL_DETAIL_DEPRECATED_IN_SYCL extensions : detail::info_descriptor<std::vector<std::string>> {};
 struct printf_buffer_size : detail::info_descriptor<size_t> {};
 struct preferred_interop_user_sync : detail::info_descriptor<bool> {};
 struct parent_device : detail::info_descriptor<sycl::device> {};
@@ -200,7 +200,7 @@ struct profile : detail::info_descriptor<std::string> {};
 struct version : detail::info_descriptor<std::string> {};
 struct name : detail::info_descriptor<std::string> {};
 struct vendor : detail::info_descriptor<std::string> {};
-struct [[deprecated]] extensions : detail::info_descriptor<std::vector<std::string>> {};
+struct SIMSYCL_DETAIL_DEPRECATED_IN_SYCL extensions : detail::info_descriptor<std::vector<std::string>> {};
 
 } // namespace simsycl::sycl::info::platform
 

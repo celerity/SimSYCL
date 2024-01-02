@@ -79,7 +79,7 @@ class handler {
     }
 
     template<typename KernelName = simsycl::detail::unnamed_kernel, typename KernelType, int Dimensions>
-    [[deprecated("Deprecated in SYCL 2020")]] void parallel_for(
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL void parallel_for(
         range<Dimensions> num_work_items, id<Dimensions> work_item_offset, KernelType &&kernel_func) {
         simsycl::detail::parallel_for(num_work_items, work_item_offset, kernel_func);
     }

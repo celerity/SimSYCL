@@ -34,49 +34,53 @@ class sub_group {
 
     // synchronization functions
 
-    [[deprecated("use freestanding function group_barrier instead")]] void barrier() const { SIMSYCL_NOT_IMPLEMENTED; }
-
-    [[deprecated("use freestanding function group_barrier instead")]] void barrier(access::fence_space space) const {
-        SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(space);
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL_V("use freestanding function group_barrier instead") void barrier() const {
+        SIMSYCL_NOT_IMPLEMENTED;
     }
+
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL_V("use freestanding function group_barrier instead")
+    void barrier(access::fence_space space) const { SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(space); }
 
     // deprecated collective functions
     template<typename T>
-    [[deprecated("use freestanding function group_broadcast instead")]] T broadcast(T x, id<1> local_id) const {
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL_V("use freestanding function group_broadcast instead")
+    T broadcast(T x, id<1> local_id) const {
         SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(x, local_id);
     }
 
     template<typename T, class BinaryOperation>
-    [[deprecated("use freestanding function group_reduce instead")]] T reduce(T x, BinaryOperation op) const {
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL_V("use freestanding function group_reduce instead")
+    T reduce(T x, BinaryOperation op) const {
         SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(x, op);
     }
 
     template<typename T, class BinaryOperation>
-    [[deprecated("use freestanding function group_reduce instead")]] T reduce(T x, T init, BinaryOperation op) const {
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL_V("use freestanding function group_reduce instead")
+    T reduce(T x, T init, BinaryOperation op) const {
         SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(x, init, op);
     }
 
     template<typename T, class BinaryOperation>
-    [[deprecated("use freestanding function exclusive_scan_over_group instead")]] T exclusive_scan(
-        T x, BinaryOperation op) const {
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL_V("use freestanding function exclusive_scan_over_group instead")
+    T exclusive_scan(T x, BinaryOperation op) const {
         SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(x, op);
     }
 
     template<typename T, class BinaryOperation>
-    [[deprecated("use freestanding function exclusive_scan_over_group instead")]] T exclusive_scan(
-        T x, T init, BinaryOperation op) const {
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL_V("use freestanding function exclusive_scan_over_group instead")
+    T exclusive_scan(T x, T init, BinaryOperation op) const {
         SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(x, init, op);
     }
 
     template<typename T, class BinaryOperation>
-    [[deprecated("use freestanding function inclusive_scan_over_group instead")]] T inclusive_scan(
-        T x, BinaryOperation op) const {
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL_V("use freestanding function inclusive_scan_over_group instead")
+    T inclusive_scan(T x, BinaryOperation op) const {
         SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(x, op);
     }
 
     template<typename T, class BinaryOperation>
-    [[deprecated("use freestanding function inclusive_scan_over_group instead")]] T inclusive_scan(
-        T x, T init, BinaryOperation op) const {
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL_V("use freestanding function inclusive_scan_over_group instead")
+    T inclusive_scan(T x, T init, BinaryOperation op) const {
         SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(x, init, op);
     }
 

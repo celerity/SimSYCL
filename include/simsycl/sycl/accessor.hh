@@ -288,9 +288,9 @@ class accessor : public simsycl::detail::property_interface {
 
     size_type max_size() const noexcept { return std::numeric_limits<size_t>::max() / sizeof(DataT); }
 
-    [[deprecated]] size_t get_size() const { return byte_size(); }
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL size_t get_size() const { return byte_size(); }
 
-    [[deprecated]] size_t get_count() const { return size(); }
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL size_t get_count() const { return size(); }
 
     bool empty() const noexcept { return m_access_range.size() == 0; }
 
@@ -312,7 +312,8 @@ class accessor : public simsycl::detail::property_interface {
         return m_buffer[detail::get_linear_index(m_access_range, index)];
     }
 
-    [[deprecated]] atomic<DataT, access::address_space::global_space> operator[](id<Dimensions> index) const
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL atomic<DataT, access::address_space::global_space> operator[](
+        id<Dimensions> index) const
         requires(AccessMode == access_mode::atomic);
 
     decltype(auto) operator[](size_t index) const
@@ -502,9 +503,9 @@ class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> : public simsy
 
     size_type max_size() const noexcept { return 1; }
 
-    [[deprecated]] size_t get_size() const { return byte_size(); }
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL size_t get_size() const { return byte_size(); }
 
-    [[deprecated]] size_t get_count() const { return size(); }
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL size_t get_count() const { return size(); }
 
     bool empty() const noexcept { return false; }
 
@@ -534,7 +535,7 @@ class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> : public simsy
         return *this;
     }
 
-    [[deprecated]] operator atomic<DataT, access::address_space::global_space>() const
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL operator atomic<DataT, access::address_space::global_space>() const
         requires(AccessMode == access_mode::atomic);
 
     std::add_pointer_t<value_type> get_pointer() const noexcept {
@@ -626,7 +627,9 @@ class local_accessor final : public simsycl::detail::property_interface {
 
     decltype(auto) operator[](size_t index) const { return detail::subscript<Dimensions>(*this, index); }
 
-    [[deprecated]] local_ptr<DataT> get_pointer() const noexcept { return local_ptr<DataT>(get_allocation()); }
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL local_ptr<DataT> get_pointer() const noexcept {
+        return local_ptr<DataT>(get_allocation());
+    }
 
     template<access::decorated IsDecorated>
     accessor_ptr<IsDecorated> get_multi_ptr() const noexcept {
@@ -697,9 +700,9 @@ class local_accessor<DataT, 0> final : public simsycl::detail::property_interfac
 
     size_type max_size() const noexcept { return 1; }
 
-    [[deprecated]] size_t get_size() const { return byte_size(); }
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL size_t get_size() const { return byte_size(); }
 
-    [[deprecated]] size_t get_count() const { return 1; }
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL size_t get_count() const { return 1; }
 
     bool empty() const noexcept { return false; }
 
@@ -922,9 +925,9 @@ class host_accessor<DataT, 0, AccessMode> : public simsycl::detail::property_int
 
     size_type max_size() const noexcept { return 1; }
 
-    [[deprecated]] size_t get_size() const { return byte_size(); }
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL size_t get_size() const { return byte_size(); }
 
-    [[deprecated]] size_t get_count() const { return size(); }
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL size_t get_count() const { return size(); }
 
     bool empty() const noexcept { return false; }
 

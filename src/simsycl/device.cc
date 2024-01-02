@@ -464,7 +464,7 @@ bool device::has(aspect asp) const {
     return std::find(state().config.aspects.begin(), state().config.aspects.end(), asp) != state().config.aspects.end();
 }
 
-[[deprecated]] bool device::has_extension(const std::string &extension) const {
+SIMSYCL_DETAIL_DEPRECATED_IN_SYCL bool device::has_extension(const std::string &extension) const {
     return std::find(state().config.extensions.begin(), state().config.extensions.end(), extension)
         != state().config.extensions.end();
 }

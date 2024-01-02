@@ -68,10 +68,10 @@ class group {
     group() = delete;
 
     // TODO not in the spec, remove
-    [[deprecated("use sycl::group::get_group_id")]] id_type get_id() const { return get_group_id(); }
+    [[deprecated("non-standard, use sycl::group::get_group_id")]] id_type get_id() const { return get_group_id(); }
 
     // TODO not in the spec, remove
-    [[deprecated("use sycl::group::get_group_id")]] size_t get_id(int dimension) const {
+    [[deprecated("non-standard, use sycl::group::get_group_id")]] size_t get_id(int dimension) const {
         return get_group_id(dimension);
     }
 
@@ -79,7 +79,7 @@ class group {
 
     size_t get_group_id(int dimension) const { return m_group_item.get_id()[dimension]; }
 
-    [[deprecated("deprecated in SYCL2020")]] range<Dimensions> get_global_range() const {
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL range<Dimensions> get_global_range() const {
         SIMSYCL_CHECK(
             !m_hierarchical && "get_global_range is not supported for from within a parallel_for_work_item context");
         return m_global_item.get_range();
@@ -137,7 +137,7 @@ class group {
 
     size_t operator[](int dimension) const { return m_group_item.get_id()[dimension]; }
 
-    [[deprecated("use sycl::group::get_group_linear_id")]] size_t get_linear_id() const {
+    [[deprecated("non-standard, use sycl::group::get_group_linear_id")]] size_t get_linear_id() const {
         return get_group_linear_id();
     }
 
@@ -225,25 +225,25 @@ class group {
     }
 
     template<typename DataT>
-    [[deprecated]] device_event async_work_group_copy(
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL device_event async_work_group_copy(
         local_ptr<DataT> dest, global_ptr<DataT> src, size_t num_elements) const {
         std::copy_n(src.get(), num_elements, dest.get());
     }
 
     template<typename DataT>
-    [[deprecated]] device_event async_work_group_copy(
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL device_event async_work_group_copy(
         global_ptr<DataT> dest, local_ptr<DataT> src, size_t num_elements) const {
         std::copy_n(src.get(), num_elements, dest.get());
     }
 
     template<typename DataT>
-    [[deprecated]] device_event async_work_group_copy(
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL device_event async_work_group_copy(
         local_ptr<DataT> dest, global_ptr<DataT> src, size_t num_elements, size_t src_stride) const {
         for(size_t i = 0; i < num_elements; ++i) { dest[i] = src[i * src_stride]; }
     }
 
     template<typename DataT>
-    [[deprecated]] device_event async_work_group_copy(
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL device_event async_work_group_copy(
         global_ptr<DataT> dest, local_ptr<DataT> src, size_t num_elements, size_t dest_stride) const {
         for(size_t i = 0; i < num_elements; ++i) { dest[i * dest_stride] = src[i]; }
     }

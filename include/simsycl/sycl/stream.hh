@@ -55,11 +55,11 @@ class stream : public detail::reference_type<stream, detail::stream_state>, publ
 
     size_t size() const noexcept { return state().total_buffer_size; }
 
-    [[deprecated]] size_t get_size() const { return size(); }
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL size_t get_size() const { return size(); }
 
     size_t get_work_item_buffer_size() const { return state().work_item_buffer_size; }
 
-    [[deprecated]] size_t get_max_statement_size() const { return get_work_item_buffer_size(); }
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL size_t get_max_statement_size() const { return get_work_item_buffer_size(); }
 };
 
 template<typename T>

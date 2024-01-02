@@ -290,9 +290,9 @@ class swizzled_vec {
 
     static constexpr size_t size() noexcept { return num_elements; }
 
-    [[deprecated]] size_t get_size() const { return byte_size(); }
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL size_t get_size() const { return byte_size(); }
 
-    [[deprecated]] size_t get_count() const { return size(); }
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL size_t get_count() const { return size(); }
 
     template<typename ConvertT, sycl::rounding_mode RoundingMode = sycl::rounding_mode::automatic>
     sycl::vec<ConvertT, num_elements> convert() const {
@@ -557,9 +557,9 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
 
     static constexpr size_t size() noexcept { return NumElements; }
 
-    [[deprecated]] size_t get_size() const { return byte_size(); }
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL size_t get_size() const { return byte_size(); }
 
-    [[deprecated]] size_t get_count() const { return size(); }
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL size_t get_count() const { return size(); }
 
     template<typename ConvertT, rounding_mode RoundingMode = rounding_mode::automatic>
     vec<ConvertT, NumElements> convert() const {

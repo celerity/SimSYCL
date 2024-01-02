@@ -79,46 +79,46 @@ class nd_item {
 
     SIMSYCL_START_IGNORING_DEPRECATIONS
 
-    [[deprecated("offsets are deprecated in SYCL 2020")]] id<Dimensions> get_offset() const {
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL_V("offsets are deprecated in SYCL 2020") id<Dimensions> get_offset() const {
         return m_global_item.get_offset();
     }
 
-    [[deprecated("use sycl::group_barrier() free function instead")]] void barrier(
-        access::fence_space access_space = access::fence_space::global_and_local) const {
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL_V("use sycl::group_barrier() free function instead")
+    void barrier(access::fence_space access_space = access::fence_space::global_and_local) const {
         (void)access_space;
         detail::yield_to_kernel_scheduler();
     }
 
     template<access::mode AccessMode = access_mode::read_write>
-    [[deprecated("use sycl::atomic_fence() free function instead")]] void mem_fence(
-        typename std::enable_if_t<AccessMode == access_mode::read || AccessMode == access_mode::write
-                || AccessMode == access_mode::read_write,
-            access::fence_space>
-            access_space
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL_V("use sycl::atomic_fence() free function instead")
+    void mem_fence(typename std::enable_if_t<AccessMode == access_mode::read || AccessMode == access_mode::write
+                           || AccessMode == access_mode::read_write,
+                       access::fence_space>
+                       access_space
         = access::fence_space::global_and_local) const {
         SIMSYCL_NOT_IMPLEMENTED(access_space);
     }
 
     template<typename DataT>
-    [[deprecated]] device_event async_work_group_copy(
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL device_event async_work_group_copy(
         local_ptr<DataT> dest, global_ptr<DataT> src, size_t num_elements) const {
         m_group.async_work_group_copy(dest, src, num_elements);
     }
 
     template<typename DataT>
-    [[deprecated]] device_event async_work_group_copy(
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL device_event async_work_group_copy(
         global_ptr<DataT> dest, local_ptr<DataT> src, size_t num_elements) const {
         m_group.async_work_group_copy(dest, src, num_elements);
     }
 
     template<typename DataT>
-    [[deprecated]] device_event async_work_group_copy(
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL device_event async_work_group_copy(
         local_ptr<DataT> dest, global_ptr<DataT> src, size_t num_elements, size_t src_stride) const {
         m_group.async_work_group_copy(dest, src, num_elements, src_stride);
     }
 
     template<typename DataT>
-    [[deprecated]] device_event async_work_group_copy(
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL device_event async_work_group_copy(
         global_ptr<DataT> dest, local_ptr<DataT> src, size_t num_elements, size_t dest_stride) const {
         m_group.async_work_group_copy(dest, src, num_elements, dest_stride);
     }

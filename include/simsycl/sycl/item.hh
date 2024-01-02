@@ -38,7 +38,7 @@ class item {
 
     size_t get_range(int dimension) const { return m_range[dimension]; }
 
-    [[deprecated("Deprecated in SYCL 2020")]] id<Dimensions> get_offset() const
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL id<Dimensions> get_offset() const
         requires WithOffset
     {
         return m_offset;

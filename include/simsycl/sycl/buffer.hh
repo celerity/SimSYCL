@@ -230,12 +230,12 @@ class buffer final : public detail::reference_type<buffer<T, Dimensions, Allocat
     SIMSYCL_START_IGNORING_DEPRECATIONS
 
     template<access_mode Mode>
-    [[deprecated]] accessor<T, Dimensions, Mode, target::host_buffer> get_access() {
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL accessor<T, Dimensions, Mode, target::host_buffer> get_access() {
         accessor<T, Dimensions, Mode, target::host_buffer>(*this);
     }
 
     template<access_mode Mode>
-    [[deprecated]] accessor<T, Dimensions, Mode, target::host_buffer> get_access(
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL accessor<T, Dimensions, Mode, target::host_buffer> get_access(
         range<Dimensions> access_range, id<Dimensions> access_offset = {}) {
         accessor<T, Dimensions, Mode, target::host_buffer>(*this, access_range, access_offset);
     }

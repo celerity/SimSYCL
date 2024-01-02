@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../detail/preprocessor.hh"
+
 namespace simsycl::sycl {
 
 enum class addressing_mode { mirrored_repeat, repeat, clamp_to_edge, clamp, none };
@@ -18,9 +20,9 @@ enum class access_mode {
     read,
     write,
     read_write,
-    discard_write [[deprecated]],
-    discard_read_write [[deprecated]],
-    atomic [[deprecated]]
+    discard_write SIMSYCL_DETAIL_DEPRECATED_IN_SYCL,
+    discard_read_write SIMSYCL_DETAIL_DEPRECATED_IN_SYCL,
+    atomic SIMSYCL_DETAIL_DEPRECATED_IN_SYCL
 };
 
 enum class aspect {
@@ -120,25 +122,31 @@ enum class stream_manipulator {
 enum class target {
     device,
     host_task,
-    constant_buffer [[deprecated]],
-    local [[deprecated]],
-    host_buffer [[deprecated]],
-    global_buffer [[deprecated]] = device,
+    constant_buffer SIMSYCL_DETAIL_DEPRECATED_IN_SYCL,
+    local SIMSYCL_DETAIL_DEPRECATED_IN_SYCL,
+    host_buffer SIMSYCL_DETAIL_DEPRECATED_IN_SYCL,
+    global_buffer SIMSYCL_DETAIL_DEPRECATED_IN_SYCL = device,
 };
 
 } // namespace simsycl::sycl
 
 namespace simsycl::sycl::access {
 
-enum class address_space { global_space, local_space, constant_space [[deprecated]], private_space, generic_space };
+enum class address_space {
+    global_space,
+    local_space,
+    constant_space SIMSYCL_DETAIL_DEPRECATED_IN_SYCL,
+    private_space,
+    generic_space
+};
 
 enum class decorated { no, yes, legacy };
 
-using mode [[deprecated]] = sycl::access_mode;
+using mode SIMSYCL_DETAIL_DEPRECATED_IN_SYCL = sycl::access_mode;
 
-using target [[deprecated]] = sycl::target;
+using target SIMSYCL_DETAIL_DEPRECATED_IN_SYCL = sycl::target;
 
-enum class [[deprecated]] placeholder { false_t, true_t };
+enum class SIMSYCL_DETAIL_DEPRECATED_IN_SYCL placeholder { false_t, true_t };
 
 enum class fence_space { local_space, global_space, global_and_local };
 

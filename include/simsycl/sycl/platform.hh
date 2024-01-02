@@ -51,7 +51,7 @@ class platform final : public detail::reference_type<platform, detail::platform_
 
     bool has(aspect asp) const;
 
-    [[deprecated]] bool has_extension(const std::string &extension) const;
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL bool has_extension(const std::string &extension) const;
 
     static std::vector<platform> get_platforms();
 

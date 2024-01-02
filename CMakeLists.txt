@@ -46,12 +46,9 @@ FetchContent_MakeAvailable(nlohmann_json)
 
 include(CheckTypeSize)
 check_type_size(_Float16 FLOAT16 BUILTIN_TYPES_ONLY LANGUAGE CXX)
-if (HAVE_FLOAT16)
-  set(SIMSYCL_FEATURE_HALF_TYPE 1)
-else ()
-  set(SIMSYCL_FEATURE_HALF_TYPE 0)
-endif()
+set (SIMSYCL_FEATURE_HALF_TYPE ${HAVE_FLOAT16})
 
+option(SIMSYCL_ANNOTATE_SYCL_DEPRECATIONS "Wether to annotate deprecated SYCL APIs with [[deprecated]]" ON)
 set(SIMSYCL_ENABLE_ASAN OFF CACHE BOOL "Whether to enable address sanitizer")
 set(SIMSYCL_CHECK_MODE "SIMSYCL_CHECK_ABORT" CACHE STRING "Check mode to use")
 

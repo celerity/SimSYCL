@@ -83,7 +83,7 @@ class device final : public detail::reference_type<device, detail::device_state>
 
     bool has(aspect asp) const;
 
-    [[deprecated]] bool has_extension(const std::string &extension) const;
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL bool has_extension(const std::string &extension) const;
 
     template<info::partition_property Prop,
         std::enable_if_t<Prop == info::partition_property::partition_equally, int> = 0>
