@@ -5,6 +5,7 @@
 #include "h_item.hh"
 #include "id.hh"
 #include "item.hh"
+#include "multi_ptr.hh"
 #include "range.hh"
 #include "type_traits.hh"
 
@@ -50,6 +51,11 @@ class hierarchical_group_size_setter {
 
 namespace simsycl::sycl {
 
+class device_event {
+  public:
+    void wait() noexcept {}
+};
+
 template<int Dimensions>
 class group {
   public:
@@ -61,8 +67,10 @@ class group {
 
     group() = delete;
 
+    // TODO not in the spec, remove
     [[deprecated("use sycl::group::get_group_id")]] id_type get_id() const { return get_group_id(); }
 
+    // TODO not in the spec, remove
     [[deprecated("use sycl::group::get_group_id")]] size_t get_id(int dimension) const {
         return get_group_id(dimension);
     }
@@ -199,6 +207,7 @@ class group {
         }
     }
 
+    // TODO not in the spec, remove
     template<access_mode AccessMode = access_mode::read_write>
     void mem_fence(typename std::enable_if_t<AccessMode == access_mode::read || AccessMode == access_mode::write
                            || AccessMode == access_mode::read_write,
@@ -213,6 +222,58 @@ class group {
     void wait_for(Events... events) const {
         simsycl::detail::sink{events...};
         // wait_for is a no-op in SimSYCL
+    }
+
+    template<typename DataT>
+    [[deprecated]] device_event async_work_group_copy(
+        local_ptr<DataT> dest, global_ptr<DataT> src, size_t num_elements) const {
+        std::copy_n(src.get(), num_elements, dest.get());
+    }
+
+    template<typename DataT>
+    [[deprecated]] device_event async_work_group_copy(
+        global_ptr<DataT> dest, local_ptr<DataT> src, size_t num_elements) const {
+        std::copy_n(src.get(), num_elements, dest.get());
+    }
+
+    template<typename DataT>
+    [[deprecated]] device_event async_work_group_copy(
+        local_ptr<DataT> dest, global_ptr<DataT> src, size_t num_elements, size_t src_stride) const {
+        for(size_t i = 0; i < num_elements; ++i) { dest[i] = src[i * src_stride]; }
+    }
+
+    template<typename DataT>
+    [[deprecated]] device_event async_work_group_copy(
+        global_ptr<DataT> dest, local_ptr<DataT> src, size_t num_elements, size_t dest_stride) const {
+        for(size_t i = 0; i < num_elements; ++i) { dest[i * dest_stride] = src[i]; }
+    }
+
+    template<typename DestDataT, typename SrcDataT>
+        requires(std::is_same_v<DestDataT, std::remove_const_t<SrcDataT>>)
+    device_event async_work_group_copy(
+        decorated_local_ptr<DestDataT> dest, decorated_global_ptr<SrcDataT> src, size_t num_elements) const {
+        std::copy_n(src.get(), num_elements, dest.get());
+    }
+
+    template<typename DestDataT, typename SrcDataT>
+        requires(std::is_same_v<DestDataT, std::remove_const_t<SrcDataT>>)
+    device_event async_work_group_copy(
+        decorated_global_ptr<DestDataT> dest, decorated_local_ptr<SrcDataT> src, size_t num_elements) const {
+        std::copy_n(src.get(), num_elements, dest.get());
+    }
+
+    template<typename DestDataT, typename SrcDataT>
+        requires(std::is_same_v<DestDataT, std::remove_const_t<SrcDataT>>)
+    device_event async_work_group_copy(decorated_local_ptr<DestDataT> dest, decorated_global_ptr<SrcDataT> src,
+        size_t num_elements, size_t src_stride) const {
+        for(size_t i = 0; i < num_elements; ++i) { dest[i] = src[i * src_stride]; }
+    }
+
+    template<typename DestDataT, typename SrcDataT>
+        requires(std::is_same_v<DestDataT, std::remove_const_t<SrcDataT>>)
+    device_event async_work_group_copy(decorated_global_ptr<DestDataT> dest, decorated_local_ptr<SrcDataT> src,
+        size_t num_elements, size_t dest_stride) const {
+        for(size_t i = 0; i < num_elements; ++i) { dest[i * dest_stride] = src[i]; }
     }
 
     friend bool operator==(const group<Dimensions> &lhs, const group<Dimensions> &rhs) {

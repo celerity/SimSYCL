@@ -65,8 +65,9 @@ namespace simsycl::sycl {
 // TODO consider moving this to a different header.
 using std::bit_cast;
 
+// approximation. must inherit to allow specialization
 template<typename T>
-using is_device_copyable = std::is_nothrow_copy_constructible<T>; // approximation
+struct is_device_copyable : std::is_nothrow_copy_constructible<T> {};
 
 template<typename T>
 inline constexpr bool is_device_copyable_v = is_device_copyable<T>::value;

@@ -131,6 +131,7 @@ add_library(simsycl
     include/simsycl/sycl/type_traits.hh
     include/simsycl/sycl/usm.hh
     include/simsycl/sycl/vec.hh
+    include/simsycl/macros.hh
     include/simsycl/system.hh
     ${CONFIG_PATH}
     src/simsycl/check.cc

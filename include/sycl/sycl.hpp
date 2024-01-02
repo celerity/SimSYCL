@@ -1,5 +1,8 @@
 #pragma once
 
-#include "../simsycl/sycl.hh" // IWYU pragma: keep
+// IWYU pragma: begin_keep
+#include "../simsycl/macros.hh"
+#include "../simsycl/sycl.hh"
+// IWYU pragma: end_keep
 
 namespace sycl = simsycl::sycl;
