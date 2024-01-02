@@ -4,6 +4,8 @@
 #define SYCL_SIMPLE_SWIZZLES
 #include <sycl/sycl.hpp>
 
+#include "test_utils.hh"
+
 using namespace sycl;
 
 TEST_CASE("Length function works as expected", "[math][geometric]") {
@@ -64,10 +66,20 @@ TEST_CASE("Distance function works as expected", "[math][geometric]") {
 }
 
 TEST_CASE("Clamp function works as expected", "[math]") {
+    using simsycl::test::check_bool_vec;
+
     int x = 8;
     CHECK(clamp(x, 0, 10) == 8);
     CHECK(clamp(x, 0, 5) == 5);
     CHECK(clamp(x, 10, 20) == 10);
-    // vec<int, 4> v1 = {1, 2, 3, 4};
-    // CHECK(clamp(v1, 0, 10) == v1);
+
+    vec<int, 4> v1 = {1, 2, 3, 4};
+    CHECK(check_bool_vec(clamp(v1, v1, v1) == v1));
+    CHECK(check_bool_vec(clamp(v1, 0, 10) == v1));
+    CHECK(check_bool_vec(clamp(v1, v1.gggg(), v1.bbbb()) == v1.ggbb()));
+
+    vec<float, 4> v2 = {1.f, 2.f, 3.f, 4.f};
+    CHECK(check_bool_vec(clamp(v2, v2, v2) == v2));
+    CHECK(check_bool_vec(clamp(v2, 0, 10) == v2));
+    CHECK(check_bool_vec(clamp(v2, v2.zzzz(), v2.wwww()) == v2.zzzw()));
 }

@@ -94,6 +94,16 @@ auto sum(const T &f) {
     return f;
 }
 
+template<NonScalar T1, NonScalar T2, NonScalar T3>
+    requires(non_scalar_num_elements_v<T1> == non_scalar_num_elements_v<T2>
+        && non_scalar_num_elements_v<T1> == non_scalar_num_elements_v<T3>)
+auto component_wise_op(const T1 &f1, const T2 &f2, const T3 &f3, auto op) {
+    using ret_t = sycl::vec<decltype(op(f1[0], f2[0], f3[0])), non_scalar_num_elements_v<T1>>;
+    ret_t ret;
+    for(int i = 0; i < non_scalar_num_elements_v<T1>; ++i) { ret[i] = op(f1[i], f2[i], f3[i]); }
+    return ret;
+}
+
 template<typename T>
 struct element_type {};
 

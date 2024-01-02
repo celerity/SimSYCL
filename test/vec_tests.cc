@@ -3,17 +3,12 @@
 #define SYCL_SIMPLE_SWIZZLES
 #include <sycl/sycl.hpp>
 
+#include "test_utils.hh"
+
 using namespace simsycl;
+using simsycl::test::check_bool_vec;
 
 // this test has no pretentions of being exhaustive, it just instantiates a subset and does basic checks
-
-template<int Dimensions>
-bool check_bool_vec(sycl::vec<bool, Dimensions> a) {
-    for(int i = 0; i < Dimensions; ++i) {
-        if(!a[i]) { return false; }
-    }
-    return true;
-}
 
 TEST_CASE("Compile time vector operations work as expected", "[vec]") {
     CHECK(detail::generic_num_elements_v<float> == 1);
