@@ -80,17 +80,6 @@ void sequential_for(const sycl::range<3> &range, const sycl::id<3> &offset, Func
 }
 
 
-template<int Dimensions>
-sycl::id<Dimensions> linear_index_to_id(const sycl::range<Dimensions> &range, size_t linear_index) {
-    sycl::id<Dimensions> id;
-    for(int d = Dimensions - 1; d >= 0; --d) {
-        id[d] = linear_index % range[d];
-        linear_index /= range[d];
-    }
-    return id;
-}
-
-
 struct local_memory_requirement {
     std::unique_ptr<void *> ptr;
     size_t size = 0;

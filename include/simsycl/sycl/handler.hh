@@ -17,6 +17,7 @@
 #include "range.hh"
 
 #include "../detail/schedule.hh"
+#include "../detail/nd_memory.hh"
 
 
 namespace simsycl::sycl {

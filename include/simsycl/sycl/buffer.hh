@@ -125,11 +125,11 @@ class buffer final : public detail::reference_type<buffer<T, Dimensions, Allocat
                          detail::buffer_state<std::remove_const_t<T>, Dimensions, AllocatorT>>,
                      public detail::property_interface {
   private:
-    using reference_type = detail::reference_type<buffer<T, Dimensions, AllocatorT>,
-        detail::buffer_state<std::remove_const_t<T>, Dimensions, AllocatorT>>;
+    using state_type = detail::buffer_state<std::remove_const_t<T>, Dimensions, AllocatorT>;
+    using reference_type = detail::reference_type<buffer<T, Dimensions, AllocatorT>, state_type>;
+    using write_back_fn = typename state_type::write_back_fn;
     using property_compatibility = detail::property_compatibility_with<buffer<T, Dimensions, AllocatorT>,
         property::buffer::use_host_ptr, property::buffer::use_mutex, property::buffer::context_bound>;
-    using typename reference_type::state_type;
 
   public:
     using value_type = T;
@@ -145,10 +145,12 @@ class buffer final : public detail::reference_type<buffer<T, Dimensions, Allocat
           property_interface(prop_list, property_compatibility()) {}
 
     buffer(T *host_data, const range<Dimensions> &buffer_range, const property_list &prop_list = {})
+        requires(!std::is_const_v<T>)
         : buffer(host_data, buffer_range, AllocatorT(), prop_list) {}
 
     buffer(
         T *host_data, const range<Dimensions> &buffer_range, AllocatorT allocator, const property_list &prop_list = {})
+        requires(!std::is_const_v<T>)
         : property_interface(prop_list, property_compatibility()),
           reference_type(std::in_place, buffer_range, allocator, host_data, write_back_to(host_data)) {}
 
@@ -171,9 +173,10 @@ class buffer final : public detail::reference_type<buffer<T, Dimensions, Allocat
 
     buffer(const std::shared_ptr<T> &host_data, const range<Dimensions> &buffer_range, AllocatorT allocator,
         const property_list &prop_list = {})
+        requires(!std::is_const_v<T>)
         : property_interface(prop_list, property_compatibility()),
-          reference_type(
-              std::in_place, buffer_range, allocator, host_data.get(), write_back_to(host_data.get()), host_data) {}
+          reference_type(std::in_place, buffer_range, allocator, host_data.get(),
+              write_back_to_if_non_const(host_data.get()), host_data) {}
 
     buffer(
         const std::shared_ptr<T> &host_data, const range<Dimensions> &buffer_range, const property_list &prop_list = {})
@@ -182,8 +185,8 @@ class buffer final : public detail::reference_type<buffer<T, Dimensions, Allocat
     buffer(const std::shared_ptr<T[]> &host_data, const range<Dimensions> &buffer_range, AllocatorT allocator,
         const property_list &prop_list = {})
         : property_interface(prop_list, property_compatibility()),
-          reference_type(
-              std::in_place, buffer_range, allocator, host_data.get(), write_back_to(host_data.get()), host_data) {}
+          reference_type(std::in_place, buffer_range, allocator, host_data.get(),
+              write_back_to_if_non_const(host_data.get()), host_data) {}
 
     buffer(const std::shared_ptr<T[]> &host_data, const range<Dimensions> &buffer_range,
         const property_list &prop_list = {})
@@ -231,13 +234,13 @@ class buffer final : public detail::reference_type<buffer<T, Dimensions, Allocat
 
     template<access_mode Mode>
     SIMSYCL_DETAIL_DEPRECATED_IN_SYCL accessor<T, Dimensions, Mode, target::host_buffer> get_access() {
-        accessor<T, Dimensions, Mode, target::host_buffer>(*this);
+        return accessor<T, Dimensions, Mode, target::host_buffer>(*this);
     }
 
     template<access_mode Mode>
     SIMSYCL_DETAIL_DEPRECATED_IN_SYCL accessor<T, Dimensions, Mode, target::host_buffer> get_access(
         range<Dimensions> access_range, id<Dimensions> access_offset = {}) {
-        accessor<T, Dimensions, Mode, target::host_buffer>(*this, access_range, access_offset);
+        return accessor<T, Dimensions, Mode, target::host_buffer>(*this, access_range, access_offset);
     }
 
     SIMSYCL_STOP_IGNORING_DEPRECATIONS
@@ -290,19 +293,27 @@ class buffer final : public detail::reference_type<buffer<T, Dimensions, Allocat
 
     using reference_type::state;
 
-    static auto write_back_to(T out) {
+    static write_back_fn write_back_to(T out) {
         return [out](const T *buffer, size_t size) { return memcpy(out, buffer, size * sizeof(T)); };
     }
 
-    static auto write_back_to(std::weak_ptr<T> out) {
+    static write_back_fn write_back_to(std::weak_ptr<T> out) {
         return [out](const T *buffer, size_t size) {
             if(const auto live = out.lock()) { return memcpy(live.get(), buffer, size * sizeof(T)); }
         };
     }
 
     template<typename OutputIterator>
-    static auto write_back_to(OutputIterator out) {
+    static write_back_fn write_back_to(OutputIterator out) {
         return [out](const T *buffer, size_t size) { return std::copy_n(buffer, size, out); };
+    }
+
+    static write_back_fn write_back_to_if_non_const(T *out) {
+        if constexpr(!std::is_const_v<T>) {
+            return write_back_to(out);
+        } else {
+            return {};
+        }
     }
 
     buffer(std::shared_ptr<state_type> &&state) : reference_type(std::move(state)) {}
