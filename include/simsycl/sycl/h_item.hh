@@ -61,6 +61,13 @@ class h_item {
 
     size_t get_physical_local_id(int dimension) const { return m_physical_local_item.get_id(dimension); }
 
+    friend bool operator==(const h_item &lhs, const h_item &rhs) {
+        return lhs.m_global_item == rhs.m_global_item && lhs.m_logical_local_item == rhs.m_logical_local_item
+            && lhs.m_physical_local_item == rhs.m_physical_local_item;
+    }
+
+    friend bool operator!=(const h_item &lhs, const h_item &rhs) { return !(lhs == rhs); }
+
   private:
     item<Dimensions, false> m_global_item;
     item<Dimensions, false> m_logical_local_item;
