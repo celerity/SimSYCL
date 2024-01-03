@@ -14,37 +14,39 @@
 
 namespace simsycl::detail {
 
+enum class group_type { nd_range, hierarchical_implicit_size, hierarchical_explicit_size };
+
 template<int Dimensions>
-sycl::group<Dimensions> make_group(const sycl::item<Dimensions, false> &local_item,
+sycl::group<Dimensions> make_group(const group_type type, const sycl::item<Dimensions, false> &local_item,
     const sycl::item<Dimensions, true> &global_item, const sycl::item<Dimensions, false> &group_item,
     detail::concurrent_group *impl) {
-    return sycl::group<Dimensions>(local_item, global_item, group_item, impl);
+    return sycl::group<Dimensions>(type, local_item, global_item, group_item, impl);
 }
 
 template<int Dimensions>
-sycl::group<Dimensions> make_hierarchical_group(const sycl::item<Dimensions, false> &group_item,
-    const std::optional<sycl::range<Dimensions>> &hier_local_range, detail::concurrent_group *impl) {
-    return sycl::group<Dimensions>(group_item, hier_local_range, impl);
+group_type get_group_type(const sycl::group<Dimensions> &g) {
+    return g.m_type;
 }
 
-template<int Dimensions>
-bool is_hierarchical_group(const sycl::group<Dimensions> &g) {
-    return g.m_hierarchical;
-}
-
-template<typename G>
+template<typename G, int Dimensions>
 class hierarchical_group_size_setter {
   public:
-    hierarchical_group_size_setter(G &g, size_t size) : m_g(g) {
-        m_old_size = get_concurrent_group(m_g).cur_hier_local_size;
-        get_concurrent_group(m_g).cur_hier_local_size = size;
+    hierarchical_group_size_setter(G &g, sycl::range<Dimensions> flexible_size)
+        : m_g(g), m_old_local_item(g.m_local_item), m_old_global_item(g.m_global_item) {
+        g.m_local_item = simsycl::detail::make_item(sycl::id<Dimensions>(), flexible_size);
+        g.m_global_item
+            = simsycl::detail::make_item(sycl::id<Dimensions>(), g.m_group_item.get_range() * flexible_size);
     }
 
-    ~hierarchical_group_size_setter() { get_concurrent_group(m_g).cur_hier_local_size = m_old_size; }
+    ~hierarchical_group_size_setter() {
+        m_g.m_local_item = m_old_local_item;
+        m_g.m_global_item = m_old_global_item;
+    }
 
   private:
     G &m_g;
-    size_t m_old_size;
+    sycl::item<Dimensions, false> m_old_local_item;
+    sycl::item<Dimensions, true> m_old_global_item;
 };
 
 } // namespace simsycl::detail
@@ -79,53 +81,35 @@ class group {
 
     size_t get_group_id(int dimension) const { return m_group_item.get_id()[dimension]; }
 
-    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL range<Dimensions> get_global_range() const {
+    [[deprecated("non-standard")]] range<Dimensions> get_global_range() const {
         SIMSYCL_CHECK(
-            !m_hierarchical && "get_global_range is not supported for from within a parallel_for_work_item context");
+            m_global_item.get_range().size() != 0 && "get_global_range called from hierarchical group scope?");
         return m_global_item.get_range();
     }
 
-    size_t get_global_range(int dimension) const {
-        SIMSYCL_CHECK(
-            !m_hierarchical && "get_global_range is not supported for from within a parallel_for_work_item context");
+    [[deprecated("non-standard")]] size_t get_global_range(int dimension) const {
         return get_global_range()[dimension];
     }
 
     id_type get_local_id() const {
-        SIMSYCL_CHECK(
-            !m_hierarchical && "get_local_id is not supported for from within a parallel_for_work_item context");
+        SIMSYCL_CHECK(m_type == detail::group_type::nd_range
+            && "get_local_id is not supported for from within a parallel_for_work_item context");
         return m_local_item.get_id();
     }
 
-    size_t get_local_id(int dimension) const {
-        SIMSYCL_CHECK(
-            !m_hierarchical && "get_local_id is not supported for from within a parallel_for_work_item context");
-        return get_local_id()[dimension];
-    }
+    size_t get_local_id(int dimension) const { return get_local_id()[dimension]; }
 
     size_t get_local_linear_id() const {
-        SIMSYCL_CHECK(
-            !m_hierarchical && "get_local_linear_id is not supported for from within a parallel_for_work_item context");
+        SIMSYCL_CHECK(m_type == detail::group_type::nd_range
+            && "get_local_linear_id is not supported for from within a parallel_for_work_item context");
         return m_local_item.get_linear_id();
     }
 
-    range_type get_local_range() const {
-        SIMSYCL_CHECK(
-            !m_hierarchical && "get_local_range is not supported for from within a parallel_for_work_item context");
-        return m_local_item.get_range();
-    }
+    range_type get_local_range() const { return m_local_item.get_range(); }
 
-    size_t get_local_range(int dimension) const {
-        SIMSYCL_CHECK(
-            !m_hierarchical && "get_local_range is not supported for from within a parallel_for_work_item context");
-        return get_local_range()[dimension];
-    }
+    size_t get_local_range(int dimension) const { return get_local_range()[dimension]; }
 
-    size_t get_local_linear_range() const {
-        SIMSYCL_CHECK(
-            !m_hierarchical && "get_local_range is not supported for from within a parallel_for_work_item context");
-        return get_local_range().size();
-    }
+    size_t get_local_linear_range() const { return get_local_range().size(); }
 
     range_type get_group_range() const { return m_group_item.get_range(); }
 
@@ -144,26 +128,27 @@ class group {
     size_t get_group_linear_id() const { return m_group_item.get_linear_id(); }
 
     bool leader() const {
-        SIMSYCL_CHECK(!m_hierarchical && "leader() is not supported for from within a parallel_for_work_item context");
+        SIMSYCL_CHECK(m_type == detail::group_type::nd_range
+            && "leader() is not supported for from within a parallel_for_work_item context");
         return (get_local_linear_id() == 0);
     }
 
     template<typename WorkItemFunctionT>
     void parallel_for_work_item(WorkItemFunctionT func) const {
-        SIMSYCL_CHECK(m_hierarchical
+        SIMSYCL_CHECK(m_type != detail::group_type::nd_range
             && "parallel_for_work_item is only supported for from within a parallel_for_work_item context");
-        SIMSYCL_CHECK(m_hier_local_range.has_value()
+        SIMSYCL_CHECK(m_type != detail::group_type::hierarchical_implicit_size
             && "parallel_for_work_item(func) without a range argument is only supported in a parallel_for_work_item "
                "context with a set local range");
-        parallel_for_work_item(m_hier_local_range.value(), func);
+        parallel_for_work_item(m_local_item.get_range(), func);
     }
 
     // All parallel_for_work_item calls within a given parallel_for_work_group execution must have the same dimensions
     template<typename WorkItemFunctionT>
     void parallel_for_work_item(range<Dimensions> flexible_range, WorkItemFunctionT func) const {
-        SIMSYCL_CHECK(m_hierarchical
+        SIMSYCL_CHECK(m_type != detail::group_type::nd_range
             && "parallel_for_work_item is only supported for from within a parallel_for_work_item context");
-        detail::hierarchical_group_size_setter set(*this, flexible_range.size());
+        detail::hierarchical_group_size_setter set(*this, flexible_range);
         if constexpr(Dimensions == 1) {
             for(size_t i = 0; i < flexible_range[0]; ++i) {
                 const auto global_id = m_group_item.get_id() * flexible_range[0] + i;
@@ -292,33 +277,27 @@ class group {
     friend bool operator!=(const group<Dimensions> &lhs, const group<Dimensions> &rhs) { return !(lhs == rhs); }
 
   private:
-    item<Dimensions, false /* WithOffset */> m_local_item;
-    item<Dimensions, true /* WithOffset */> m_global_item;
+    template<typename G, int D>
+    friend class detail::hierarchical_group_size_setter;
+
+    friend group<Dimensions> detail::make_group<Dimensions>(const detail::group_type type,
+        const sycl::item<Dimensions, false> &local_item, const sycl::item<Dimensions, true> &global_item,
+        const sycl::item<Dimensions, false> &group_item, detail::concurrent_group *impl);
+
+    friend detail::group_type detail::get_group_type(const sycl::group<Dimensions> &g);
+    friend detail::concurrent_group &detail::get_concurrent_group<Dimensions>(const sycl::group<Dimensions> &g);
+
+    detail::group_type m_type;
+    mutable item<Dimensions, false /* WithOffset */> m_local_item; // mutable for hierarchical_group_size_setter
+    mutable item<Dimensions, true /* WithOffset */> m_global_item; // mutable for hierarchical_group_size_setter
     item<Dimensions, false /* WithOffset */> m_group_item;
     detail::concurrent_group *m_concurrent_group;
 
-    bool m_hierarchical = false;
-    std::optional<range<Dimensions>> m_hier_local_range;
-
-    group(const item<Dimensions, false> &local_item, const item<Dimensions, true> &global_item,
-        const item<Dimensions, false> &group_item, detail::concurrent_group *impl)
-        : m_local_item(local_item), m_global_item(global_item), m_group_item(group_item), m_concurrent_group(impl) {}
-
-    group(const item<Dimensions, false> &group_item, const std::optional<range<Dimensions>> &hier_local_range,
+    group(const detail::group_type type, const item<Dimensions, false> &local_item,
+        const item<Dimensions, true> &global_item, const item<Dimensions, false> &group_item,
         detail::concurrent_group *impl)
-        : m_local_item(group_item), m_global_item(group_item), m_group_item(group_item), m_concurrent_group(impl),
-          m_hierarchical(true), m_hier_local_range(hier_local_range) {}
-
-    friend group<Dimensions> detail::make_group<Dimensions>(const sycl::item<Dimensions, false> &local_item,
-        const sycl::item<Dimensions, true> &global_item, const sycl::item<Dimensions, false> &group_item,
-        detail::concurrent_group *impl);
-
-    friend group<Dimensions> detail::make_hierarchical_group<Dimensions>(
-        const sycl::item<Dimensions, false> &group_item, const std::optional<sycl::range<Dimensions>> &hier_local_range,
-        detail::concurrent_group *impl);
-
-    friend bool detail::is_hierarchical_group<Dimensions>(const sycl::group<Dimensions> &g);
-    friend detail::concurrent_group &detail::get_concurrent_group<Dimensions>(const sycl::group<Dimensions> &g);
+        : m_type(type), m_local_item(local_item), m_global_item(global_item), m_group_item(group_item),
+          m_concurrent_group(impl) {}
 };
 
 template<int Dimensions>

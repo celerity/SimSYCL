@@ -1,9 +1,6 @@
 #pragma once
 
-#include <cstddef>
-#include <cstring>
-#include <memory>
-#include <vector>
+#include "allocation.hh"
 
 #include "../sycl/device.hh"
 #include "../sycl/forward.hh"
@@ -13,6 +10,11 @@
 #include "../sycl/nd_item.hh"
 #include "../sycl/nd_range.hh"
 #include "../sycl/range.hh"
+
+#include <cstddef>
+#include <cstring>
+#include <memory>
+#include <vector>
 
 
 namespace simsycl::detail {
@@ -85,9 +87,15 @@ template<typename WorkgroupFunctionType>
 void sequential_for_work_group(sycl::range<1> num_work_groups, std::optional<sycl::range<1>> work_group_size,
     const WorkgroupFunctionType &kernel_func) {
     sycl::id<1> group_id;
+    const auto type
+        = work_group_size.has_value() ? group_type::hierarchical_explicit_size : group_type::hierarchical_implicit_size;
     for(group_id[0] = 0; group_id[0] < num_work_groups[0]; ++group_id[0]) {
         concurrent_group impl;
-        sycl::group<1> group = make_hierarchical_group(make_item(group_id, num_work_groups), work_group_size, &impl);
+        const auto group_item = make_item(group_id, num_work_groups);
+        const auto local_item = make_item(sycl::id(0), work_group_size.value_or(sycl::range(1)));
+        const auto global_item = make_item(
+            group_id * sycl::id(local_item.get_range()), local_item.get_range() * group_item.get_range(), sycl::id(0));
+        sycl::group<1> group = make_group(type, local_item, global_item, group_item, &impl);
         kernel_func(group);
     }
 }
@@ -96,11 +104,16 @@ template<typename WorkgroupFunctionType>
 void sequential_for_work_group(sycl::range<2> num_work_groups, std::optional<sycl::range<2>> work_group_size,
     const WorkgroupFunctionType &kernel_func) {
     sycl::id<2> group_id;
+    const auto type
+        = work_group_size.has_value() ? group_type::hierarchical_explicit_size : group_type::hierarchical_implicit_size;
     for(group_id[0] = 0; group_id[0] < num_work_groups[0]; ++group_id[0]) {
         for(group_id[1] = 0; group_id[1] < num_work_groups[1]; ++group_id[1]) {
             concurrent_group impl;
-            sycl::group<2> group
-                = make_hierarchical_group(make_item(group_id, num_work_groups), work_group_size, &impl);
+            const auto group_item = make_item(group_id, num_work_groups);
+            const auto local_item = make_item(sycl::id(0, 0), work_group_size.value_or(sycl::range(1, 1)));
+            const auto global_item = make_item(group_id * sycl::id(local_item.get_range()),
+                local_item.get_range() * group_item.get_range(), sycl::id(0, 0));
+            sycl::group<2> group = make_group(type, local_item, global_item, group_item, &impl);
             kernel_func(group);
         }
     }
@@ -110,12 +123,17 @@ template<typename WorkgroupFunctionType>
 void sequential_for_work_group(sycl::range<3> num_work_groups, std::optional<sycl::range<3>> work_group_size,
     const WorkgroupFunctionType &kernel_func) {
     sycl::id<3> group_id;
+    const auto type
+        = work_group_size.has_value() ? group_type::hierarchical_explicit_size : group_type::hierarchical_implicit_size;
     for(group_id[0] = 0; group_id[0] < num_work_groups[0]; ++group_id[0]) {
         for(group_id[1] = 0; group_id[1] < num_work_groups[1]; ++group_id[1]) {
             for(group_id[2] = 0; group_id[2] < num_work_groups[2]; ++group_id[2]) {
                 concurrent_group impl;
-                sycl::group<3> group
-                    = make_hierarchical_group(make_item(group_id, num_work_groups), work_group_size, &impl);
+                const auto group_item = make_item(group_id, num_work_groups);
+                const auto local_item = make_item(sycl::id(0, 0, 0), work_group_size.value_or(sycl::range(1, 1, 1)));
+                const auto global_item = make_item(group_id * sycl::id(local_item.get_range()),
+                    local_item.get_range() * group_item.get_range(), sycl::id(0, 0, 0));
+                sycl::group<3> group = make_group(type, local_item, global_item, group_item, &impl);
                 kernel_func(group);
             }
         }
@@ -197,10 +215,16 @@ void parallel_for(const sycl::device &device, sycl::nd_range<Dimensions> executi
         std::index_sequence<sizeof...(Rest) - 1>());
 }
 
+template<int Dimensions>
+[[nodiscard]] std::vector<allocation> prepare_hierarchical_parallel_for(const sycl::device &device,
+    std::optional<sycl::range<Dimensions>> work_group_size, const std::vector<local_memory_requirement> &local_memory);
+
 template<typename KernelName, int Dimensions, typename WorkgroupFunctionType>
-void parallel_for_work_group(sycl::range<Dimensions> num_work_groups,
-    std::optional<sycl::range<Dimensions>> work_group_size, const WorkgroupFunctionType &kernel_func) {
+void parallel_for_work_group(const sycl::device &device, sycl::range<Dimensions> num_work_groups,
+    std::optional<sycl::range<Dimensions>> work_group_size, const std::vector<local_memory_requirement> &local_memory,
+    const WorkgroupFunctionType &kernel_func) {
     register_kernel_on_static_construction<KernelName, WorkgroupFunctionType>();
+    const auto local_allocations = prepare_hierarchical_parallel_for(device, work_group_size, local_memory);
     sequential_for_work_group(num_work_groups, work_group_size, kernel_func);
 }
 

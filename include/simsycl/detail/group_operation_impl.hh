@@ -163,7 +163,6 @@ struct concurrent_group {
     std::vector<concurrent_nd_item *> concurrent_nd_items;
     std::vector<allocation> local_memory_allocations;
     group_instance instance;
-    size_t cur_hier_local_size = 0;
 };
 
 template<int Dimensions>

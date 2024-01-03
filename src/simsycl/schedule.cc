@@ -158,7 +158,8 @@ void cooperative_for_nd_range(const sycl::device &device, const sycl::nd_range<D
                     const auto local_item = detail::make_item(local_id, range.get_local_range());
                     const auto group_item = detail::make_item(group_id, range.get_group_range());
 
-                    const auto group = detail::make_group(local_item, global_item, group_item, &concurrent_group);
+                    const auto group = detail::make_group(
+                        group_type::nd_range, local_item, global_item, group_item, &concurrent_group);
                     const auto sub_group = detail::make_sub_group(thread_id_in_sub_group, sub_group_local_range,
                         sub_group_max_local_range, sub_group_id_in_group, sub_group_range_in_group,
                         &concurrent_sub_group);
@@ -213,5 +214,45 @@ template void cooperative_for_nd_range<2>(const sycl::device &device, const sycl
     const std::vector<local_memory_requirement> &local_memory, const nd_kernel<2> &kernel);
 template void cooperative_for_nd_range<3>(const sycl::device &device, const sycl::nd_range<3> &range,
     const std::vector<local_memory_requirement> &local_memory, const nd_kernel<3> &kernel);
+
+template<int Dimensions>
+std::vector<allocation> prepare_hierarchical_parallel_for(const sycl::device &device,
+    std::optional<sycl::range<Dimensions>> work_group_size,
+    const std::vector<local_memory_requirement> &local_memory) //
+{
+    if(Dimensions > device.get_info<sycl::info::device::max_work_item_dimensions>()) {
+        throw sycl::exception(sycl::errc::invalid, "Work item dimensionality exceeds device limit");
+    }
+
+    const auto required_local_memory = std::accumulate(local_memory.begin(), local_memory.end(), size_t{0},
+        [](size_t sum, const local_memory_requirement &req) { return sum + req.size; });
+    if(required_local_memory > device.get_info<sycl::info::device::local_mem_size>()) {
+        throw sycl::exception(sycl::errc::accessor, "Total required local memory exceeds device limit");
+    }
+
+    if(work_group_size.has_value()) {
+        const auto &local_range = *work_group_size;
+        const auto local_linear_range = local_range.size();
+        assert(local_linear_range > 0);
+
+        if(local_linear_range > device.get_info<sycl::info::device::max_work_group_size>()
+            || !all_true(local_range <= device.get_info<sycl::info::device::max_work_item_sizes<Dimensions>>())) {
+            throw sycl::exception(sycl::errc::invalid, "Work group size exceeds device limit");
+        }
+    }
+
+    std::vector<allocation> local_allocations;
+    for(size_t i = 0; i < local_memory.size(); ++i) {
+        *local_memory[i].ptr = local_allocations.emplace_back(local_memory[i].size, local_memory[i].align).get();
+    }
+    return local_allocations;
+}
+
+template std::vector<allocation> prepare_hierarchical_parallel_for<1>(const sycl::device &device,
+    std::optional<sycl::range<1>> work_group_size, const std::vector<local_memory_requirement> &local_memory);
+template std::vector<allocation> prepare_hierarchical_parallel_for<2>(const sycl::device &device,
+    std::optional<sycl::range<2>> work_group_size, const std::vector<local_memory_requirement> &local_memory);
+template std::vector<allocation> prepare_hierarchical_parallel_for<3>(const sycl::device &device,
+    std::optional<sycl::range<3>> work_group_size, const std::vector<local_memory_requirement> &local_memory);
 
 } // namespace simsycl::detail

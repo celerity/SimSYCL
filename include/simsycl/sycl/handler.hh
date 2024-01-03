@@ -94,13 +94,14 @@ class handler {
 
     template<typename KernelName = simsycl::detail::unnamed_kernel, typename WorkgroupFunctionType, int Dimensions>
     void parallel_for_work_group(range<Dimensions> num_work_groups, const WorkgroupFunctionType &kernel_func) {
-        detail::parallel_for_work_group<KernelName>(num_work_groups, {}, kernel_func);
+        detail::parallel_for_work_group<KernelName>(m_device, num_work_groups, {}, m_local_memory, kernel_func);
     }
 
     template<typename KernelName = simsycl::detail::unnamed_kernel, typename WorkgroupFunctionType, int Dimensions>
     void parallel_for_work_group(range<Dimensions> num_work_groups, range<Dimensions> work_group_size,
         const WorkgroupFunctionType &kernel_func) {
-        detail::parallel_for_work_group<KernelName>(num_work_groups, {work_group_size}, kernel_func);
+        detail::parallel_for_work_group<KernelName>(
+            m_device, num_work_groups, {work_group_size}, m_local_memory, kernel_func);
     }
 
     void single_task(const kernel &kernel_object);

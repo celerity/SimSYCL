@@ -16,7 +16,7 @@ class private_memory {
     // Construct the storage if it has not yet been constructed
     T &operator()(const h_item<Dimensions> &id) {
         if(m_data.empty()) {
-            size_t num_items = simsycl::detail::get_concurrent_group(m_group).cur_hier_local_size;
+            size_t num_items = m_group.get_local_linear_range();
             m_data.resize(num_items);
         }
         return m_data[id.get_local().get_linear_id()];

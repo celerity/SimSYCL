@@ -17,7 +17,7 @@ TEST_CASE("Hierarchical parallel for launches groups", "[hierarchical][parallel_
             cgh.parallel_for_work_group(range<1>(num_groups), [=, &test_total, &test_ids](group<1> g) {
                 CHECK(g.get_group_linear_id() < num_groups);
                 CHECK(g.get_group_linear_range() == num_groups);
-                CHECK(detail::is_hierarchical_group(g));
+                CHECK(detail::get_group_type(g) == detail::group_type::hierarchical_implicit_size);
                 test_total += 1;
                 test_ids[g.get_group_linear_id()] = true;
             });
@@ -32,7 +32,7 @@ TEST_CASE("Hierarchical parallel for launches groups", "[hierarchical][parallel_
             cgh.parallel_for_work_group(range<2>(num_groups, num_groups), [=, &test_total](group<2> g) {
                 CHECK(g.get_group_linear_id() < num_groups * num_groups);
                 CHECK(g.get_group_linear_range() == num_groups * num_groups);
-                CHECK(detail::is_hierarchical_group(g));
+                CHECK(detail::get_group_type(g) == detail::group_type::hierarchical_implicit_size);
                 test_total += 1;
             });
         });
@@ -45,7 +45,7 @@ TEST_CASE("Hierarchical parallel for launches groups", "[hierarchical][parallel_
             cgh.parallel_for_work_group(range<3>(num_groups, num_groups, num_groups), [=, &test_total](group<3> g) {
                 CHECK(g.get_group_linear_id() < num_groups * num_groups * num_groups);
                 CHECK(g.get_group_linear_range() == num_groups * num_groups * num_groups);
-                CHECK(detail::is_hierarchical_group(g));
+                CHECK(detail::get_group_type(g) == detail::group_type::hierarchical_implicit_size);
                 test_total += 1;
             });
         });
