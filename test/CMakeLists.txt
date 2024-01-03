@@ -14,6 +14,7 @@ add_executable(tests
   ambiguity_tests.cc
   group_op_tests.cc
   hierarchical_tests.cc
+  kernel_tests.cc
   launch_tests.cc
   marray_tests.cc
   math_tests.cc

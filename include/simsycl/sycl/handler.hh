@@ -13,11 +13,12 @@
 #include "id.hh"
 #include "interop_handle.hh"
 #include "item.hh"
+#include "kernel.hh"
 #include "nd_range.hh"
 #include "range.hh"
 
-#include "../detail/schedule.hh"
 #include "../detail/nd_memory.hh"
+#include "../detail/schedule.hh"
 
 
 namespace simsycl::sycl {
@@ -70,36 +71,36 @@ class handler {
     template<typename KernelName = simsycl::detail::unnamed_kernel, typename... Rest>
         requires(sizeof...(Rest) > 0)
     void parallel_for(size_t num_work_items, Rest &&...rest) {
-        simsycl::detail::parallel_for(range<1>(num_work_items), std::forward<Rest>(rest)...);
+        detail::parallel_for<KernelName>(range<1>(num_work_items), std::forward<Rest>(rest)...);
     }
 
     template<typename KernelName = simsycl::detail::unnamed_kernel, int Dimensions, typename... Rest>
         requires(sizeof...(Rest) > 0 && Dimensions > 0)
     void parallel_for(range<Dimensions> num_work_items, Rest &&...rest) {
-        simsycl::detail::parallel_for(num_work_items, std::forward<Rest>(rest)...);
+        detail::parallel_for<KernelName>(num_work_items, std::forward<Rest>(rest)...);
     }
 
     template<typename KernelName = simsycl::detail::unnamed_kernel, typename KernelType, int Dimensions>
     SIMSYCL_DETAIL_DEPRECATED_IN_SYCL void parallel_for(
         range<Dimensions> num_work_items, id<Dimensions> work_item_offset, KernelType &&kernel_func) {
-        simsycl::detail::parallel_for(num_work_items, work_item_offset, kernel_func);
+        detail::parallel_for<KernelName>(num_work_items, work_item_offset, kernel_func);
     }
 
     template<typename KernelName = simsycl::detail::unnamed_kernel, int Dimensions, typename... Rest>
         requires(sizeof...(Rest) > 0)
     void parallel_for(nd_range<Dimensions> execution_range, Rest &&...rest) {
-        simsycl::detail::parallel_for(m_device, execution_range, m_local_memory, std::forward<Rest>(rest)...);
+        detail::parallel_for<KernelName>(m_device, execution_range, m_local_memory, std::forward<Rest>(rest)...);
     }
 
     template<typename KernelName = simsycl::detail::unnamed_kernel, typename WorkgroupFunctionType, int Dimensions>
     void parallel_for_work_group(range<Dimensions> num_work_groups, const WorkgroupFunctionType &kernel_func) {
-        simsycl::detail::parallel_for_work_group(num_work_groups, {}, kernel_func);
+        detail::parallel_for_work_group<KernelName>(num_work_groups, {}, kernel_func);
     }
 
     template<typename KernelName = simsycl::detail::unnamed_kernel, typename WorkgroupFunctionType, int Dimensions>
     void parallel_for_work_group(range<Dimensions> num_work_groups, range<Dimensions> work_group_size,
         const WorkgroupFunctionType &kernel_func) {
-        simsycl::detail::parallel_for_work_group(num_work_groups, work_group_size, kernel_func);
+        detail::parallel_for_work_group<KernelName>(num_work_groups, {work_group_size}, kernel_func);
     }
 
     void single_task(const kernel &kernel_object);

@@ -241,8 +241,6 @@ void to_json(nlohmann::json &json, const device_config &device) {
         {"is_linker_available", device.is_linker_available},
         {"execution_capabilities", device.execution_capabilities},
         {"queue_profiling", device.queue_profiling},
-        {"built_in_kernels", device.built_in_kernels},
-        {"built_in_kernel_ids", device.built_in_kernel_ids},
         {"platform_id", device.platform_id},
         {"name", device.name},
         {"vendor", device.vendor},
@@ -325,8 +323,6 @@ void from_json(const nlohmann::json &json, device_config &device) {
     json.at("is_linker_available").get_to(device.is_linker_available);
     json.at("execution_capabilities").get_to(device.execution_capabilities);
     json.at("queue_profiling").get_to(device.queue_profiling);
-    json.at("built_in_kernels").get_to(device.built_in_kernels);
-    json.at("built_in_kernel_ids").get_to(device.built_in_kernel_ids);
     json.at("platform_id").get_to(device.platform_id);
     json.at("name").get_to(device.name);
     json.at("vendor").get_to(device.vendor);

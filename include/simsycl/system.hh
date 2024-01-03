@@ -77,8 +77,6 @@ struct device_config {
     bool is_linker_available{};
     std::vector<sycl::info::execution_capability> execution_capabilities{};
     bool queue_profiling{};
-    std::vector<std::string> built_in_kernels{};
-    std::vector<std::string> built_in_kernel_ids{};
     simsycl::platform_id platform_id{};
     std::string name{};
     std::string vendor{};

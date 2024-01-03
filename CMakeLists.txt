@@ -134,6 +134,7 @@ add_library(simsycl
     src/simsycl/check.cc
     src/simsycl/context.cc
     src/simsycl/device.cc
+    src/simsycl/kernel.cc
     src/simsycl/schedule.cc
     src/simsycl/platform.cc
     src/simsycl/queue.cc

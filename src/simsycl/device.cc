@@ -356,16 +356,14 @@ bool device::get_info<info::device::queue_profiling>() const {
 
 template<>
 std::vector<std::string> device::get_info<info::device::built_in_kernels>() const {
-    return state().config.built_in_kernels;
+    return {};
 }
 
 SIMSYCL_STOP_IGNORING_DEPRECATIONS
 
 template<>
 std::vector<sycl::kernel_id> device::get_info<info::device::built_in_kernel_ids>() const {
-    std::vector<sycl::kernel_id> ids;
-    for(auto &string_id : state().config.built_in_kernel_ids) { ids.push_back(detail::make_kernel_id(string_id)); }
-    return ids;
+    return {};
 }
 
 template<>

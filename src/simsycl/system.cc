@@ -389,7 +389,6 @@ const device_config builtin_device {
     .is_linker_available = false,
     .execution_capabilities = {sycl::info::execution_capability::exec_kernel},
     .queue_profiling = true,
-    .built_in_kernels = {},
     .platform_id = "SimSYCL",
     .name = "SimSYCL virtual GPU",
     .vendor = "SimSYCL",

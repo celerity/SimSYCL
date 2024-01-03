@@ -33,7 +33,7 @@ void maybe_yield_to_kernel_scheduler() {
 }
 
 template<int Dimensions>
-void dispatch_for_nd_range(const sycl::device &device, const sycl::nd_range<Dimensions> &range,
+void cooperative_for_nd_range(const sycl::device &device, const sycl::nd_range<Dimensions> &range,
     const std::vector<local_memory_requirement> &local_memory, const nd_kernel<Dimensions> &kernel) //
 {
     if(Dimensions > device.get_info<sycl::info::device::max_work_item_dimensions>()) {
@@ -207,11 +207,11 @@ void dispatch_for_nd_range(const sycl::device &device, const sycl::nd_range<Dime
     for(auto &exception : caught_exceptions) { std::rethrow_exception(exception); }
 }
 
-template void dispatch_for_nd_range<1>(const sycl::device &device, const sycl::nd_range<1> &range,
+template void cooperative_for_nd_range<1>(const sycl::device &device, const sycl::nd_range<1> &range,
     const std::vector<local_memory_requirement> &local_memory, const nd_kernel<1> &kernel);
-template void dispatch_for_nd_range<2>(const sycl::device &device, const sycl::nd_range<2> &range,
+template void cooperative_for_nd_range<2>(const sycl::device &device, const sycl::nd_range<2> &range,
     const std::vector<local_memory_requirement> &local_memory, const nd_kernel<2> &kernel);
-template void dispatch_for_nd_range<3>(const sycl::device &device, const sycl::nd_range<3> &range,
+template void cooperative_for_nd_range<3>(const sycl::device &device, const sycl::nd_range<3> &range,
     const std::vector<local_memory_requirement> &local_memory, const nd_kernel<3> &kernel);
 
 } // namespace simsycl::detail
