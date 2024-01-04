@@ -183,7 +183,10 @@ struct concurrent_sub_group {
     sub_group_instance instance;
 };
 
-inline detail::concurrent_sub_group &get_concurrent_group(const sycl::sub_group &g) { return *g.m_concurrent_group; }
+inline detail::concurrent_sub_group &get_concurrent_group(const sycl::sub_group &g) {
+    SIMSYCL_CHECK(g.m_concurrent_group && "group operations not available in this kernel");
+    return *g.m_concurrent_group;
+}
 
 // group operation function template
 

@@ -16,6 +16,10 @@ struct device_state {
     weak_ref<sycl::device> parent;
 };
 
+size_t *device_bytes_free(const sycl::device &device) {
+    return &device.state().bytes_free;
+}
+
 int default_selector::operator()(const sycl::device &device) const {
     return device.is_gpu() || device.is_accelerator() ? 1 : 0;
 }

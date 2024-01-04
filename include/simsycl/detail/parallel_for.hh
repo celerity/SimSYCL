@@ -23,123 +23,17 @@ namespace simsycl::detail {
 struct no_offset_t {
 } inline constexpr no_offset;
 
-template<typename Func, typename... Params>
-void sequential_for(const sycl::range<1> &range, no_offset_t /* no offset */, Func &&func, Params &&...args) {
-    sycl::id<1> id;
-    for(id[0] = 0; id[0] < range[0]; ++id[0]) { //
-        func(make_item(id, range), std::forward<Params>(args)...);
-    }
-}
+template<typename>
+struct with_offset;
+template<>
 
-template<typename Func, typename... Params>
-void sequential_for(const sycl::range<2> &range, no_offset_t /* no offset */, Func &&func, Params &&...args) {
-    sycl::id<2> id;
-    for(id[0] = 0; id[0] < range[0]; ++id[0]) {
-        for(id[1] = 0; id[1] < range[1]; ++id[1]) { //
-            func(make_item(id, range), std::forward<Params>(args)...);
-        }
-    }
-}
+struct with_offset<no_offset_t> : std::false_type {};
+template<int Dimensions>
 
-template<typename Func, typename... Params>
-void sequential_for(const sycl::range<3> &range, no_offset_t /* no offset */, Func &&func, Params &&...args) {
-    sycl::id<3> id;
-    for(id[0] = 0; id[0] < range[0]; ++id[0]) {
-        for(id[1] = 0; id[1] < range[1]; ++id[1]) {
-            for(id[2] = 0; id[2] < range[2]; ++id[2]) { //
-                func(make_item(id, range), std::forward<Params>(args)...);
-            }
-        }
-    }
-}
+struct with_offset<sycl::id<Dimensions>> : std::true_type {};
 
-template<typename Func, typename... Params>
-void sequential_for(const sycl::range<1> &range, const sycl::id<1> &offset, Func &&func, Params &&...args) {
-    sycl::id<1> id;
-    for(id[0] = offset[0]; id[0] < offset[0] + range[0]; ++id[0]) { //
-        func(make_item(id, range, offset), std::forward<Params>(args)...);
-    }
-}
-
-template<typename Func, typename... Params>
-void sequential_for(const sycl::range<2> &range, const sycl::id<2> &offset, Func &&func, Params &&...args) {
-    sycl::id<2> id;
-    for(id[0] = offset[0]; id[0] < offset[0] + range[0]; ++id[0]) {
-        for(id[1] = offset[1]; id[1] < offset[1] + range[1]; ++id[1]) { //
-            func(make_item(id, range, offset), std::forward<Params>(args)...);
-        }
-    }
-}
-
-template<typename Func, typename... Params>
-void sequential_for(const sycl::range<3> &range, const sycl::id<3> &offset, Func &&func, Params &&...args) {
-    sycl::id<3> id;
-    for(id[0] = offset[0]; id[0] < offset[0] + range[0]; ++id[0]) {
-        for(id[1] = offset[1]; id[1] < offset[1] + range[1]; ++id[1]) {
-            for(id[2] = offset[2]; id[2] < offset[2] + range[2]; ++id[2]) { //
-                func(make_item(id, range, offset), std::forward<Params>(args)...);
-            }
-        }
-    }
-}
-
-
-template<typename WorkgroupFunctionType>
-void sequential_for_work_group(sycl::range<1> num_work_groups, std::optional<sycl::range<1>> work_group_size,
-    const WorkgroupFunctionType &kernel_func) {
-    sycl::id<1> group_id;
-    const auto type
-        = work_group_size.has_value() ? group_type::hierarchical_explicit_size : group_type::hierarchical_implicit_size;
-    for(group_id[0] = 0; group_id[0] < num_work_groups[0]; ++group_id[0]) {
-        concurrent_group impl;
-        const auto group_item = make_item(group_id, num_work_groups);
-        const auto local_item = make_item(sycl::id(0), work_group_size.value_or(sycl::range(1)));
-        const auto global_item = make_item(
-            group_id * sycl::id(local_item.get_range()), local_item.get_range() * group_item.get_range(), sycl::id(0));
-        sycl::group<1> group = make_group(type, local_item, global_item, group_item, &impl);
-        kernel_func(group);
-    }
-}
-
-template<typename WorkgroupFunctionType>
-void sequential_for_work_group(sycl::range<2> num_work_groups, std::optional<sycl::range<2>> work_group_size,
-    const WorkgroupFunctionType &kernel_func) {
-    sycl::id<2> group_id;
-    const auto type
-        = work_group_size.has_value() ? group_type::hierarchical_explicit_size : group_type::hierarchical_implicit_size;
-    for(group_id[0] = 0; group_id[0] < num_work_groups[0]; ++group_id[0]) {
-        for(group_id[1] = 0; group_id[1] < num_work_groups[1]; ++group_id[1]) {
-            concurrent_group impl;
-            const auto group_item = make_item(group_id, num_work_groups);
-            const auto local_item = make_item(sycl::id(0, 0), work_group_size.value_or(sycl::range(1, 1)));
-            const auto global_item = make_item(group_id * sycl::id(local_item.get_range()),
-                local_item.get_range() * group_item.get_range(), sycl::id(0, 0));
-            sycl::group<2> group = make_group(type, local_item, global_item, group_item, &impl);
-            kernel_func(group);
-        }
-    }
-}
-
-template<typename WorkgroupFunctionType>
-void sequential_for_work_group(sycl::range<3> num_work_groups, std::optional<sycl::range<3>> work_group_size,
-    const WorkgroupFunctionType &kernel_func) {
-    sycl::id<3> group_id;
-    const auto type
-        = work_group_size.has_value() ? group_type::hierarchical_explicit_size : group_type::hierarchical_implicit_size;
-    for(group_id[0] = 0; group_id[0] < num_work_groups[0]; ++group_id[0]) {
-        for(group_id[1] = 0; group_id[1] < num_work_groups[1]; ++group_id[1]) {
-            for(group_id[2] = 0; group_id[2] < num_work_groups[2]; ++group_id[2]) {
-                concurrent_group impl;
-                const auto group_item = make_item(group_id, num_work_groups);
-                const auto local_item = make_item(sycl::id(0, 0, 0), work_group_size.value_or(sycl::range(1, 1, 1)));
-                const auto global_item = make_item(group_id * sycl::id(local_item.get_range()),
-                    local_item.get_range() * group_item.get_range(), sycl::id(0, 0, 0));
-                sycl::group<3> group = make_group(type, local_item, global_item, group_item, &impl);
-                kernel_func(group);
-            }
-        }
-    }
-}
+template<typename T>
+inline constexpr bool with_offset_v = with_offset<T>::value;
 
 
 struct local_memory_requirement {
@@ -152,6 +46,20 @@ struct local_memory_requirement {
 template<int Dimensions>
 using nd_kernel = std::function<void(const sycl::nd_item<Dimensions> &)>;
 
+template<int Dimensions, bool WithOffset>
+using simple_kernel = std::function<void(const sycl::item<Dimensions, WithOffset> &)>;
+
+template<int Dimensions>
+using hierarchical_kernel = std::function<void(const sycl::group<Dimensions> &)>;
+
+template<int Dimensions, typename Offset>
+void sequential_for(const sycl::range<Dimensions> &range, const Offset &offset,
+    const simple_kernel<Dimensions, with_offset_v<Offset>> &kernel);
+
+template<int Dimensions>
+void sequential_for_work_group(sycl::range<Dimensions> num_work_groups,
+    std::optional<sycl::range<Dimensions>> work_group_size, const hierarchical_kernel<Dimensions> &kernel);
+
 template<int Dimensions>
 void cooperative_for_nd_range(const sycl::device &device, const sycl::nd_range<Dimensions> &range,
     const std::vector<local_memory_requirement> &local_memory, const nd_kernel<Dimensions> &kernel);
@@ -160,7 +68,9 @@ template<typename KernelName, int Dimensions, typename Offset, typename KernelFu
 void execute_parallel_for(
     const sycl::range<Dimensions> &range, const Offset &offset, KernelFunc &&func, Params &&...args) {
     register_kernel_on_static_construction<KernelName, KernelFunc>();
-    sequential_for(range, offset, func, std::forward<Params>(args)...);
+    const simple_kernel<Dimensions, with_offset_v<Offset>> kernel(
+        [&](const sycl::item<Dimensions> &item) { func(item, std::forward<Params>(args)...); });
+    sequential_for(range, offset, kernel);
 }
 
 template<typename KernelName, int Dimensions, typename KernelFunc, typename... Params>
@@ -226,7 +136,7 @@ void parallel_for_work_group(const sycl::device &device, sycl::range<Dimensions>
     const WorkgroupFunctionType &kernel_func) {
     register_kernel_on_static_construction<KernelName, WorkgroupFunctionType>();
     const auto local_allocations = prepare_hierarchical_parallel_for(device, work_group_size, local_memory);
-    sequential_for_work_group(num_work_groups, work_group_size, kernel_func);
+    sequential_for_work_group(num_work_groups, work_group_size, hierarchical_kernel<Dimensions>(kernel_func));
 }
 
 } // namespace simsycl::detail

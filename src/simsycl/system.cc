@@ -114,7 +114,6 @@ struct memory_state {
 struct system_state {
     std::vector<sycl::platform> platforms;
     std::vector<sycl::device> devices;
-    std::unordered_map<sycl::device, size_t> device_bytes_free;
     std::set<usm_allocation, usm_allocation_order> usm_allocations;
 
     explicit system_state(const system_config &config) {
@@ -181,7 +180,7 @@ void *usm_alloc(const sycl::context &context, sycl::usm::alloc kind, std::option
             throw sycl::exception(sycl::errc::memory_allocation, "Allocation size exceeds device limit");
         }
 
-        bytes_free = &system.device_bytes_free.at(*device);
+        bytes_free = detail::device_bytes_free(*device);
         if(*bytes_free < size_bytes) {
             throw sycl::exception(sycl::errc::memory_allocation, "Not enough memory available");
         }
@@ -225,7 +224,7 @@ void usm_free(void *ptr, const sycl::context &context) {
 #endif
 
     if(iter->get_device().has_value()) {
-        system.device_bytes_free.at(iter->get_device().value()) += iter->get_size_bytes();
+        *detail::device_bytes_free(iter->get_device().value()) += iter->get_size_bytes();
     }
     system.usm_allocations.erase(iter);
 }

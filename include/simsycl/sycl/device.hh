@@ -41,6 +41,8 @@ struct accelerator_selector {
 
 struct device_state;
 
+size_t *device_bytes_free(const sycl::device &device);
+
 } // namespace simsycl::detail
 
 namespace simsycl::sycl {
@@ -105,6 +107,7 @@ class device final : public detail::reference_type<device, detail::device_state>
 
     friend device simsycl::make_device(sycl::platform &platform, const device_config &config);
     friend void simsycl::set_parent_device(sycl::device &device, const sycl::device &parent);
+    friend size_t *detail::device_bytes_free(const sycl::device &device);
 
     device(const detail::device_selector &selector);
     device(std::shared_ptr<detail::device_state> &&state) : reference_type(std::move(state)) {}

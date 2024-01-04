@@ -172,8 +172,6 @@ struct event_state;
 
 sycl::event make_event(std::shared_ptr<event_state> &&state);
 
-void enter_kernel_fiber(boost::context::continuation &&from_scheduler);
-boost::context::continuation &&leave_kernel_fiber();
 void yield_to_kernel_scheduler();
 void maybe_yield_to_kernel_scheduler();
 

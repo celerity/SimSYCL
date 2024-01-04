@@ -45,12 +45,7 @@ class reference_type {
         static_assert(std::is_base_of_v<reference_type, Derived>);
     }
 
-    state_type &state() {
-        SIMSYCL_CHECK(m_state != nullptr);
-        return *m_state;
-    }
-
-    const state_type &state() const {
+    state_type &state() const {
         SIMSYCL_CHECK(m_state != nullptr);
         return *m_state;
     }

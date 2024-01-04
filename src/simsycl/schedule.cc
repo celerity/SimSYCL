@@ -40,6 +40,75 @@ cooperative_schedule::state shuffle_schedule::update(state state_before, std::ve
 
 namespace simsycl::detail {
 
+template<int Dimensions, typename Offset>
+void sequential_for(const sycl::range<Dimensions> &range, const Offset &offset,
+    const simple_kernel<Dimensions, with_offset_v<Offset>> &kernel) {
+    // limit the number of work items scheduled at a time to avoid allocating huge index buffers
+    constexpr size_t max_schedule_chunk_size = 16 << 10;
+    const auto schedule_chunk_size = std::min(range.size(), max_schedule_chunk_size);
+    const auto &schedule = get_cooperative_schedule();
+    std::vector<size_t> order(schedule_chunk_size);
+    auto schedule_state = schedule.init(order);
+
+    for(size_t schedule_offset = 0; schedule_offset < range.size(); schedule_offset += max_schedule_chunk_size) {
+        for(size_t schedule_id = 0; schedule_id < schedule_chunk_size; ++schedule_id) {
+            const auto linear_id = schedule_offset + order[schedule_id];
+            if(linear_id < range.size()) {
+                if constexpr(with_offset_v<Offset>) {
+                    const auto id = offset + linear_index_to_id(range, linear_id);
+                    kernel(make_item(id, range, offset));
+                } else {
+                    const auto id = linear_index_to_id(range, linear_id);
+                    kernel(make_item(id, range));
+                }
+            }
+        }
+        schedule_state = schedule.update(schedule_state, order);
+    }
+}
+
+template void sequential_for(
+    const sycl::range<1> &range, const no_offset_t & /* no offset */, const simple_kernel<1, false> &kernel);
+template void sequential_for(
+    const sycl::range<2> &range, const no_offset_t & /* no offset */, const simple_kernel<2, false> &kernel);
+template void sequential_for(
+    const sycl::range<3> &range, const no_offset_t & /* no offset */, const simple_kernel<3, false> &kernel);
+template void sequential_for<1, sycl::id<1>>(
+    const sycl::range<1> &range, const sycl::id<1> &offset, const simple_kernel<1, true> &kernel);
+template void sequential_for(
+    const sycl::range<2> &range, const sycl::id<2> &offset, const simple_kernel<2, true> &kernel);
+template void sequential_for(
+    const sycl::range<3> &range, const sycl::id<3> &offset, const simple_kernel<3, true> &kernel);
+
+template<int Dimensions>
+sycl::range<Dimensions> unit_range() {
+    sycl::range<Dimensions> r;
+    for(int i = 0; i < Dimensions; ++i) { r[i] = 1; }
+    return r;
+}
+
+template<int Dimensions>
+void sequential_for_work_group(sycl::range<Dimensions> num_work_groups,
+    std::optional<sycl::range<Dimensions>> work_group_size, const hierarchical_kernel<Dimensions> &kernel) {
+    const auto type
+        = work_group_size.has_value() ? group_type::hierarchical_explicit_size : group_type::hierarchical_implicit_size;
+    for(size_t group_linear_id = 0; group_linear_id < num_work_groups.size(); ++group_linear_id) {
+        const auto group_id = linear_index_to_id(num_work_groups, group_linear_id);
+        const auto group_item = make_item(group_id, num_work_groups);
+        const auto local_item = make_item(sycl::id<Dimensions>(), work_group_size.value_or(unit_range<Dimensions>()));
+        const auto global_item = make_item(group_id * sycl::id(local_item.get_range()),
+            local_item.get_range() * group_item.get_range(), sycl::id<Dimensions>());
+        kernel(make_group(type, local_item, global_item, group_item, nullptr));
+    }
+}
+
+template void sequential_for_work_group(sycl::range<1> num_work_groups, std::optional<sycl::range<1>> work_group_size,
+    const hierarchical_kernel<1> &kernel);
+template void sequential_for_work_group(sycl::range<2> num_work_groups, std::optional<sycl::range<2>> work_group_size,
+    const hierarchical_kernel<2> &kernel);
+template void sequential_for_work_group(sycl::range<3> num_work_groups, std::optional<sycl::range<3>> work_group_size,
+    const hierarchical_kernel<3> &kernel);
+
 boost::context::continuation g_scheduler;
 
 void enter_kernel_fiber(boost::context::continuation &&from_scheduler) {
