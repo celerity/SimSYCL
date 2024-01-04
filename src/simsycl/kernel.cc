@@ -16,7 +16,7 @@ std::string demangle_name_from_pointer_type(const std::type_info &pointer_type) 
         abi::__cxa_demangle(pointer_type.name(), nullptr, nullptr, nullptr), std::free);
     std::string demangled = demangle_buffer.get();
 #else
-    std::string demangled = pointer_type_info.name();
+    std::string demangled = pointer_type.name();
 #endif
 
     // get rid of the pointer "*"

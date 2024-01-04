@@ -284,7 +284,7 @@ class group {
         const sycl::item<Dimensions, false> &local_item, const sycl::item<Dimensions, true> &global_item,
         const sycl::item<Dimensions, false> &group_item, detail::concurrent_group *impl);
 
-    friend detail::group_type detail::get_group_type(const sycl::group<Dimensions> &g);
+    friend detail::group_type detail::get_group_type<Dimensions>(const sycl::group<Dimensions> &g);
     friend detail::concurrent_group &detail::get_concurrent_group<Dimensions>(const sycl::group<Dimensions> &g);
 
     detail::group_type m_type;

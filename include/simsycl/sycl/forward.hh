@@ -91,6 +91,9 @@ class kernel_bundle;
 
 class kernel_id;
 
+template<typename KernelName>
+kernel_id get_kernel_id();
+
 class kernel_handler;
 
 template<typename DataT, int Dimensions = 1>
