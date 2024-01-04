@@ -94,13 +94,32 @@ auto sum(const T &f) {
     return f;
 }
 
+template<SyclScalar T>
+auto component_wise_op(const T &v, auto op) {
+    return op(v);
+}
+template<NonScalar T>
+auto component_wise_op(const T &v, auto op) {
+    using ret_t = sycl::vec<decltype(op(v[0])), non_scalar_num_elements_v<T>>;
+    ret_t ret;
+    for(int i = 0; i < non_scalar_num_elements_v<T>; ++i) { ret[i] = op(v[i]); }
+    return ret;
+}
+template<NonScalar T1, NonScalar T2>
+    requires(non_scalar_num_elements_v<T1> == non_scalar_num_elements_v<T2>)
+auto component_wise_op(const T1 &v1, const T2 &v2, auto op) {
+    using ret_t = sycl::vec<decltype(op(v1[0], v2[0])), non_scalar_num_elements_v<T1>>;
+    ret_t ret;
+    for(int i = 0; i < non_scalar_num_elements_v<T1>; ++i) { ret[i] = op(v1[i], v2[i]); }
+    return ret;
+}
 template<NonScalar T1, NonScalar T2, NonScalar T3>
     requires(non_scalar_num_elements_v<T1> == non_scalar_num_elements_v<T2>
         && non_scalar_num_elements_v<T1> == non_scalar_num_elements_v<T3>)
-auto component_wise_op(const T1 &f1, const T2 &f2, const T3 &f3, auto op) {
-    using ret_t = sycl::vec<decltype(op(f1[0], f2[0], f3[0])), non_scalar_num_elements_v<T1>>;
+auto component_wise_op(const T1 &v1, const T2 &v2, const T3 &v3, auto op) {
+    using ret_t = sycl::vec<decltype(op(v1[0], v2[0], v3[0])), non_scalar_num_elements_v<T1>>;
     ret_t ret;
-    for(int i = 0; i < non_scalar_num_elements_v<T1>; ++i) { ret[i] = op(f1[i], f2[i], f3[i]); }
+    for(int i = 0; i < non_scalar_num_elements_v<T1>; ++i) { ret[i] = op(v1[i], v2[i], v3[i]); }
     return ret;
 }
 

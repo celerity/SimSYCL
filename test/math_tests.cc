@@ -83,3 +83,13 @@ TEST_CASE("Clamp function works as expected", "[math]") {
     CHECK(check_bool_vec(clamp(v2, 0, 10) == v2));
     CHECK(check_bool_vec(clamp(v2, v2.zzzz(), v2.wwww()) == v2.zzzw()));
 }
+
+TEST_CASE("Inverse square root function works as expected", "[math]") {
+    CHECK(rsqrt(8.0f) == Catch::Approx(1.0 / sqrt(8.0f)));
+    CHECK(rsqrt(7.0) == Catch::Approx(1.0 / sqrt(7.0)));
+
+    vec<double, 2> v1 = {2.0, 9.0};
+    vec<double, 2> v1_result = rsqrt(v1);
+    CHECK(v1_result.x() == Catch::Approx(rsqrt(v1.x())));
+    CHECK(v1_result.y() == Catch::Approx(rsqrt(v1.y())));
+}

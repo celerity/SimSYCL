@@ -2,6 +2,8 @@
 
 #include "vec.hh"
 
+#include "../detail/math_utils.hh"
+
 #include <cmath>
 
 
@@ -100,7 +102,12 @@ using std::remquo;
 using std::rint;
 // TODO rootn
 using std::round;
-// TODO rsqrt
+
+template<detail::GenFloat T>
+auto rsqrt(T x) {
+    return detail::component_wise_op(x, [](auto x) { return static_cast<decltype(x)>(1.0) / sqrt(x); });
+}
+
 using std::sin;
 // TODO sincos
 using std::sinh;
@@ -166,7 +173,6 @@ SIMSYCL_DETAIL_MATH_DERIVE_BINARY_FUNCTION_FOR_HALF(remainder)
 SIMSYCL_DETAIL_MATH_DERIVE_UNARY_FUNCTION_FOR_HALF(rint);
 // TODO root)n
 SIMSYCL_DETAIL_MATH_DERIVE_UNARY_FUNCTION_FOR_HALF(round);
-// TODO rsqrt
 SIMSYCL_DETAIL_MATH_DERIVE_UNARY_FUNCTION_FOR_HALF(sin);
 // TODO sincos
 SIMSYCL_DETAIL_MATH_DERIVE_UNARY_FUNCTION_FOR_HALF(sinh);
@@ -232,7 +238,6 @@ SIMSYCL_DETAIL_MATH_DEFINE_BINARY_COMPONENT_WISE_VEC_FUNCTION(remquo)
 SIMSYCL_DETAIL_MATH_DEFINE_UNARY_COMPONENT_WISE_VEC_FUNCTION(rint)
 // TODO rootn
 SIMSYCL_DETAIL_MATH_DEFINE_UNARY_COMPONENT_WISE_VEC_FUNCTION(round)
-// TODO rsqrt
 SIMSYCL_DETAIL_MATH_DEFINE_UNARY_COMPONENT_WISE_VEC_FUNCTION(sin)
 // TODO sincos
 SIMSYCL_DETAIL_MATH_DEFINE_UNARY_COMPONENT_WISE_VEC_FUNCTION(sinh)
