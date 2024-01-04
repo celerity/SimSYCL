@@ -81,8 +81,8 @@ add_library(simsycl
     include/simsycl/detail/check.hh
     include/simsycl/detail/coordinate.hh
     include/simsycl/detail/hash.hh
-    include/simsycl/detail/schedule.hh
     include/simsycl/detail/math_utils.hh
+    include/simsycl/detail/parallel_for.hh
     include/simsycl/detail/subscript.hh
     include/simsycl/detail/utils.hh
     include/simsycl/detail/vec_swizzles.inc
@@ -131,6 +131,7 @@ add_library(simsycl
     include/simsycl/sycl/usm.hh
     include/simsycl/sycl/vec.hh
     include/simsycl/macros.hh
+    include/simsycl/schedule.hh
     include/simsycl/system.hh
     ${CONFIG_PATH}
     src/simsycl/check.cc

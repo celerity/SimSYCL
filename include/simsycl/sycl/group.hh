@@ -148,6 +148,7 @@ class group {
     void parallel_for_work_item(range<Dimensions> flexible_range, WorkItemFunctionT func) const {
         SIMSYCL_CHECK(m_type != detail::group_type::nd_range
             && "parallel_for_work_item is only supported for from within a parallel_for_work_item context");
+        // TODO get rid of hierarchical_group_size_setter and mutable members, just create a second group instance
         detail::hierarchical_group_size_setter set(*this, flexible_range);
         if constexpr(Dimensions == 1) {
             for(size_t i = 0; i < flexible_range[0]; ++i) {

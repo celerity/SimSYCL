@@ -2,6 +2,7 @@
 
 #include "allocation.hh"
 
+#include "../schedule.hh"
 #include "../sycl/device.hh"
 #include "../sycl/forward.hh"
 #include "../sycl/id.hh"

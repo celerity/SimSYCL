@@ -1,6 +1,7 @@
 #include "simsycl/system.hh"
 #include "simsycl/detail/allocation.hh"
 #include "simsycl/detail/check.hh"
+#include "simsycl/schedule.hh"
 #include "simsycl/sycl/device.hh"
 #include "simsycl/sycl/exception.hh"
 #include "simsycl/sycl/platform.hh"
@@ -12,6 +13,7 @@
 #include <limits>
 #include <set>
 #include <unordered_map>
+#include <variant>
 
 #include <libenvpp/env.hpp>
 
@@ -135,11 +137,11 @@ struct system_state {
     }
 };
 
-std::optional<system_state> system;
+std::optional<system_state> g_system;
 
 system_state &get_system() {
-    if(!system.has_value()) { system.emplace(get_default_system_config()); }
-    return system.value();
+    if(!g_system.has_value()) { g_system.emplace(get_default_system_config()); }
+    return g_system.value();
 }
 
 const std::vector<sycl::platform> &get_platforms() { return get_system().platforms; }
@@ -268,15 +270,31 @@ device get_pointer_device(const void *ptr, const context &sycl_context) {
 namespace simsycl::detail {
 
 bool g_environment_parsed = false;
-std::optional<std::string> g_env_config;
+std::optional<system_config> g_env_system_config;
+std::shared_ptr<cooperative_schedule>
+    g_env_cooperative_schedule; // must be copyable to be returned from libenvpp parser
 
 void parse_environment() {
     if(g_environment_parsed) return;
 
     auto prefix = env::prefix("SIMSYCL");
-    const auto config = prefix.register_variable<std::string>("CONFIG");
+    const auto system = prefix.register_variable<system_config>(
+        "SYSTEM", [](const std::string_view repr) { return read_system_config(std::string(repr)); });
+    const auto schedule = prefix.register_variable<std::shared_ptr<cooperative_schedule>>(
+        "SCHEDULE", [](const std::string_view repr) -> std::shared_ptr<cooperative_schedule> {
+            if(repr == "rr") return std::make_unique<round_robin_schedule>();
+            if(repr == "shuffle") return std::make_unique<shuffle_schedule>();
+            if(repr.starts_with("shuffle:")) {
+                const auto seed_repr = repr.substr(strlen("shuffle:"));
+                return std::make_unique<shuffle_schedule>(env::default_parser<uint64_t>{}(seed_repr));
+            }
+            throw env::parser_error{
+                fmt::format("Invalid schedule '{}', permitted values are 'rr', 'shuffle', and 'shuffle:<seed>'", repr)};
+        });
+
     if(const auto parsed = prefix.parse_and_validate(); parsed.ok()) {
-        g_env_config = parsed.get(config);
+        g_env_system_config = parsed.get(system);
+        g_env_cooperative_schedule = parsed.get_or(schedule, nullptr);
     } else {
         std::cerr << parsed.warning_message() << parsed.error_message();
     }
@@ -284,24 +302,38 @@ void parse_environment() {
 }
 
 std::optional<system_config> g_default_system_config;
+std::shared_ptr<cooperative_schedule> g_cooperative_schedule;
+
 
 } // namespace simsycl::detail
 
 namespace simsycl {
 
-const system_config &get_default_system_config() {
-    if(!detail::g_default_system_config.has_value()) {
-        detail::parse_environment();
-        if(detail::g_env_config.has_value()) {
-            detail::g_default_system_config.emplace(read_system_config(*detail::g_env_config));
+const cooperative_schedule &get_cooperative_schedule() {
+    detail::parse_environment();
+    if(detail::g_cooperative_schedule == nullptr) {
+        if(detail::g_env_cooperative_schedule != nullptr) {
+            detail::g_cooperative_schedule = detail::g_env_cooperative_schedule;
         } else {
-            detail::g_default_system_config.emplace(builtin_system);
+            detail::g_cooperative_schedule = std::make_shared<round_robin_schedule>();
         }
+    }
+    return *detail::g_cooperative_schedule;
+}
+
+void set_cooperative_schedule(std::unique_ptr<cooperative_schedule> schedule) {
+    detail::g_cooperative_schedule = std::move(schedule);
+}
+
+const system_config &get_default_system_config() {
+    detail::parse_environment();
+    if(!detail::g_default_system_config.has_value()) {
+        detail::g_default_system_config = detail::g_env_system_config.value_or(builtin_system);
     }
     return detail::g_default_system_config.value();
 }
 
-void configure_system(const system_config &system) { detail::system.emplace(system); }
+void configure_system(const system_config &system) { detail::g_system.emplace(system); }
 
 const platform_config builtin_platform{
     .version = "0.1",

@@ -4,6 +4,7 @@
 #include "sycl/platform.hh"
 #include "sycl/range.hh"
 
+#include <cstdint>
 #include <vector>
 
 

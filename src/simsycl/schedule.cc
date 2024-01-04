@@ -1,13 +1,42 @@
 #include <simsycl/detail/utils.hh>
+#include <simsycl/schedule.hh>
 #include <simsycl/sycl/device.hh>
 #include <simsycl/sycl/exception.hh>
 #include <simsycl/sycl/group_functions.hh>
 #include <simsycl/sycl/handler.hh>
+#include <simsycl/system.hh>
 
 #include <numeric>
+#include <random>
 
 #include <boost/context/continuation.hpp>
 
+namespace simsycl {
+
+cooperative_schedule::state round_robin_schedule::init(std::vector<size_t> &order) const {
+    std::iota(order.begin(), order.end(), 0);
+    return 0;
+}
+
+cooperative_schedule::state round_robin_schedule::update(state state_before, std::vector<size_t> &order) const {
+    (void)order;
+    return state_before;
+}
+
+cooperative_schedule::state shuffle_schedule::init(std::vector<size_t> &order) const {
+    std::minstd_rand rng(m_seed);
+    std::iota(order.begin(), order.end(), 0);
+    std::shuffle(order.begin(), order.end(), rng);
+    return rng();
+}
+
+cooperative_schedule::state shuffle_schedule::update(state state_before, std::vector<size_t> &order) const {
+    std::minstd_rand rng(state_before);
+    std::shuffle(order.begin(), order.end(), rng);
+    return rng();
+}
+
+} // namespace simsycl
 
 namespace simsycl::detail {
 
@@ -189,9 +218,15 @@ void cooperative_for_nd_range(const sycl::device &device, const sycl::nd_range<D
             }));
     }
 
+    const auto &schedule = get_cooperative_schedule();
+    std::vector<size_t> order(num_concurrent_items);
+    auto schedule_state = schedule.init(order);
+
     // run until all are complete (this does an extra loop)
     while(concurrent_items_exited < num_concurrent_items) {
-        for(size_t concurrent_global_idx = 0; concurrent_global_idx < num_concurrent_items; ++concurrent_global_idx) {
+        for(size_t i = 0; i < num_concurrent_items; ++i) {
+            const size_t concurrent_global_idx = order[i];
+
             if(!fibers[concurrent_global_idx]) continue; // already exited
 
             // adjust local memory pointers before switching fibers
@@ -202,6 +237,7 @@ void cooperative_for_nd_range(const sycl::device &device, const sycl::nd_range<D
 
             fibers[concurrent_global_idx] = fibers[concurrent_global_idx].resume();
         }
+        schedule_state = schedule.update(schedule_state, order);
     }
 
     // rethrow any encountered exceptions

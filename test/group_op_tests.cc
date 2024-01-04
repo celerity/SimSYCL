@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 
 #include <sycl/sycl.hpp>
 
@@ -13,7 +14,14 @@ void check_group_op_sequence(const G &g, const std::vector<detail::group_operati
     for(size_t i = 0; i < expected_ids.size(); ++i) { CHECK(group_instance.operations[i].id == expected_ids[i]); }
 }
 
+#define REPEAT_FOR_ALL_SCHEDULES \
+    std::string schedule = GENERATE(values<std::string>({"round_robin", "shuffle"})); \
+    CAPTURE(schedule); \
+    if(schedule == "shuffle") { set_cooperative_schedule(std::make_unique<shuffle_schedule>()); }
+
 TEST_CASE("Group barriers behave as expected", "[group_op]") {
+    REPEAT_FOR_ALL_SCHEDULES
+
     enum class point { a, b, c };
     struct record {
         point p;
@@ -23,6 +31,17 @@ TEST_CASE("Group barriers behave as expected", "[group_op]") {
         size_t local_id;
         size_t local_range;
         auto operator<=>(const record &) const = default;
+    };
+    // a different schedule might shuffle the order of operations in between barriers
+    const auto sort_within_point_groups_by_global_id = [](std::vector<record> &&v) {
+        auto block_beg = v.begin();
+        decltype(block_beg) block_end;
+        while(block_beg != v.end()) {
+            block_end = std::find_if(block_beg, v.end(), [block_beg](const auto &r) { return r.p != block_beg->p; });
+            std::sort(block_beg, block_end);
+            block_beg = block_end;
+        }
+        return std::move(v);
     };
     const std::vector<record> expected = {
         {point::a, 0, 4, 0, 0, 2},
@@ -56,7 +75,7 @@ TEST_CASE("Group barriers behave as expected", "[group_op]") {
                     it.get_group(), {detail::group_operation_id::barrier, detail::group_operation_id::barrier});
             });
         });
-        CHECK(actual == expected);
+        CHECK(sort_within_point_groups_by_global_id(std::move(actual)) == expected);
     }
 
     SECTION("For subgroups") {
@@ -77,11 +96,13 @@ TEST_CASE("Group barriers behave as expected", "[group_op]") {
                     it.get_sub_group(), {detail::group_operation_id::barrier, detail::group_operation_id::barrier});
             });
         });
-        CHECK(actual == expected);
+        CHECK(sort_within_point_groups_by_global_id(std::move(actual)) == expected);
     }
 }
 
 TEST_CASE("Group broadcasts behave as expected", "[group_op][broadcast]") {
+    REPEAT_FOR_ALL_SCHEDULES
+
     std::vector<int> expected = {42, 42, 42, 42, 46, 46, 46, 46};
     std::vector<int> actual(expected.size());
 
@@ -122,6 +143,8 @@ TEST_CASE("Group broadcasts behave as expected", "[group_op][broadcast]") {
 
 
 TEST_CASE("Group joint_any_of behaves as expected", "[group_op][joint_any_of]") {
+    REPEAT_FOR_ALL_SCHEDULES
+
     int inputs[4] = {1, 2, 3, 4};
 
     SECTION("For work groups") {
@@ -149,6 +172,8 @@ TEST_CASE("Group joint_any_of behaves as expected", "[group_op][joint_any_of]") 
 }
 
 TEST_CASE("Group any_of_group behaves as expected", "[group_op][any_of_group]") {
+    REPEAT_FOR_ALL_SCHEDULES
+
     int inputs[4] = {1, 2, 3, 4};
 
     SECTION("For work groups") {
@@ -189,6 +214,8 @@ TEST_CASE("Group any_of_group behaves as expected", "[group_op][any_of_group]") 
 }
 
 TEST_CASE("Group joint_all_of behaves as expected", "[group_op][joint_all_of]") {
+    REPEAT_FOR_ALL_SCHEDULES
+
     int inputs[4] = {1, 2, 3, 4};
 
     SECTION("For work groups") {
@@ -216,6 +243,8 @@ TEST_CASE("Group joint_all_of behaves as expected", "[group_op][joint_all_of]") 
 }
 
 TEST_CASE("Group all_of_group behaves as expected", "[group_op][all_of_group]") {
+    REPEAT_FOR_ALL_SCHEDULES
+
     int inputs[4] = {1, 2, 3, 4};
 
     SECTION("For work groups") {
@@ -256,6 +285,8 @@ TEST_CASE("Group all_of_group behaves as expected", "[group_op][all_of_group]") 
 }
 
 TEST_CASE("Group joint_none_of behaves as expected", "[group_op][joint_none_of]") {
+    REPEAT_FOR_ALL_SCHEDULES
+
     int inputs[4] = {1, 2, 3, 4};
 
     SECTION("For work groups") {
@@ -283,6 +314,8 @@ TEST_CASE("Group joint_none_of behaves as expected", "[group_op][joint_none_of]"
 }
 
 TEST_CASE("Group none_of_group behaves as expected", "[group_op][none_of_group]") {
+    REPEAT_FOR_ALL_SCHEDULES
+
     int inputs[4] = {1, 2, 3, 4};
 
     SECTION("For work groups") {
@@ -323,6 +356,8 @@ TEST_CASE("Group none_of_group behaves as expected", "[group_op][none_of_group]"
 }
 
 TEST_CASE("Group shift operation behave as expected", "[group_op][shift]") {
+    REPEAT_FOR_ALL_SCHEDULES
+
     int inputs[4] = {1, 2, 3, 4};
     test::configure_device_with([](device_config &dev) { dev.sub_group_sizes = {4u}; });
 
@@ -357,6 +392,8 @@ TEST_CASE("Group shift operation behave as expected", "[group_op][shift]") {
 }
 
 TEST_CASE("Group permute behaves as expected", "[group_op][permute]") {
+    REPEAT_FOR_ALL_SCHEDULES
+
     int inputs[4] = {1, 2, 3, 4};
     test::configure_device_with([](device_config &dev) { dev.sub_group_sizes = {4u}; });
 
@@ -376,6 +413,8 @@ TEST_CASE("Group permute behaves as expected", "[group_op][permute]") {
 }
 
 TEST_CASE("Group select behaves as expected", "[group_op][select]") {
+    REPEAT_FOR_ALL_SCHEDULES
+
     int inputs[4] = {1, 2, 3, 4};
     test::configure_device_with([](device_config &dev) { dev.sub_group_sizes = {4u}; });
 
@@ -390,6 +429,8 @@ TEST_CASE("Group select behaves as expected", "[group_op][select]") {
 }
 
 TEST_CASE("Group joint_reduce behaves as expected", "[group_op][joint_reduce]") {
+    REPEAT_FOR_ALL_SCHEDULES
+
     int inputs[4] = {1, 2, 3, 4};
 
     SECTION("For work groups") {
@@ -421,6 +462,8 @@ TEST_CASE("Group joint_reduce behaves as expected", "[group_op][joint_reduce]") 
 }
 
 TEST_CASE("Group reduce_over_group behaves as expected", "[group_op][reduce_over_group]") {
+    REPEAT_FOR_ALL_SCHEDULES
+
     int inputs[4] = {1, 2, 3, 4};
 
     SECTION("For work groups") {
@@ -454,6 +497,8 @@ TEST_CASE("Group reduce_over_group behaves as expected", "[group_op][reduce_over
 }
 
 TEST_CASE("Group joint scans behave as expected", "[group_op][joint_exclusive_scan][joint_inclusive_scan]") {
+    REPEAT_FOR_ALL_SCHEDULES
+
     int inputs[4] = {1, 2, 3, 4};
 
     SECTION("For work groups") {
@@ -525,6 +570,8 @@ TEST_CASE("Group joint scans behave as expected", "[group_op][joint_exclusive_sc
 
 
 TEST_CASE("Group scans behave as expected", "[group_op][exclusive_scan_over_group][inclusive_scan_over_group]") {
+    REPEAT_FOR_ALL_SCHEDULES
+
     int inputs[4] = {1, 2, 3, 4};
 
     SECTION("For work groups") {
