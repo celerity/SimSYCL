@@ -64,64 +64,88 @@ template<int Dimensions>
 void cooperative_for_nd_range(const sycl::device &device, const sycl::nd_range<Dimensions> &range,
     const std::vector<local_memory_requirement> &local_memory, const nd_kernel<Dimensions> &kernel);
 
-template<typename KernelName, int Dimensions, typename Offset, typename KernelFunc, typename... Params>
-void execute_parallel_for(
-    const sycl::range<Dimensions> &range, const Offset &offset, KernelFunc &&func, Params &&...args) {
+template<typename KernelName, int Dimensions, typename Offset, typename KernelFunc, typename... Reducers>
+void execute_parallel_for(const sycl::range<Dimensions> &range, const Offset &offset, sycl::kernel_handler kh,
+    const KernelFunc &func,
+    Reducers &...reducers) //
+{
     register_kernel_on_static_construction<KernelName, KernelFunc>();
-    const simple_kernel<Dimensions, with_offset_v<Offset>> kernel(
-        [&](const sycl::item<Dimensions> &item) { func(item, std::forward<Params>(args)...); });
+
+    simple_kernel<Dimensions, with_offset_v<Offset>> kernel;
+    if constexpr(std::is_invocable_v<const KernelFunc, sycl::item<Dimensions, with_offset_v<Offset>>, Reducers &...,
+                     sycl::kernel_handler>) {
+        kernel = [&](const sycl::item<Dimensions> &item) { func(item, reducers..., kh); };
+    } else {
+        static_assert(
+            std::is_invocable_v<const KernelFunc, sycl::item<Dimensions, with_offset_v<Offset>>, Reducers &...>);
+        kernel = [&](const sycl::item<Dimensions> &item) { func(item, reducers...); };
+    }
     sequential_for(range, offset, kernel);
 }
 
-template<typename KernelName, int Dimensions, typename KernelFunc, typename... Params>
+template<typename KernelName, int Dimensions, typename KernelFunc, typename... Reducers>
 void execute_parallel_for(const sycl::device &device, const sycl::nd_range<Dimensions> &range,
-    const std::vector<local_memory_requirement> &local_memory, KernelFunc &&func, Params &&...args) {
-    const nd_kernel<Dimensions> kernel(
-        [&](const sycl::nd_item<Dimensions> &item) { func(item, std::forward<Params>(args)...); });
+    const std::vector<local_memory_requirement> &local_memory, sycl::kernel_handler kh, const KernelFunc &func,
+    Reducers &...reducers) //
+{
     register_kernel_on_static_construction<KernelName, KernelFunc>();
+
+    nd_kernel<Dimensions> kernel;
+    if constexpr(std::is_invocable_v<const KernelFunc, sycl::nd_item<Dimensions>, Reducers &...,
+                     sycl::kernel_handler>) {
+        kernel = [&](const sycl::nd_item<Dimensions> &item) { func(item, reducers..., kh); };
+    } else {
+        static_assert(std::is_invocable_v<const KernelFunc, sycl::nd_item<Dimensions>, Reducers &...>);
+        kernel = [&](const sycl::nd_item<Dimensions> &item) { func(item, reducers...); };
+    }
     cooperative_for_nd_range(device, range, local_memory, kernel);
 }
 
 template<typename KernelName, typename KernelFunc>
-void execute_single_task(KernelFunc &&func) {
+void execute_single_task(sycl::kernel_handler kh, KernelFunc &&func) {
     register_kernel_on_static_construction<KernelName, KernelFunc>();
-    func();
+    if constexpr(std::is_invocable_v<const KernelFunc, sycl::kernel_handler>) {
+        func(kh);
+    } else {
+        static_assert(std::is_invocable_v<const KernelFunc>);
+        func();
+    }
 }
 
 template<typename KernelName, int Dimensions, typename ParamTuple, size_t... ReductionIndices, size_t KernelIndex>
-void dispatch_parallel_for(const sycl::range<Dimensions> &range, ParamTuple &&params,
+void dispatch_parallel_for(const sycl::range<Dimensions> &range, sycl::kernel_handler kh, ParamTuple &&params,
     std::index_sequence<ReductionIndices...> /* reduction_indices */,
     std::index_sequence<KernelIndex> /* kernel_index */) {
     auto &kernel_func = std::get<KernelIndex>(params);
-    execute_parallel_for<KernelName>(range, no_offset, kernel_func, std::get<ReductionIndices>(params)...);
+    execute_parallel_for<KernelName>(range, no_offset, kh, kernel_func, std::get<ReductionIndices>(params)...);
 }
 
-template<typename KernelName, int Dimensions, typename ParamTuple, size_t... ReductionIndices, size_t KernelIndex>
+template<typename KernelName, int Dimensions, typename RestTuple, size_t... ReductionIndices, size_t KernelIndex>
 void dispatch_parallel_for(const sycl::device &device, const sycl::nd_range<Dimensions> &range,
-    const std::vector<local_memory_requirement> &local_memory, ParamTuple &&params,
+    const std::vector<local_memory_requirement> &local_memory, sycl::kernel_handler kh, RestTuple &&rest,
     std::index_sequence<ReductionIndices...> /* reduction_indices */,
     std::index_sequence<KernelIndex> /* kernel_index */) {
-    const auto &kernel_func = std::get<KernelIndex>(params);
-    execute_parallel_for<KernelName>(device, range, local_memory, kernel_func, std::get<ReductionIndices>(params)...);
+    const auto &kernel_func = std::get<KernelIndex>(rest);
+    execute_parallel_for<KernelName>(device, range, local_memory, kh, kernel_func, std::get<ReductionIndices>(rest)...);
 }
 
 template<typename KernelName, int Dimensions, typename... Rest, std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
-void parallel_for(sycl::range<Dimensions> num_work_items, Rest &&...rest) {
-    dispatch_parallel_for<KernelName>(num_work_items, std::forward_as_tuple(std::forward<Rest>(rest)...),
+void parallel_for(sycl::range<Dimensions> num_work_items, sycl::kernel_handler kh, Rest &&...rest) {
+    dispatch_parallel_for<KernelName>(num_work_items, kh, std::forward_as_tuple(std::forward<Rest>(rest)...),
         std::make_index_sequence<sizeof...(Rest) - 1>(), std::index_sequence<sizeof...(Rest) - 1>());
 }
 
 template<typename KernelName, typename KernelFunc, int Dimensions>
-void parallel_for(
-    sycl::range<Dimensions> num_work_items, sycl::id<Dimensions> work_item_offset, KernelFunc &&kernel_func) {
-    execute_parallel_for<KernelName>(num_work_items, work_item_offset, kernel_func);
+void parallel_for(sycl::range<Dimensions> num_work_items, sycl::id<Dimensions> work_item_offset,
+    sycl::kernel_handler kh, const KernelFunc &kernel_func) {
+    execute_parallel_for<KernelName>(num_work_items, work_item_offset, kh, kernel_func);
 }
 
 template<typename KernelName = unnamed_kernel, int Dimensions, typename... Rest,
     std::enable_if_t<(sizeof...(Rest) > 0), int> = 0>
 void parallel_for(const sycl::device &device, sycl::nd_range<Dimensions> execution_range,
-    const std::vector<local_memory_requirement> &local_memory, Rest &&...rest) {
-    detail::dispatch_parallel_for<KernelName>(device, execution_range, local_memory,
+    const std::vector<local_memory_requirement> &local_memory, sycl::kernel_handler kh, Rest &&...rest) {
+    detail::dispatch_parallel_for<KernelName>(device, execution_range, local_memory, kh,
         std::forward_as_tuple(std::forward<Rest>(rest)...), std::make_index_sequence<sizeof...(Rest) - 1>(),
         std::index_sequence<sizeof...(Rest) - 1>());
 }
@@ -133,10 +157,20 @@ template<int Dimensions>
 template<typename KernelName, int Dimensions, typename WorkgroupFunctionType>
 void parallel_for_work_group(const sycl::device &device, sycl::range<Dimensions> num_work_groups,
     std::optional<sycl::range<Dimensions>> work_group_size, const std::vector<local_memory_requirement> &local_memory,
-    const WorkgroupFunctionType &kernel_func) {
+    sycl::kernel_handler kh, const WorkgroupFunctionType &kernel_func) //
+{
     register_kernel_on_static_construction<KernelName, WorkgroupFunctionType>();
+
+    hierarchical_kernel<Dimensions> kernel;
+    if constexpr(std::is_invocable_v<const WorkgroupFunctionType, sycl::group<Dimensions>, sycl::kernel_handler>) {
+        kernel = [&](const sycl::group<Dimensions> &group) { kernel_func(group, kh); };
+    } else {
+        static_assert(std::is_invocable_v<const WorkgroupFunctionType, sycl::group<Dimensions>>);
+        kernel = kernel_func;
+    }
+
     const auto local_allocations = prepare_hierarchical_parallel_for(device, work_group_size, local_memory);
-    sequential_for_work_group(num_work_groups, work_group_size, hierarchical_kernel<Dimensions>(kernel_func));
+    sequential_for_work_group(num_work_groups, work_group_size, kernel);
 }
 
 } // namespace simsycl::detail

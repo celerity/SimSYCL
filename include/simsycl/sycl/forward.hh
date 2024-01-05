@@ -129,6 +129,9 @@ class sampled_image;
 template<typename DataT, int Dimensions, image_target AccessTarget = image_target::device>
 class sampled_image_accessor;
 
+template<typename T>
+class specialization_id;
+
 class stream;
 
 template<typename DataT, int Dimensions, access_mode AccessMode, image_target AccessTarget = image_target::device>

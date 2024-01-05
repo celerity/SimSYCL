@@ -1,5 +1,6 @@
 #pragma once
 
+#include <any>
 #include <cassert>
 #include <cstddef>
 #include <cstring>
@@ -72,43 +73,45 @@ class handler {
 
     template<typename KernelName = simsycl::detail::unnamed_kernel, typename KernelType>
     void single_task(const KernelType &kernel_func) {
-        detail::execute_single_task<KernelName>(kernel_func);
+        detail::execute_single_task<KernelName>(kernel_handler(this), kernel_func);
     }
 
     template<typename KernelName = simsycl::detail::unnamed_kernel, typename... Rest>
         requires(sizeof...(Rest) > 0)
     void parallel_for(size_t num_work_items, Rest &&...rest) {
-        detail::parallel_for<KernelName>(range<1>(num_work_items), std::forward<Rest>(rest)...);
+        detail::parallel_for<KernelName>(range<1>(num_work_items), kernel_handler(this), std::forward<Rest>(rest)...);
     }
 
     template<typename KernelName = simsycl::detail::unnamed_kernel, int Dimensions, typename... Rest>
         requires(sizeof...(Rest) > 0 && Dimensions > 0)
     void parallel_for(range<Dimensions> num_work_items, Rest &&...rest) {
-        detail::parallel_for<KernelName>(num_work_items, std::forward<Rest>(rest)...);
+        detail::parallel_for<KernelName>(num_work_items, kernel_handler(this), std::forward<Rest>(rest)...);
     }
 
     template<typename KernelName = simsycl::detail::unnamed_kernel, typename KernelType, int Dimensions>
     SIMSYCL_DETAIL_DEPRECATED_IN_SYCL void parallel_for(
         range<Dimensions> num_work_items, id<Dimensions> work_item_offset, KernelType &&kernel_func) {
-        detail::parallel_for<KernelName>(num_work_items, work_item_offset, kernel_func);
+        detail::parallel_for<KernelName>(num_work_items, work_item_offset, kernel_handler(this), kernel_func);
     }
 
     template<typename KernelName = simsycl::detail::unnamed_kernel, int Dimensions, typename... Rest>
         requires(sizeof...(Rest) > 0)
     void parallel_for(nd_range<Dimensions> execution_range, Rest &&...rest) {
-        detail::parallel_for<KernelName>(m_device, execution_range, m_local_memory, std::forward<Rest>(rest)...);
+        detail::parallel_for<KernelName>(
+            m_device, execution_range, m_local_memory, kernel_handler(this), std::forward<Rest>(rest)...);
     }
 
     template<typename KernelName = simsycl::detail::unnamed_kernel, typename WorkgroupFunctionType, int Dimensions>
     void parallel_for_work_group(range<Dimensions> num_work_groups, const WorkgroupFunctionType &kernel_func) {
-        detail::parallel_for_work_group<KernelName>(m_device, num_work_groups, {}, m_local_memory, kernel_func);
+        detail::parallel_for_work_group<KernelName>(
+            m_device, num_work_groups, {}, m_local_memory, kernel_handler(this), kernel_func);
     }
 
     template<typename KernelName = simsycl::detail::unnamed_kernel, typename WorkgroupFunctionType, int Dimensions>
     void parallel_for_work_group(range<Dimensions> num_work_groups, range<Dimensions> work_group_size,
         const WorkgroupFunctionType &kernel_func) {
         detail::parallel_for_work_group<KernelName>(
-            m_device, num_work_groups, {work_group_size}, m_local_memory, kernel_func);
+            m_device, num_work_groups, {work_group_size}, m_local_memory, kernel_handler(this), kernel_func);
     }
 
     void single_task(const kernel &kernel_object) {
@@ -206,10 +209,23 @@ class handler {
     void use_kernel_bundle(const kernel_bundle<bundle_state::executable> &exec_bundle);
 
     template<auto &SpecName>
-    void set_specialization_constant(typename std::remove_reference_t<decltype(SpecName)>::value_type value);
+    void set_specialization_constant(typename std::remove_reference_t<decltype(SpecName)>::value_type value) {
+        static_assert(detail::is_specialization_id_v<std::remove_cvref_t<decltype(SpecName)>>);
+        if(auto existing = find_specialization_constant(this, &SpecName)) {
+            *existing = value;
+        } else {
+            m_specialization_constants.emplace_back(&SpecName, value);
+        }
+    }
 
     template<auto &SpecName>
-    typename std::remove_reference_t<decltype(SpecName)>::value_type get_specialization_constant();
+    typename std::remove_reference_t<decltype(SpecName)>::value_type get_specialization_constant() const {
+        static_assert(detail::is_specialization_id_v<std::remove_cvref_t<decltype(SpecName)>>);
+        if(auto existing = find_specialization_constant(this, &SpecName)) {
+            return std::any_cast<typename std::remove_reference_t<decltype(SpecName)>::value_type>(*existing);
+        }
+        return detail::get_specialization_default(SpecName);
+    }
 
   private:
     friend handler simsycl::detail::make_handler(const sycl::device &device);
@@ -217,9 +233,25 @@ class handler {
 
     device m_device;
     std::vector<detail::local_memory_requirement> m_local_memory;
+    std::vector<std::pair<const void *, std::any>> m_specialization_constants;
 
     explicit handler(const device &device) : m_device(device) {}
+
+    static auto find_specialization_constant(auto self, const void *spec_id)
+        -> decltype(&self->m_specialization_constants[0].second) {
+        if(const auto it = std::find_if(self->m_specialization_constants.begin(),
+               self->m_specialization_constants.end(), [&](const auto &pair) { return pair.first == spec_id; });
+            it != self->m_specialization_constants.end()) {
+            return &it->second;
+        }
+        return nullptr;
+    }
 };
+
+template<auto &SpecName>
+typename std::remove_reference_t<decltype(SpecName)>::value_type kernel_handler::get_specialization_constant() {
+    return m_cgh->get_specialization_constant<SpecName>();
+}
 
 } // namespace simsycl::sycl
 

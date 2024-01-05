@@ -14,6 +14,63 @@
 
 namespace simsycl::detail {
 
+template<typename T>
+struct is_specialization_id : std::false_type {};
+
+template<typename T>
+struct is_specialization_id<sycl::specialization_id<T>> : std::true_type {};
+
+template<typename T>
+inline constexpr bool is_specialization_id_v = is_specialization_id<T>::value;
+
+template<typename T>
+const T &get_specialization_default(const sycl::specialization_id<T> &id) {
+    return id.m_default_value;
+}
+
+} // namespace simsycl::detail
+
+namespace simsycl::sycl {
+
+template<typename T>
+class specialization_id {
+  public:
+    using value_type = T;
+
+    template<class... Args>
+    explicit constexpr specialization_id(Args &&...args)
+        requires(std::is_constructible_v<T, Args...>)
+        : m_default_value(std::forward<Args>(args)...) {}
+
+    specialization_id(const specialization_id &rhs) = delete;
+    specialization_id(specialization_id &&rhs) = delete;
+    specialization_id &operator=(const specialization_id &rhs) = delete;
+    specialization_id &operator=(specialization_id &&rhs) = delete;
+
+  private:
+    template<typename U>
+    friend const U &detail::get_specialization_default(const sycl::specialization_id<U> &id);
+
+    value_type m_default_value;
+};
+
+class kernel_handler {
+  public:
+    template<auto &SpecName>
+    typename std::remove_reference_t<decltype(SpecName)>::value_type get_specialization_constant();
+    // implemented in handler.hh
+
+  private:
+    friend class handler;
+    explicit kernel_handler(handler *cgh) : m_cgh(cgh) {}
+
+    handler *m_cgh;
+};
+
+} // namespace simsycl::sycl
+
+namespace simsycl::detail {
+
 struct kernel_id_state {
     const std::type_info &pointer_to_name_type;
     const std::type_info &func_type;
@@ -225,12 +282,6 @@ kernel kernel_bundle<State>::get_kernel() const
 {
     return get_kernel(get_kernel_id<KernelName>());
 }
-
-class kernel_handler {
-  public:
-    template<auto &SpecName>
-    typename std::remove_reference_t<decltype(SpecName)>::value_type get_specialization_constant();
-};
 
 template<typename KernelName>
 kernel_id get_kernel_id() {
