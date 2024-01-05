@@ -639,6 +639,8 @@ class local_accessor final : public simsycl::detail::property_interface {
 
     void swap(local_accessor &other) { std::swap(*this, other); }
 
+    bool is_placeholder() const { return m_allocation_ptr == nullptr; }
+
     size_type byte_size() const noexcept { return m_range.size() * sizeof(DataT); }
 
     size_type size() const noexcept { return m_range.size(); }
@@ -735,7 +737,7 @@ class local_accessor<DataT, 0> final : public simsycl::detail::property_interfac
 
     void swap(local_accessor &other) { std::swap(*this, other); }
 
-    bool is_placeholder() const { return false; }
+    bool is_placeholder() const { return m_allocation_ptr == nullptr; }
 
     size_type byte_size() const noexcept { return sizeof(DataT); }
 
@@ -796,10 +798,10 @@ class local_accessor<DataT, 0> final : public simsycl::detail::property_interfac
     friend bool operator!=(const local_accessor &lhs, const local_accessor &rhs) { return !(lhs == rhs); }
 
   private:
-    void **m_allocation_ptr;
+    void **m_allocation_ptr = nullptr;
 
     inline DataT *get_allocation() const {
-        return m_allocation_ptr != nullptr ? static_cast<DataT>(*m_allocation_ptr) : nullptr;
+        return m_allocation_ptr != nullptr ? static_cast<DataT *>(*m_allocation_ptr) : nullptr;
     }
 };
 
@@ -986,11 +988,7 @@ class host_accessor<DataT, 0, AccessMode> : public simsycl::detail::property_int
     template<typename AllocatorT>
     host_accessor(buffer<DataT, 1, AllocatorT> &buffer_ref, const property_list &prop_list = {});
 
-    friend bool operator==(const host_accessor &lhs, const host_accessor &rhs) {
-        return lhs.m_buffer == rhs.m_buffer && lhs.m_required == rhs.m_required;
-    }
-
-    friend bool operator!=(const host_accessor &lhs, const host_accessor &rhs) { return !(lhs == rhs); }
+    friend bool operator==(const host_accessor &lhs, const host_accessor &rhs) = default;
 
     void swap(host_accessor &other) { return std::swap(*this, other); }
 
@@ -1057,6 +1055,189 @@ class host_accessor<DataT, 0, AccessMode> : public simsycl::detail::property_int
 // deprecated accessor specializations
 
 template<typename DataT, int Dimensions, access_mode AccessMode, access::placeholder IsPlaceholder>
+class accessor<DataT, Dimensions, AccessMode, target::constant_buffer, IsPlaceholder> final
+    : public simsycl::detail::property_interface {
+    static_assert(
+        AccessMode == access_mode::read, "accessor<constant_buffer> is only available for AccessMode == read");
+
+  private:
+    using property_compatibility = detail::property_compatibility_with<accessor, property::no_init>;
+
+  public:
+    using value_type = const DataT;
+    using reference = const DataT &;
+    using const_reference = const DataT &;
+
+    template<typename AllocatorT>
+    accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, const property_list &prop_list = {})
+        : accessor(internal, buffer_ref, prop_list) {}
+
+    template<typename AllocatorT>
+    accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, handler &command_group_handler_ref,
+        const property_list &prop_list = {})
+        : accessor(internal, buffer_ref, command_group_handler_ref, prop_list) {}
+
+    template<typename AllocatorT>
+    accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, range<Dimensions> access_range,
+        const property_list &prop_list = {})
+        : accessor(internal, buffer_ref, access_range, prop_list) {}
+
+    template<typename AllocatorT>
+    accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, range<Dimensions> access_range,
+        id<Dimensions> access_offset, const property_list &prop_list = {})
+        : accessor(internal, buffer_ref, access_range, access_offset, prop_list) {}
+
+    template<typename AllocatorT>
+    accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, handler &command_group_handler_ref,
+        range<Dimensions> access_range, const property_list &prop_list = {})
+        : accessor(internal, buffer_ref, command_group_handler_ref, access_range, prop_list) {}
+
+    template<typename AllocatorT>
+    accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, handler &command_group_handler_ref,
+        range<Dimensions> access_range, id<Dimensions> access_offset, const property_list &prop_list = {})
+        : accessor(internal, buffer_ref, command_group_handler_ref, access_range, access_offset, prop_list) {}
+
+    friend bool operator==(const accessor &lhs, const accessor &rhs) = default;
+
+    bool is_placeholder() const { return !*m_required; }
+
+    size_t get_size() const noexcept { return get_count() * sizeof(DataT); }
+
+    size_t get_count() const noexcept { return m_access_range.size(); }
+
+    range<Dimensions> get_range() const {
+        SIMSYCL_CHECK(m_buffer != nullptr);
+        return m_access_range;
+    }
+
+    id<Dimensions> get_offset() const {
+        SIMSYCL_CHECK(m_buffer != nullptr);
+        return m_access_offset;
+    }
+
+    reference operator[](id<Dimensions> index) const
+        requires(AccessMode != access_mode::atomic)
+    {
+        SIMSYCL_CHECK(m_buffer != nullptr);
+        SIMSYCL_CHECK(*m_required);
+        return m_buffer[detail::get_linear_index(m_buffer_range, index)];
+    }
+
+    decltype(auto) operator[](size_t index) const
+        requires(Dimensions > 1)
+    {
+        return detail::subscript<Dimensions>(*this, index);
+    }
+
+    constant_ptr<DataT> get_pointer() const noexcept {
+        SIMSYCL_CHECK(m_buffer != nullptr);
+        SIMSYCL_CHECK(*m_required);
+        return m_buffer;
+    }
+
+  private:
+    struct internal_t {
+    } constexpr inline static internal{};
+
+    DataT *m_buffer = nullptr;
+    range<Dimensions> m_buffer_range;
+    id<Dimensions> m_access_offset;
+    range<Dimensions> m_access_range;
+    // shared: require() on a copy is equivalent to require() on the original instance
+    std::shared_ptr<bool> m_required = std::make_shared<bool>(false);
+
+    template<typename AllocatorT>
+    void init(buffer<DataT, Dimensions, AllocatorT> &buffer_ref) {
+        m_buffer = detail::get_buffer_data(buffer_ref);
+        m_buffer_range = buffer_ref.get_range();
+        m_access_range = m_buffer_range;
+    }
+    void init(const id<Dimensions> &access_offset) { m_access_offset = access_offset; }
+
+    void init(const range<Dimensions> &access_range) { m_access_range = access_range; }
+
+    void init(handler & /* cgh */) { *m_required = true; }
+
+    void init(const property_list &prop_list) {
+        static_cast<detail::property_interface &>(*this)
+            = detail::property_interface(prop_list, property_compatibility());
+    }
+
+    template<typename... Params>
+    explicit accessor(internal_t /* tag */, Params &&...args) {
+        (init(args), ...);
+    }
+
+    void require() {
+        SIMSYCL_CHECK(m_buffer != nullptr);
+        *m_required = true;
+    }
+
+    const range<Dimensions> &get_buffer_range() const { return m_buffer_range; }
+};
+
+template<typename DataT, access_mode AccessMode, access::placeholder IsPlaceholder>
+class accessor<DataT, 0, AccessMode, target::constant_buffer, IsPlaceholder> final
+    : public simsycl::detail::property_interface {
+    static_assert(
+        AccessMode == access_mode::read, "accessor<constant_buffer> is only available for AccessMode == read");
+
+  private:
+    using property_compatibility = detail::property_compatibility_with<accessor, property::no_init>;
+
+  public:
+    using value_type = const DataT;
+    using reference = const DataT &;
+    using const_reference = const DataT &;
+
+    template<typename AllocatorT>
+    accessor(buffer<DataT, 1, AllocatorT> &buffer_ref, const property_list &prop_list = {})
+        : simsycl::detail::property_interface(prop_list, property_compatibility()),
+          m_buffer(detail::get_buffer_data(buffer_ref)) {}
+
+    template<typename AllocatorT>
+    accessor(buffer<DataT, 1, AllocatorT> &buffer_ref, handler &command_group_handler_ref,
+        const property_list &prop_list = {})
+        : simsycl::detail::property_interface(prop_list, property_compatibility()),
+          m_buffer(detail::get_buffer_data(buffer_ref)) {
+        (void)command_group_handler_ref;
+        *m_required = true;
+    }
+
+    friend bool operator==(const accessor &lhs, const accessor &rhs) = default;
+
+    bool is_placeholder() const { return !m_required; }
+
+    size_t get_size() const noexcept { return sizeof(DataT); }
+
+    size_t get_count() const noexcept { return 1; }
+
+    operator reference() const {
+        SIMSYCL_CHECK(m_buffer != nullptr);
+        SIMSYCL_CHECK(*m_required);
+        return *m_buffer;
+    }
+
+    global_ptr<DataT> get_pointer() const noexcept {
+        SIMSYCL_CHECK(m_buffer != nullptr);
+        SIMSYCL_CHECK(*m_required);
+        return m_buffer;
+    }
+
+  private:
+    friend class handler;
+
+    DataT *m_buffer = nullptr;
+    // shared: require() on a copy is equivalent to require() on the original instance
+    std::shared_ptr<bool> m_required = std::make_shared<bool>(false);
+
+    void require() {
+        SIMSYCL_CHECK(m_buffer != nullptr);
+        *m_required = true;
+    }
+};
+
+template<typename DataT, int Dimensions, access_mode AccessMode, access::placeholder IsPlaceholder>
 class accessor<DataT, Dimensions, AccessMode, target::host_buffer, IsPlaceholder> final
     : public simsycl::detail::property_interface {
     static_assert(AccessMode == access_mode::read || !std::is_const_v<DataT>,
@@ -1087,7 +1268,7 @@ class accessor<DataT, Dimensions, AccessMode, target::host_buffer, IsPlaceholder
           m_buffer(detail::get_buffer_data(buffer_ref)), m_buffer_range(buffer_ref.get_range()),
           m_access_range(access_range), m_access_offset(access_offset) {}
 
-    bool is_placeholder() const { return true; }
+    bool is_placeholder() const { return false; }
 
     size_t get_size() const { return get_count() * sizeof(DataT); }
 
@@ -1144,7 +1325,7 @@ class accessor<DataT, 0, AccessMode, target::host_buffer, IsPlaceholder> {
         : detail::property_interface(prop_list, property_compatibility()),
           m_buffer(detail::get_buffer_data(buffer_ref)) {}
 
-    bool is_placeholder() const { return true; }
+    bool is_placeholder() const { return false; }
 
     size_t get_size() const { return sizeof(DataT); }
 
@@ -1259,7 +1440,7 @@ class accessor<DataT, 0, AccessMode, target::local, IsPlaceholder> final : publi
   private:
     void **m_allocation_ptr;
 
-    inline DataT *get_allocation() const { return static_cast<DataT>(*m_allocation_ptr); }
+    inline DataT *get_allocation() const { return static_cast<DataT *>(*m_allocation_ptr); }
 };
 
 
