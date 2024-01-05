@@ -2,6 +2,7 @@
 #include "simsycl/sycl/device.hh"
 #include "simsycl/sycl/info.hh"
 #include "simsycl/sycl/platform.hh"
+#include "simsycl/system.hh"
 
 
 namespace simsycl::detail {
@@ -59,10 +60,11 @@ context::context(internal_t /* tag */, const std::vector<device> &devices, const
     : reference_type(std::in_place, get_common_platform(devices), devices, async_handler),
       property_interface(prop_list, property_compatibility{}) {}
 
-context::context(const property_list &prop_list) : context(internal, {}, {}, prop_list) {}
+context::context(const property_list &prop_list)
+    : context(internal, {detail::select_device(default_selector_v)}, {}, prop_list) {}
 
 context::context(async_handler async_handler, const property_list &prop_list)
-    : context(internal, {}, async_handler, prop_list) {}
+    : context(internal, {detail::select_device(default_selector_v)}, async_handler, prop_list) {}
 
 context::context(const device &dev, const property_list &prop_list) : context(internal, {dev}, {}, prop_list) {}
 

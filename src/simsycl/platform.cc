@@ -22,6 +22,8 @@ platform::platform(const detail::device_selector &selector)
     : platform(detail::select_device(selector).get_platform()) {}
 
 std::vector<device> platform::get_devices(info::device_type type) const {
+    if(type == info::device_type::all) return state().devices;
+
     std::vector<device> result;
     std::copy_if(state().devices.begin(), state().devices.end(), std::back_inserter(result),
         [type](const device &dev) { return dev.get_info<info::device::device_type>() == type; });
