@@ -46,8 +46,7 @@ class multi_ptr {
     constexpr multi_ptr() : m_ptr(nullptr) {}
     multi_ptr(const multi_ptr &) = default;
     multi_ptr(multi_ptr &&) = default;
-    constexpr explicit multi_ptr(typename multi_ptr<ElementType, Space, access::decorated::yes>::pointer ptr)
-        : m_ptr(ptr) {}
+    constexpr explicit multi_ptr(pointer ptr) : m_ptr(ptr) {}
     constexpr multi_ptr(std::nullptr_t /* nullptr */) : m_ptr(nullptr) {}
 
     template<int Dimensions, access_mode Mode, access::placeholder IsPlaceholder>
@@ -249,8 +248,8 @@ class multi_ptr<simsycl::detail::void_type<VoidType>, Space, DecorateAddress> {
     constexpr multi_ptr() : m_ptr(nullptr) {}
     multi_ptr(const multi_ptr &) = default;
     multi_ptr(multi_ptr &&) = default;
-    constexpr explicit multi_ptr(typename multi_ptr<VoidType, Space, access::decorated::yes>::pointer);
-    constexpr multi_ptr(std::nullptr_t) : m_ptr(nullptr) {}
+    constexpr explicit multi_ptr(pointer ptr): m_ptr(ptr) {}
+    constexpr multi_ptr(std::nullptr_t /* nullptr */) : m_ptr(nullptr) {}
 
     template<typename ElementType, int Dimensions, access_mode Mode, access::placeholder IsPlaceholder>
         requires(Space == access::address_space::global_space)
@@ -356,10 +355,10 @@ class SIMSYCL_DETAIL_DEPRECATED_IN_SYCL multi_ptr<ElementType, Space, access::de
 
     // Implementation defined pointer and reference types that correspond to
     // SYCL/OpenCL interoperability types for OpenCL C functions.
-    using pointer_t = multi_ptr<ElementType, Space, access::decorated::yes>::pointer;
-    using const_pointer_t = multi_ptr<const ElementType, Space, access::decorated::yes>::pointer;
-    using reference_t = multi_ptr<ElementType, Space, access::decorated::yes>::reference;
-    using const_reference_t = multi_ptr<const ElementType, Space, access::decorated::yes>::reference;
+    using pointer_t = typename multi_ptr<ElementType, Space, access::decorated::yes>::pointer;
+    using const_pointer_t = typename multi_ptr<const ElementType, Space, access::decorated::yes>::pointer;
+    using reference_t = typename multi_ptr<ElementType, Space, access::decorated::yes>::reference;
+    using const_reference_t = typename multi_ptr<const ElementType, Space, access::decorated::yes>::reference;
 
     static constexpr access::address_space address_space = Space;
 
@@ -368,14 +367,14 @@ class SIMSYCL_DETAIL_DEPRECATED_IN_SYCL multi_ptr<ElementType, Space, access::de
     multi_ptr(const multi_ptr &) = default;
     multi_ptr(multi_ptr &&) = default;
     constexpr multi_ptr(pointer_t ptr) : m_ptr(ptr) {}
-    constexpr multi_ptr(std::nullptr_t) : m_ptr(nullptr) {}
+    constexpr multi_ptr(std::nullptr_t /* nullptr */) : m_ptr(nullptr) {}
     ~multi_ptr() = default;
 
     // Assignment and access operators
     multi_ptr &operator=(const multi_ptr &) = default;
     multi_ptr &operator=(multi_ptr &&) = default;
     multi_ptr &operator=(pointer_t ptr) { m_ptr = ptr; }
-    multi_ptr &operator=(std::nullptr_t) { m_ptr = nullptr; }
+    multi_ptr &operator=(std::nullptr_t /* nullptr */) { m_ptr = nullptr; }
 
     ElementType *operator->() const { return m_ptr; }
 
@@ -501,8 +500,8 @@ class SIMSYCL_DETAIL_DEPRECATED_IN_SYCL
 
     // Implementation defined pointer types that correspond to
     // SYCL/OpenCL interoperability types for OpenCL C functions
-    using pointer_t = multi_ptr<VoidType, Space, access::decorated::yes>::pointer;
-    using const_pointer_t = multi_ptr<const VoidType, Space, access::decorated::yes>::pointer;
+    using pointer_t = typename multi_ptr<VoidType, Space, access::decorated::yes>::pointer;
+    using const_pointer_t = typename multi_ptr<const VoidType, Space, access::decorated::yes>::pointer;
 
     static constexpr access::address_space address_space = Space;
 
@@ -511,14 +510,14 @@ class SIMSYCL_DETAIL_DEPRECATED_IN_SYCL
     multi_ptr(const multi_ptr &) = default;
     multi_ptr(multi_ptr &&) = default;
     constexpr multi_ptr(pointer_t ptr) : m_ptr(ptr) {}
-    constexpr multi_ptr(std::nullptr_t) : m_ptr(nullptr) {}
+    constexpr multi_ptr(std::nullptr_t /* nullptr */) : m_ptr(nullptr) {}
     ~multi_ptr() = default;
 
     // Assignment operators
     multi_ptr &operator=(const multi_ptr &) = default;
     multi_ptr &operator=(multi_ptr &&) = default;
     multi_ptr &operator=(pointer_t ptr) { m_ptr = ptr; }
-    multi_ptr &operator=(std::nullptr_t) { m_ptr = nullptr; }
+    multi_ptr &operator=(std::nullptr_t /* nullptr */) { m_ptr = nullptr; }
 
     template<typename ElementType, int Dimensions, access_mode Mode, access::placeholder IsPlaceholder>
         requires(Space == access::address_space::global_space || Space == access::address_space::generic_space)
