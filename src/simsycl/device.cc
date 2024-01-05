@@ -473,6 +473,8 @@ SIMSYCL_DETAIL_DEPRECATED_IN_SYCL bool device::has_extension(const std::string &
 
 std::vector<device> device::get_devices(info::device_type type) {
     auto &devices = detail::get_devices();
+    if (type == info::device_type::all) return devices;
+
     std::vector<device> result;
     std::copy_if(devices.begin(), devices.end(), std::back_inserter(result),
         [type](const device &dev) { return dev.get_info<info::device::device_type>() == type; });

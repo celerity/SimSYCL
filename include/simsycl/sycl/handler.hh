@@ -44,10 +44,17 @@ class handler {
     //----- Backend interoperability interface
 
     template<typename T>
-    void set_arg(int arg_index, T &&arg);
+    void set_arg(int arg_index, T &&arg) {
+        (void)arg_index;
+        (void)arg;
+        SIMSYCL_CHECK(!"SimSYCL does not have built-in or backend interop kernels, calling set_arg is undefined");
+    }
 
     template<typename... Ts>
-    void set_args(Ts &&...args);
+    void set_args(Ts &&...args) {
+        ((void)args, ...);
+        SIMSYCL_CHECK(!"SimSYCL does not have built-in or backend interop kernels, calling set_args is undefined");
+    }
 
     //------ Host tasks
 
@@ -65,7 +72,7 @@ class handler {
 
     template<typename KernelName = simsycl::detail::unnamed_kernel, typename KernelType>
     void single_task(const KernelType &kernel_func) {
-        kernel_func();
+        detail::execute_single_task<KernelName>(kernel_func);
     }
 
     template<typename KernelName = simsycl::detail::unnamed_kernel, typename... Rest>
@@ -104,13 +111,24 @@ class handler {
             m_device, num_work_groups, {work_group_size}, m_local_memory, kernel_func);
     }
 
-    void single_task(const kernel &kernel_object);
+    void single_task(const kernel &kernel_object) {
+        (void)kernel_object;
+        throw sycl::exception(sycl::errc::invalid, "SYCL does not allow invoking user kernels via kernel object APIs");
+    }
 
     template<int Dimensions>
-    void parallel_for(range<Dimensions> num_work_items, const kernel &kernel_object);
+    void parallel_for(range<Dimensions> num_work_items, const kernel &kernel_object) {
+        (void)num_work_items;
+        (void)kernel_object;
+        throw sycl::exception(sycl::errc::invalid, "SYCL does not allow invoking user kernels via kernel object APIs");
+    }
 
     template<int Dimensions>
-    void parallel_for(nd_range<Dimensions> nd_range, const kernel &kernel_object);
+    void parallel_for(nd_range<Dimensions> nd_range, const kernel &kernel_object) {
+        (void)nd_range;
+        (void)kernel_object;
+        throw sycl::exception(sycl::errc::invalid, "SYCL does not allow invoking user kernels via kernel object APIs");
+    }
 
     //------ USM functions
 

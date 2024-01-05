@@ -115,7 +115,7 @@ class device final : public detail::reference_type<device, detail::device_state>
 
 
 template<aspect Aspect>
-struct any_device_has : std::false_type {};
+struct any_device_has : std::true_type {};
 
 template<aspect Aspect>
 struct all_devices_have : std::false_type {};
