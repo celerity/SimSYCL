@@ -353,11 +353,16 @@ class swizzled_vec {
     // load and store member functions
 
     template<sycl::access::address_space AddressSpace, sycl::access::decorated IsDecorated>
-    void load(size_t offset, sycl::multi_ptr<const value_type, AddressSpace, IsDecorated> ptr)
-        requires(allow_assign);
+    void load(size_t offset, sycl::multi_ptr<const value_type, AddressSpace, IsDecorated> ptr) const
+        requires(allow_assign)
+    {
+        for(int i = 0; i < num_elements; ++i) { m_elems[indices[i]] = ptr[offset + i]; }
+    }
 
     template<sycl::access::address_space AddressSpace, sycl::access::decorated IsDecorated>
-    void store(size_t offset, sycl::multi_ptr<value_type, AddressSpace, IsDecorated> ptr) const;
+    void store(size_t offset, sycl::multi_ptr<value_type, AddressSpace, IsDecorated> ptr) const {
+        for(int i = 0; i < num_elements; ++i) { ptr[offset + i] = m_elems[indices[i]]; }
+    }
 
     ReferenceDataT &operator[](int index) const {
         SIMSYCL_CHECK(index >= 0 && index < num_elements && "Index out of range");
@@ -684,10 +689,14 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
     // load and store member functions
 
     template<access::address_space AddressSpace, access::decorated IsDecorated>
-    void load(size_t offset, multi_ptr<const DataT, AddressSpace, IsDecorated> ptr);
+    void load(size_t offset, multi_ptr<const DataT, AddressSpace, IsDecorated> ptr) {
+        for(int i = 0; i < NumElements; ++i) { m_elems[i] = ptr[offset + i]; }
+    }
 
     template<access::address_space AddressSpace, access::decorated IsDecorated>
-    void store(size_t offset, multi_ptr<DataT, AddressSpace, IsDecorated> ptr) const;
+    void store(size_t offset, multi_ptr<DataT, AddressSpace, IsDecorated> ptr) const {
+        for(int i = 0; i < NumElements; ++i) { ptr[offset + i] = m_elems[i]; }
+    }
 
     DataT &operator[](int index) {
         SIMSYCL_CHECK(index >= 0 && index < NumElements && "Index out of range");
