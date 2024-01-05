@@ -49,18 +49,33 @@ class multi_ptr {
     constexpr explicit multi_ptr(pointer ptr) : m_ptr(ptr) {}
     constexpr multi_ptr(std::nullptr_t /* nullptr */) : m_ptr(nullptr) {}
 
-    template<int Dimensions, access_mode Mode, access::placeholder IsPlaceholder>
+    template<typename AccDataT, int Dimensions, access_mode Mode, access::placeholder IsPlaceholder>
         requires(Space == access::address_space::global_space || Space == access::address_space::generic_space)
-    multi_ptr(accessor<value_type, Dimensions, Mode, target::device, IsPlaceholder> acc) : m_ptr(acc.get_pointer()) {}
+        && (std::is_same_v<std::remove_const_t<ElementType>, std::remove_const_t<AccDataT>>)
+        && (std::is_const_v<ElementType>
+            || !std::is_const_v<
+                typename accessor<AccDataT, Dimensions, Mode, target::device, IsPlaceholder>::value_type>)
+    multi_ptr(accessor<AccDataT, Dimensions, Mode, target::device, IsPlaceholder> acc) : m_ptr(acc.get_pointer()) {}
 
-    template<int Dimensions>
+    template<typename AccDataT, int Dimensions>
         requires(Space == access::address_space::local_space || Space == access::address_space::generic_space)
-    multi_ptr(local_accessor<ElementType, Dimensions> acc) : m_ptr(acc.get_pointer()) {}
+        && (std::is_same_v<std::remove_const_t<ElementType>, std::remove_const_t<AccDataT>>)
+        && (std::is_const_v<ElementType> || !std::is_const_v<AccDataT>)
+    multi_ptr(local_accessor<AccDataT, Dimensions> acc) : m_ptr(acc.get_pointer()) {}
 
-    template<int Dimensions, access_mode Mode, access::placeholder IsPlaceholder>
+    template<typename AccDataT, int Dimensions, access_mode Mode, access::placeholder IsPlaceholder>
         requires(Space == access::address_space::local_space || Space == access::address_space::generic_space)
+        && (std::is_same_v<std::remove_const_t<ElementType>, std::remove_const_t<AccDataT>>)
+        && (std::is_const_v<ElementType> || !std::is_const_v<AccDataT>)
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL multi_ptr(accessor<AccDataT, Dimensions, Mode, target::local, IsPlaceholder> acc)
+        : m_ptr(acc.get_pointer()) {}
+
+    template<typename AccDataT, int Dimensions, access::placeholder IsPlaceholder>
+        requires(Space == access::address_space::constant_space
+            && (std::is_same_v<std::remove_const_t<ElementType>, std::remove_const_t<AccDataT>>)
+            && (std::is_const_v<ElementType> || !std::is_const_v<AccDataT>))
     SIMSYCL_DETAIL_DEPRECATED_IN_SYCL multi_ptr(
-        accessor<value_type, Dimensions, Mode, target::local, IsPlaceholder> acc)
+        accessor<AccDataT, Dimensions, access_mode::read, target::constant_buffer, IsPlaceholder> acc)
         : m_ptr(acc.get_pointer()) {}
 
     // Assignment and access operators
@@ -215,12 +230,21 @@ class multi_ptr {
     friend bool operator<=(const multi_ptr &lhs, const multi_ptr &rhs) { return lhs.m_ptr <= rhs.m_ptr; }
     friend bool operator>=(const multi_ptr &lhs, const multi_ptr &rhs) { return lhs.m_ptr >= rhs.m_ptr; }
 
+    // the spec is unclear about what < and > should do with nullptr (and there is no equivalent is on raw pointers)
+
     friend bool operator==(const multi_ptr &lhs, std::nullptr_t) { return lhs.m_ptr == nullptr; }
     friend bool operator!=(const multi_ptr &lhs, std::nullptr_t) { return lhs.m_ptr != nullptr; }
-    friend bool operator<(const multi_ptr &lhs, std::nullptr_t) { return lhs.m_ptr < nullptr; }
-    friend bool operator>(const multi_ptr &lhs, std::nullptr_t) { return lhs.m_ptr > nullptr; }
-    friend bool operator<=(const multi_ptr &lhs, std::nullptr_t) { return lhs.m_ptr <= nullptr; }
-    friend bool operator>=(const multi_ptr &lhs, std::nullptr_t) { return lhs.m_ptr >= nullptr; }
+    friend bool operator<(const multi_ptr & /* lhs */, std::nullptr_t) { return false; }
+    friend bool operator>(const multi_ptr &lhs, std::nullptr_t) { return lhs.m_ptr != nullptr; }
+    friend bool operator<=(const multi_ptr &lhs, std::nullptr_t) { return lhs.m_ptr == nullptr; }
+    friend bool operator>=(const multi_ptr & /* lhs */, std::nullptr_t) { return true; }
+
+    friend bool operator==(std::nullptr_t, const multi_ptr &rhs) { return rhs.m_ptr == nullptr; }
+    friend bool operator!=(std::nullptr_t, const multi_ptr &rhs) { return rhs.m_ptr != nullptr; }
+    friend bool operator<(std::nullptr_t, const multi_ptr &rhs) { return rhs.m_ptr != nullptr; }
+    friend bool operator>(std::nullptr_t, const multi_ptr & /* rhs */) { return false; }
+    friend bool operator<=(std::nullptr_t, const multi_ptr & /* rhs */) { return true; }
+    friend bool operator>=(std::nullptr_t, const multi_ptr &rhs) { return rhs.m_ptr == nullptr; }
 
   private:
     template<typename, access::address_space, access::decorated>
@@ -248,21 +272,33 @@ class multi_ptr<simsycl::detail::void_type<VoidType>, Space, DecorateAddress> {
     constexpr multi_ptr() : m_ptr(nullptr) {}
     multi_ptr(const multi_ptr &) = default;
     multi_ptr(multi_ptr &&) = default;
-    constexpr explicit multi_ptr(pointer ptr): m_ptr(ptr) {}
+    constexpr explicit multi_ptr(pointer ptr) : m_ptr(ptr) {}
     constexpr multi_ptr(std::nullptr_t /* nullptr */) : m_ptr(nullptr) {}
 
     template<typename ElementType, int Dimensions, access_mode Mode, access::placeholder IsPlaceholder>
-        requires(Space == access::address_space::global_space)
+        requires(Space == access::address_space::global_space || Space == access::address_space::generic_space)
+        && (std::is_const_v<VoidType>
+            || !std::is_const_v<
+                typename accessor<ElementType, Dimensions, Mode, target::device, IsPlaceholder>::value_type>)
     multi_ptr(accessor<ElementType, Dimensions, Mode, target::device, IsPlaceholder> acc) : m_ptr(acc.get_pointer()) {}
 
     template<typename ElementType, int Dimensions>
-        requires(Space == access::address_space::local_space)
-    multi_ptr(local_accessor<ElementType, Dimensions> acc) : m_ptr(acc.get_pointer()) {}
+        requires(Space == access::address_space::local_space || Space == access::address_space::generic_space)
+        && (std::is_const_v<VoidType> || !std::is_const_v<ElementType>)
+    multi_ptr(local_accessor<ElementType, Dimensions>);
 
     template<typename ElementType, int Dimensions, access_mode Mode, access::placeholder IsPlaceholder>
-        requires(Space == access::address_space::local_space)
+        requires(Space == access::address_space::local_space || Space == access::address_space::generic_space)
+        && (std::is_const_v<VoidType> || !std::is_const_v<ElementType>)
+    SIMSYCL_DETAIL_DEPRECATED_IN_SYCL
+        multi_ptr(accessor<ElementType, Dimensions, Mode, target::local, IsPlaceholder> acc)
+        : m_ptr(acc.get_pointer()) {}
+
+    template<typename ElementType, int Dimensions, access::placeholder IsPlaceholder>
+        requires(Space == access::address_space::constant_space
+            && (std::is_const_v<VoidType> || !std::is_const_v<ElementType>))
     SIMSYCL_DETAIL_DEPRECATED_IN_SYCL multi_ptr(
-        accessor<ElementType, Dimensions, Mode, target::local, IsPlaceholder> acc)
+        accessor<ElementType, Dimensions, access_mode::read, target::constant_buffer, IsPlaceholder> acc)
         : m_ptr(acc.get_pointer()) {}
 
     // Assignment operators
@@ -312,19 +348,21 @@ class multi_ptr<simsycl::detail::void_type<VoidType>, Space, DecorateAddress> {
     friend bool operator<=(const multi_ptr &lhs, const multi_ptr &rhs) { return lhs.m_ptr <= rhs.m_ptr; }
     friend bool operator>=(const multi_ptr &lhs, const multi_ptr &rhs) { return lhs.m_ptr >= rhs.m_ptr; }
 
+    // the spec is unclear about what < and > should do with nullptr (and there is no equivalent is on raw pointers)
+
     friend bool operator==(const multi_ptr &lhs, std::nullptr_t) { return lhs.m_ptr == nullptr; }
     friend bool operator!=(const multi_ptr &lhs, std::nullptr_t) { return lhs.m_ptr != nullptr; }
-    friend bool operator<(const multi_ptr &lhs, std::nullptr_t) { return lhs.m_ptr < nullptr; }
-    friend bool operator>(const multi_ptr &lhs, std::nullptr_t) { return lhs.m_ptr > nullptr; }
-    friend bool operator<=(const multi_ptr &lhs, std::nullptr_t) { return lhs.m_ptr <= nullptr; }
-    friend bool operator>=(const multi_ptr &lhs, std::nullptr_t) { return lhs.m_ptr >= nullptr; }
+    friend bool operator<(const multi_ptr & /* lhs */, std::nullptr_t) { return false; }
+    friend bool operator>(const multi_ptr &lhs, std::nullptr_t) { return lhs.m_ptr != nullptr; }
+    friend bool operator<=(const multi_ptr &lhs, std::nullptr_t) { return lhs.m_ptr == nullptr; }
+    friend bool operator>=(const multi_ptr & /* lhs */, std::nullptr_t) { return true; }
 
     friend bool operator==(std::nullptr_t, const multi_ptr &rhs) { return rhs.m_ptr == nullptr; }
     friend bool operator!=(std::nullptr_t, const multi_ptr &rhs) { return rhs.m_ptr != nullptr; }
-    friend bool operator<(std::nullptr_t, const multi_ptr &rhs) { return rhs.m_ptr < nullptr; }
-    friend bool operator>(std::nullptr_t, const multi_ptr &rhs) { return rhs.m_ptr > nullptr; }
-    friend bool operator<=(std::nullptr_t, const multi_ptr &rhs) { return rhs.m_ptr <= nullptr; }
-    friend bool operator>=(std::nullptr_t, const multi_ptr &rhs) { return rhs.m_ptr >= nullptr; }
+    friend bool operator<(std::nullptr_t, const multi_ptr &rhs) { return rhs.m_ptr != nullptr; }
+    friend bool operator>(std::nullptr_t, const multi_ptr & /* rhs */) { return false; }
+    friend bool operator<=(std::nullptr_t, const multi_ptr & /* rhs */) { return true; }
+    friend bool operator>=(std::nullptr_t, const multi_ptr &rhs) { return rhs.m_ptr == nullptr; }
 
   private:
     template<typename, access::address_space, access::decorated>
@@ -363,11 +401,11 @@ class SIMSYCL_DETAIL_DEPRECATED_IN_SYCL multi_ptr<ElementType, Space, access::de
     static constexpr access::address_space address_space = Space;
 
     // Constructors
-    constexpr multi_ptr() : m_ptr(nullptr) {}
+    multi_ptr() : m_ptr(nullptr) {}
     multi_ptr(const multi_ptr &) = default;
     multi_ptr(multi_ptr &&) = default;
-    constexpr multi_ptr(pointer_t ptr) : m_ptr(ptr) {}
-    constexpr multi_ptr(std::nullptr_t /* nullptr */) : m_ptr(nullptr) {}
+    multi_ptr(pointer_t ptr) : m_ptr(ptr) {}
+    multi_ptr(std::nullptr_t /* nullptr */) : m_ptr(nullptr) {}
     ~multi_ptr() = default;
 
     // Assignment and access operators
@@ -468,19 +506,21 @@ class SIMSYCL_DETAIL_DEPRECATED_IN_SYCL multi_ptr<ElementType, Space, access::de
     friend bool operator<=(const multi_ptr &lhs, const multi_ptr &rhs) { return lhs.m_ptr <= rhs.m_ptr; }
     friend bool operator>=(const multi_ptr &lhs, const multi_ptr &rhs) { return lhs.m_ptr >= rhs.m_ptr; }
 
+    // the spec is unclear about what < and > should do with nullptr (and there is no equivalent is on raw pointers)
+
     friend bool operator==(const multi_ptr &lhs, std::nullptr_t) { return lhs.m_ptr == nullptr; }
     friend bool operator!=(const multi_ptr &lhs, std::nullptr_t) { return lhs.m_ptr != nullptr; }
-    friend bool operator<(const multi_ptr &lhs, std::nullptr_t) { return lhs.m_ptr < nullptr; }
-    friend bool operator>(const multi_ptr &lhs, std::nullptr_t) { return lhs.m_ptr > nullptr; }
-    friend bool operator<=(const multi_ptr &lhs, std::nullptr_t) { return lhs.m_ptr <= nullptr; }
-    friend bool operator>=(const multi_ptr &lhs, std::nullptr_t) { return lhs.m_ptr >= nullptr; }
+    friend bool operator<(const multi_ptr & /* lhs */, std::nullptr_t) { return false; }
+    friend bool operator>(const multi_ptr &lhs, std::nullptr_t) { return lhs.m_ptr != nullptr; }
+    friend bool operator<=(const multi_ptr &lhs, std::nullptr_t) { return lhs.m_ptr == nullptr; }
+    friend bool operator>=(const multi_ptr & /* lhs */, std::nullptr_t) { return true; }
 
     friend bool operator==(std::nullptr_t, const multi_ptr &rhs) { return rhs.m_ptr == nullptr; }
     friend bool operator!=(std::nullptr_t, const multi_ptr &rhs) { return rhs.m_ptr != nullptr; }
-    friend bool operator<(std::nullptr_t, const multi_ptr &rhs) { return rhs.m_ptr < nullptr; }
-    friend bool operator>(std::nullptr_t, const multi_ptr &rhs) { return rhs.m_ptr > nullptr; }
-    friend bool operator<=(std::nullptr_t, const multi_ptr &rhs) { return rhs.m_ptr <= nullptr; }
-    friend bool operator>=(std::nullptr_t, const multi_ptr &rhs) { return rhs.m_ptr >= nullptr; }
+    friend bool operator<(std::nullptr_t, const multi_ptr &rhs) { return rhs.m_ptr != nullptr; }
+    friend bool operator>(std::nullptr_t, const multi_ptr & /* rhs */) { return false; }
+    friend bool operator<=(std::nullptr_t, const multi_ptr & /* rhs */) { return true; }
+    friend bool operator>=(std::nullptr_t, const multi_ptr &rhs) { return rhs.m_ptr == nullptr; }
 
   private:
     template<typename, access::address_space, access::decorated>
@@ -506,11 +546,11 @@ class SIMSYCL_DETAIL_DEPRECATED_IN_SYCL
     static constexpr access::address_space address_space = Space;
 
     // Constructors
-    constexpr multi_ptr() : m_ptr(nullptr) {}
+    multi_ptr() : m_ptr(nullptr) {}
     multi_ptr(const multi_ptr &) = default;
     multi_ptr(multi_ptr &&) = default;
-    constexpr multi_ptr(pointer_t ptr) : m_ptr(ptr) {}
-    constexpr multi_ptr(std::nullptr_t /* nullptr */) : m_ptr(nullptr) {}
+    multi_ptr(pointer_t ptr) : m_ptr(ptr) {}
+    multi_ptr(std::nullptr_t /* nullptr */) : m_ptr(nullptr) {}
     ~multi_ptr() = default;
 
     // Assignment operators
@@ -524,7 +564,7 @@ class SIMSYCL_DETAIL_DEPRECATED_IN_SYCL
         && (std::is_const_v<VoidType>
             || !std::is_const_v<
                 typename accessor<ElementType, Dimensions, Mode, target::device, IsPlaceholder>::value_type>)
-    multi_ptr(accessor<ElementType, Dimensions, Mode, target::device> acc) : m_ptr(acc.get_pointer()) {}
+    multi_ptr(accessor<ElementType, Dimensions, Mode, target::device, IsPlaceholder> acc) : m_ptr(acc.get_pointer()) {}
 
     template<typename ElementType, int Dimensions, access_mode Mode>
         requires(Space == access::address_space::local_space || Space == access::address_space::generic_space)
@@ -609,13 +649,12 @@ class multi_ptr<const void, Space, access::decorated::legacy>
 template<typename ElementType, access::address_space Space, access::decorated DecorateAddress>
 SIMSYCL_DETAIL_DEPRECATED_IN_SYCL_V("use address_space_cast instead")
 multi_ptr<ElementType, Space, DecorateAddress> make_ptr(ElementType *ptr) {
-    return {ptr};
+    return multi_ptr<ElementType, Space, DecorateAddress>{ptr};
 }
 
 template<access::address_space Space, access::decorated DecorateAddress, typename ElementType>
-SIMSYCL_DETAIL_DEPRECATED_IN_SYCL_V("use address_space_cast instead")
 multi_ptr<ElementType, Space, DecorateAddress> address_space_cast(ElementType *ptr) {
-    return {ptr};
+    return multi_ptr<ElementType, Space, DecorateAddress>{ptr};
 }
 
 
