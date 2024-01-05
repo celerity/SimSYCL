@@ -19,7 +19,7 @@ add_executable(tests
   marray_tests.cc
   math_tests.cc
   reduction_tests.cc
-  schedule_tests.cc
+  simulation_tests.cc
   vec_tests.cc
 )
 
