@@ -163,7 +163,7 @@ sycl::device select_device(const device_selector &selector) {
 void *usm_alloc(const sycl::context &context, sycl::usm::alloc kind, std::optional<sycl::device> device,
     size_t size_bytes, size_t alignment_bytes) {
     SIMSYCL_CHECK(kind != sycl::usm::alloc::unknown);
-    SIMSYCL_CHECK((kind == sycl::usm::alloc::host) == (!device.has_value()));
+    SIMSYCL_CHECK(device.has_value() || kind == sycl::usm::alloc::host);
 
     if(size_bytes == 0) { size_bytes = 1; }
 
