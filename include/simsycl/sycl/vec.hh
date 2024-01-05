@@ -862,6 +862,13 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
         init_with_offset<Offset + ArgNumElements>(args...);
     }
 
+    template<int Offset, int... Indices, typename... ArgTN>
+        requires(Offset + sizeof...(Indices) <= NumElements)
+    constexpr void init_with_offset(const detail::swizzled_vec<DataT, Indices...> &arg, const ArgTN &...args) {
+        init_with_offset<Offset>(detail::to_vec(arg), args...);
+        init_with_offset<Offset + sizeof...(Indices)>(args...);
+    }
+
     template<int Offset>
         requires(Offset == NumElements)
     constexpr void init_with_offset() {}
