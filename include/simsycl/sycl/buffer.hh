@@ -7,7 +7,6 @@
 #include "../detail/allocation.hh"
 #include "../detail/reference_type.hh"
 
-#include <concepts>
 #include <cstring>
 #include <memory>
 #include <mutex>
@@ -76,8 +75,60 @@ constexpr bool is_container_v = requires(C &c) {
 template<typename C, typename T>
 concept Container = is_container_v<C, T>;
 
+template<int Dimensions>
+struct accessed_range {
+    sycl::id<Dimensions> offset;
+    sycl::range<Dimensions> range;
+    sycl::access_mode mode;
+
+    accessed_range(sycl::id<Dimensions> offset, sycl::range<Dimensions> range, sycl::access_mode mode)
+        : offset(offset), range(range), mode(mode) {}
+
+    friend bool operator==(const accessed_range &lhs, const accessed_range &rhs) = default;
+
+    bool conflicts_with(const accessed_range &other) const {
+        if(mode == sycl::access_mode::read && other.mode == sycl::access_mode::read) return false;
+
+        for(int i = 0; i < Dimensions; ++i) {
+            if(offset[i] < other.offset[i]) {
+                if(offset[i] + range[i] <= other.offset[i]) { return false; }
+            } else {
+                if(other.offset[i] + other.range[i] <= offset[i]) { return false; }
+            }
+        }
+        return true;
+    }
+};
+
+// Base class for buffer_state necessary to keep a reference in accessor instances which do not know AllocatorT
+template<int Dimensions>
+struct buffer_access_validator {
+    std::vector<accessed_range<Dimensions>> live_host_accesses;
+
+    buffer_access_validator() = default;
+    buffer_access_validator(const buffer_access_validator &) = delete;
+    buffer_access_validator(buffer_access_validator &&) = delete;
+    buffer_access_validator &operator=(const buffer_access_validator &) = delete;
+    buffer_access_validator &operator=(buffer_access_validator &&) = delete;
+
+    void begin_host_access(const detail::accessed_range<Dimensions> &range) { live_host_accesses.push_back(range); }
+
+    void end_host_access(const detail::accessed_range<Dimensions> &range) {
+        auto &live = live_host_accesses;
+        live.erase(std::remove(live.begin(), live.end(), range), live.end());
+    }
+
+    void check_access_from_command_group(const detail::accessed_range<Dimensions> &range) const {
+        for(const auto &live_range : live_host_accesses) {
+            SIMSYCL_CHECK(!live_range.conflicts_with(range)
+                && "Command group accessor overlaps with a live host accessor for the same buffer range, this is not "
+                   "supported by SimSYCL unless both are read-only accesses");
+        }
+    }
+};
+
 template<typename T, int Dimensions, typename AllocatorT>
-struct buffer_state {
+struct buffer_state : buffer_access_validator<Dimensions> {
     using write_back_fn = std::function<void(const T *, size_t)>;
 
     sycl::range<Dimensions> range;
@@ -291,6 +342,9 @@ class buffer final : public detail::reference_type<buffer<T, Dimensions, Allocat
     template<typename U, int D, typename A>
     friend U *simsycl::detail::get_buffer_data(sycl::buffer<U, D, A> &buf);
 
+    template<typename U, int D, typename A>
+    friend detail::buffer_access_validator<D> &detail::get_buffer_access_validator(const sycl::buffer<U, D, A> &buf);
+
     using reference_type::state;
 
     static write_back_fn write_back_to(T out) {
@@ -355,6 +409,11 @@ namespace simsycl::detail {
 template<typename T, int Dimensions, typename AllocatorT>
 T *get_buffer_data(sycl::buffer<T, Dimensions, AllocatorT> &buf) {
     return buf.state().buffer;
+}
+
+template<typename T, int Dimensions, typename AllocatorT>
+buffer_access_validator<Dimensions> &get_buffer_access_validator(const sycl::buffer<T, Dimensions, AllocatorT> &buf) {
+    return buf.state();
 }
 
 } // namespace simsycl::detail

@@ -142,6 +142,29 @@ class accessor_iterator {
     }
 };
 
+template<int Dimensions>
+class host_access_guard {
+  public:
+    template<typename T, typename AllocatorT>
+    explicit host_access_guard(
+        const sycl::buffer<T, Dimensions, AllocatorT> &buf, const accessed_range<Dimensions> &range)
+        : m_validator(&detail::get_buffer_access_validator(buf)), m_range(range) //
+    {
+        m_validator->begin_host_access(m_range);
+    }
+
+    host_access_guard(const host_access_guard &) = delete;
+    host_access_guard(host_access_guard &&) = delete;
+    host_access_guard &operator=(const host_access_guard &) = delete;
+    host_access_guard &operator=(host_access_guard &&) = delete;
+
+    ~host_access_guard() { m_validator->end_host_access(m_range); }
+
+  private:
+    buffer_access_validator<Dimensions> *m_validator;
+    accessed_range<Dimensions> m_range;
+};
+
 } // namespace simsycl::detail
 
 namespace simsycl::sycl::property {
@@ -262,13 +285,7 @@ class accessor : public simsycl::detail::property_interface {
         const detail::accessor_tag<AccessMode, AccessTarget> tag, const property_list &prop_list = {})
         : accessor(internal, buffer_ref, command_group_handler_ref, access_range, access_offset, tag, prop_list) {}
 
-    friend bool operator==(const accessor &lhs, const accessor &rhs) {
-        return lhs.m_buffer == rhs.m_buffer && lhs.m_buffer_range == rhs.m_buffer_range
-            && lhs.m_access_offset == rhs.m_access_offset && lhs.m_access_range == rhs.m_access_range
-            && lhs.m_required == rhs.m_required;
-    }
-
-    friend bool operator!=(const accessor &lhs, const accessor &rhs) { return !(lhs == rhs); }
+    friend bool operator==(const accessor &lhs, const accessor &rhs) = default;
 
     void swap(accessor &other) { return std::swap(*this, other); }
 
@@ -353,13 +370,13 @@ class accessor : public simsycl::detail::property_interface {
 
     const_iterator cend() const noexcept { return const_iterator(this, const_iterator::end); }
 
-    reverse_iterator rbegin() const noexcept;
+    reverse_iterator rbegin() const noexcept { return reverse_iterator(end()); }
 
-    reverse_iterator rend() const noexcept;
+    reverse_iterator rend() const noexcept { return reverse_iterator(begin()); }
 
-    const_reverse_iterator crbegin() const noexcept;
+    const_reverse_iterator crbegin() const noexcept { return const_reverse_iterator(cend()); }
 
-    const_reverse_iterator crend() const noexcept;
+    const_reverse_iterator crend() const noexcept { return const_reverse_iterator(cbegin()); }
 
   private:
     friend class handler;
@@ -368,6 +385,7 @@ class accessor : public simsycl::detail::property_interface {
     } constexpr inline static internal{};
 
     DataT *m_buffer = nullptr;
+    detail::buffer_access_validator<Dimensions> *m_access_validator = nullptr;
     range<Dimensions> m_buffer_range;
     id<Dimensions> m_access_offset;
     range<Dimensions> m_access_range;
@@ -379,12 +397,13 @@ class accessor : public simsycl::detail::property_interface {
         m_buffer = detail::get_buffer_data(buffer_ref);
         m_buffer_range = buffer_ref.get_range();
         m_access_range = m_buffer_range;
+        m_access_validator = &detail::get_buffer_access_validator(buffer_ref);
     }
     void init(const id<Dimensions> &access_offset) { m_access_offset = access_offset; }
 
     void init(const range<Dimensions> &access_range) { m_access_range = access_range; }
 
-    void init(handler & /* cgh */) { *m_required = true; }
+    void init(handler & /* cgh */) { require(); }
 
     void init(const property_list &prop_list) {
         static_cast<detail::property_interface &>(*this)
@@ -400,6 +419,8 @@ class accessor : public simsycl::detail::property_interface {
 
     void require() {
         SIMSYCL_CHECK(m_buffer != nullptr);
+        SIMSYCL_CHECK(m_access_validator != nullptr);
+        m_access_validator->check_access_from_command_group({m_access_offset, m_access_range, AccessMode});
         *m_required = true;
     }
 
@@ -490,22 +511,18 @@ class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> : public simsy
     template<typename AllocatorT>
     accessor(buffer<DataT, 1, AllocatorT> &buffer_ref, const property_list &prop_list = {})
         : simsycl::detail::property_interface(prop_list, property_compatibility()),
-          m_buffer(detail::get_buffer_data(buffer_ref)) {}
+          m_buffer(detail::get_buffer_data(buffer_ref)),
+          m_access_validator(&detail::get_buffer_access_validator(buffer_ref)) {}
 
     template<typename AllocatorT>
     accessor(buffer<DataT, 1, AllocatorT> &buffer_ref, handler &command_group_handler_ref,
         const property_list &prop_list = {})
-        : simsycl::detail::property_interface(prop_list, property_compatibility()),
-          m_buffer(detail::get_buffer_data(buffer_ref)) {
+        : accessor(buffer_ref, prop_list) {
         (void)command_group_handler_ref;
-        *m_required = true;
+        require();
     }
 
-    friend bool operator==(const accessor &lhs, const accessor &rhs) {
-        return lhs.m_buffer == rhs.m_buffer && lhs.m_required == rhs.m_required;
-    }
-
-    friend bool operator!=(const accessor &lhs, const accessor &rhs) { return !(lhs == rhs); }
+    friend bool operator==(const accessor &lhs, const accessor &rhs) = default;
 
     void swap(accessor &other) { return std::swap(*this, other); }
 
@@ -586,23 +603,26 @@ class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> : public simsy
 
     const_iterator cend() const noexcept { return const_iterator(this, const_iterator::end); }
 
-    reverse_iterator rbegin() const noexcept;
+    reverse_iterator rbegin() const noexcept { return reverse_iterator(end()); }
 
-    reverse_iterator rend() const noexcept;
+    reverse_iterator rend() const noexcept { return reverse_iterator(begin()); }
 
-    const_reverse_iterator crbegin() const noexcept;
+    const_reverse_iterator crbegin() const noexcept { return const_reverse_iterator(cend()); }
 
-    const_reverse_iterator crend() const noexcept;
+    const_reverse_iterator crend() const noexcept { return const_reverse_iterator(cbegin()); }
 
   private:
     friend class handler;
 
     DataT *m_buffer = nullptr;
+    detail::buffer_access_validator<1> *m_access_validator = nullptr;
     // shared: require() on a copy is equivalent to require() on the original instance
     std::shared_ptr<bool> m_required = std::make_shared<bool>(false);
 
     void require() {
         SIMSYCL_CHECK(m_buffer != nullptr);
+        SIMSYCL_CHECK(m_access_validator != nullptr);
+        m_access_validator->check_access_from_command_group({0, 1, AccessMode});
         *m_required = true;
     }
 };
@@ -679,19 +699,15 @@ class local_accessor final : public simsycl::detail::property_interface {
 
     const_iterator cend() const noexcept { return const_iterator(this, const_iterator::end); }
 
-    reverse_iterator rbegin() const noexcept;
+    reverse_iterator rbegin() const noexcept { return reverse_iterator(end()); }
 
-    reverse_iterator rend() const noexcept;
+    reverse_iterator rend() const noexcept { return reverse_iterator(begin()); }
 
-    const_reverse_iterator crbegin() const noexcept;
+    const_reverse_iterator crbegin() const noexcept { return const_reverse_iterator(cend()); }
 
-    const_reverse_iterator crend() const noexcept;
+    const_reverse_iterator crend() const noexcept { return const_reverse_iterator(cbegin()); }
 
-    friend bool operator==(const local_accessor &lhs, const local_accessor &rhs) {
-        return lhs.m_allocation_ptr == rhs.m_allocation_ptr && lhs.m_range == rhs.m_range;
-    }
-
-    friend bool operator!=(const local_accessor &lhs, const local_accessor &rhs) { return !(lhs == rhs); }
+    friend bool operator==(const local_accessor &lhs, const local_accessor &rhs) = default;
 
   private:
     friend iterator;
@@ -783,19 +799,15 @@ class local_accessor<DataT, 0> final : public simsycl::detail::property_interfac
 
     const_iterator cend() const noexcept { return const_iterator(this, const_iterator::end); }
 
-    reverse_iterator rbegin() const noexcept;
+    reverse_iterator rbegin() const noexcept { return reverse_iterator(end()); }
 
-    reverse_iterator rend() const noexcept;
+    reverse_iterator rend() const noexcept { return reverse_iterator(begin()); }
 
-    const_reverse_iterator crbegin() const noexcept;
+    const_reverse_iterator crbegin() const noexcept { return const_reverse_iterator(cend()); }
 
-    const_reverse_iterator crend() const noexcept;
+    const_reverse_iterator crend() const noexcept { return const_reverse_iterator(cbegin()); }
 
-    friend bool operator==(const local_accessor &lhs, const local_accessor &rhs) {
-        return lhs.m_allocation_ptr == rhs.m_allocation_ptr;
-    }
-
-    friend bool operator!=(const local_accessor &lhs, const local_accessor &rhs) { return !(lhs == rhs); }
+    friend bool operator==(const local_accessor &lhs, const local_accessor &rhs) = default;
 
   private:
     void **m_allocation_ptr = nullptr;
@@ -861,13 +873,7 @@ class host_accessor : public simsycl::detail::property_interface {
         const property_list &prop_list = {})
         : host_accessor(internal, buffer_ref, access_range, access_offset, tag, prop_list) {}
 
-    friend bool operator==(const host_accessor &lhs, const host_accessor &rhs) {
-        return lhs.m_buffer == rhs.m_buffer && lhs.m_buffer_range == rhs.m_buffer_range
-            && lhs.m_access_offset == rhs.m_access_offset && lhs.m_access_range == rhs.m_access_range
-            && lhs.m_required == rhs.m_required;
-    }
-
-    friend bool operator!=(const host_accessor &lhs, const host_accessor &rhs) { return !(lhs == rhs); }
+    friend bool operator==(const host_accessor &lhs, const host_accessor &rhs) = default;
 
     void swap(host_accessor &other) { std::swap(*this, other); }
 
@@ -906,13 +912,13 @@ class host_accessor : public simsycl::detail::property_interface {
 
     const_iterator cend() const noexcept { return const_iterator(this, const_iterator::end); }
 
-    reverse_iterator rbegin() const noexcept;
+    reverse_iterator rbegin() const noexcept { return reverse_iterator(end()); }
 
-    reverse_iterator rend() const noexcept;
+    reverse_iterator rend() const noexcept { return reverse_iterator(begin()); }
 
-    const_reverse_iterator crbegin() const noexcept;
+    const_reverse_iterator crbegin() const noexcept { return const_reverse_iterator(cend()); }
 
-    const_reverse_iterator crend() const noexcept;
+    const_reverse_iterator crend() const noexcept { return const_reverse_iterator(cbegin()); }
 
   private:
     friend class handler;
@@ -924,13 +930,18 @@ class host_accessor : public simsycl::detail::property_interface {
     range<Dimensions> m_buffer_range;
     id<Dimensions> m_access_offset;
     range<Dimensions> m_access_range;
+    // guard is a shared_ptr because accessors need to be copyable
+    std::shared_ptr<detail::host_access_guard<Dimensions>> m_access_guard;
 
     template<typename AllocatorT>
     void init(buffer<DataT, Dimensions, AllocatorT> &buffer_ref) {
         m_buffer = detail::get_buffer_data(buffer_ref);
         m_buffer_range = buffer_ref.get_range();
         m_access_range = m_buffer_range;
+        m_access_guard = std::make_shared<detail::host_access_guard<Dimensions>>(
+            buffer_ref, detail::accessed_range<Dimensions>(m_access_offset, m_access_range, AccessMode));
     }
+
     void init(const id<Dimensions> &access_offset) { m_access_offset = access_offset; }
 
     void init(const range<Dimensions> &access_range) { m_access_range = access_range; }
@@ -983,10 +994,14 @@ class host_accessor<DataT, 0, AccessMode> : public simsycl::detail::property_int
     using difference_type = typename std::iterator_traits<iterator>::difference_type;
     using size_type = size_t;
 
-    host_accessor();
+    host_accessor() {}
 
     template<typename AllocatorT>
-    host_accessor(buffer<DataT, 1, AllocatorT> &buffer_ref, const property_list &prop_list = {});
+    host_accessor(buffer<DataT, 1, AllocatorT> &buffer_ref, const property_list &prop_list = {})
+        : detail::property_interface(prop_list, property_compatibility()),
+          m_buffer(detail::get_buffer_data(buffer_ref)), m_access_guard(std::make_shared<detail::host_access_guard<1>>(
+                                                             buffer_ref, detail::accessed_range<1>(0, 1, AccessMode))) {
+    }
 
     friend bool operator==(const host_accessor &lhs, const host_accessor &rhs) = default;
 
@@ -1037,18 +1052,19 @@ class host_accessor<DataT, 0, AccessMode> : public simsycl::detail::property_int
 
     const_iterator cend() const noexcept { return const_iterator(this, const_iterator::end); }
 
-    reverse_iterator rbegin() const noexcept;
+    reverse_iterator rbegin() const noexcept { return reverse_iterator(end()); }
 
-    reverse_iterator rend() const noexcept;
+    reverse_iterator rend() const noexcept { return reverse_iterator(begin()); }
 
-    const_reverse_iterator crbegin() const noexcept;
+    const_reverse_iterator crbegin() const noexcept { return const_reverse_iterator(cend()); }
 
-    const_reverse_iterator crend() const noexcept;
+    const_reverse_iterator crend() const noexcept { return const_reverse_iterator(cbegin()); }
 
   private:
     friend class handler;
 
     DataT *m_buffer = nullptr;
+    std::shared_ptr<detail::host_access_guard<1>> m_access_guard;
 };
 
 
@@ -1140,6 +1156,7 @@ class accessor<DataT, Dimensions, AccessMode, target::constant_buffer, IsPlaceho
     } constexpr inline static internal{};
 
     DataT *m_buffer = nullptr;
+    detail::buffer_access_validator<Dimensions> *m_access_validator = nullptr;
     range<Dimensions> m_buffer_range;
     id<Dimensions> m_access_offset;
     range<Dimensions> m_access_range;
@@ -1151,12 +1168,13 @@ class accessor<DataT, Dimensions, AccessMode, target::constant_buffer, IsPlaceho
         m_buffer = detail::get_buffer_data(buffer_ref);
         m_buffer_range = buffer_ref.get_range();
         m_access_range = m_buffer_range;
+        m_access_validator = &detail::get_buffer_access_validator(buffer_ref);
     }
     void init(const id<Dimensions> &access_offset) { m_access_offset = access_offset; }
 
     void init(const range<Dimensions> &access_range) { m_access_range = access_range; }
 
-    void init(handler & /* cgh */) { *m_required = true; }
+    void init(handler & /* cgh */) { require(); }
 
     void init(const property_list &prop_list) {
         static_cast<detail::property_interface &>(*this)
@@ -1170,6 +1188,8 @@ class accessor<DataT, Dimensions, AccessMode, target::constant_buffer, IsPlaceho
 
     void require() {
         SIMSYCL_CHECK(m_buffer != nullptr);
+        SIMSYCL_CHECK(m_access_validator != nullptr);
+        m_access_validator->check_access_from_command_group({0, 1, AccessMode});
         *m_required = true;
     }
 
@@ -1193,15 +1213,15 @@ class accessor<DataT, 0, AccessMode, target::constant_buffer, IsPlaceholder> fin
     template<typename AllocatorT>
     accessor(buffer<DataT, 1, AllocatorT> &buffer_ref, const property_list &prop_list = {})
         : simsycl::detail::property_interface(prop_list, property_compatibility()),
-          m_buffer(detail::get_buffer_data(buffer_ref)) {}
+          m_buffer(detail::get_buffer_data(buffer_ref)),
+          m_access_validator(&detail::get_buffer_access_validator(buffer_ref)) {}
 
     template<typename AllocatorT>
     accessor(buffer<DataT, 1, AllocatorT> &buffer_ref, handler &command_group_handler_ref,
         const property_list &prop_list = {})
-        : simsycl::detail::property_interface(prop_list, property_compatibility()),
-          m_buffer(detail::get_buffer_data(buffer_ref)) {
+        : accessor(buffer_ref, prop_list) {
         (void)command_group_handler_ref;
-        *m_required = true;
+        require();
     }
 
     friend bool operator==(const accessor &lhs, const accessor &rhs) = default;
@@ -1228,11 +1248,14 @@ class accessor<DataT, 0, AccessMode, target::constant_buffer, IsPlaceholder> fin
     friend class handler;
 
     DataT *m_buffer = nullptr;
+    detail::buffer_access_validator<1> *m_access_validator = nullptr;
     // shared: require() on a copy is equivalent to require() on the original instance
     std::shared_ptr<bool> m_required = std::make_shared<bool>(false);
 
     void require() {
         SIMSYCL_CHECK(m_buffer != nullptr);
+        SIMSYCL_CHECK(m_access_validator != nullptr);
+        m_access_validator->check_access_from_command_group({0, 1, AccessMode});
         *m_required = true;
     }
 };
@@ -1266,7 +1289,9 @@ class accessor<DataT, Dimensions, AccessMode, target::host_buffer, IsPlaceholder
         id<Dimensions> access_offset, const property_list &prop_list = {})
         : detail::property_interface(prop_list, property_compatibility()),
           m_buffer(detail::get_buffer_data(buffer_ref)), m_buffer_range(buffer_ref.get_range()),
-          m_access_range(access_range), m_access_offset(access_offset) {}
+          m_access_offset(access_offset), m_access_range(access_range),
+          m_access_guard(std::make_shared<detail::host_access_guard<Dimensions>>(
+              buffer_ref, detail::accessed_range<Dimensions>(m_access_offset, m_access_range, AccessMode))) {}
 
     bool is_placeholder() const { return false; }
 
@@ -1291,23 +1316,19 @@ class accessor<DataT, Dimensions, AccessMode, target::host_buffer, IsPlaceholder
 
     std::add_pointer_t<value_type> get_pointer() const noexcept { return m_buffer; }
 
-    friend bool operator==(const accessor &lhs, const accessor &rhs) {
-        return lhs.m_buffer == rhs.m_buffer && lhs.m_buffer_range == rhs.m_buffer_range
-            && lhs.m_access_offset == rhs.m_access_offset && lhs.m_access_range == rhs.m_access_range
-            && lhs.m_required == rhs.m_required;
-    }
-
-    friend bool operator!=(const accessor &lhs, const accessor &rhs) { return !(lhs == rhs); }
+    friend bool operator==(const accessor &lhs, const accessor &rhs) = default;
 
   private:
     DataT *m_buffer = nullptr;
     range<Dimensions> m_buffer_range;
     id<Dimensions> m_access_offset;
     range<Dimensions> m_access_range;
+    // guard is a shared_ptr because accessors need to be copyable
+    std::shared_ptr<detail::host_access_guard<Dimensions>> m_access_guard;
 };
 
 template<typename DataT, access_mode AccessMode, access::placeholder IsPlaceholder>
-class accessor<DataT, 0, AccessMode, target::host_buffer, IsPlaceholder> {
+class accessor<DataT, 0, AccessMode, target::host_buffer, IsPlaceholder> : public detail::property_interface {
     static_assert(AccessMode == access_mode::read || !std::is_const_v<DataT>,
         "DataT must only be const-qualified when AccessMode == read");
     static_assert(AccessMode != access_mode::atomic, "accessor<..., host_buffer> is not available for atomic access");
@@ -1323,7 +1344,9 @@ class accessor<DataT, 0, AccessMode, target::host_buffer, IsPlaceholder> {
     template<typename AllocatorT>
     accessor(buffer<DataT, 1, AllocatorT> &buffer_ref, const property_list &prop_list = {})
         : detail::property_interface(prop_list, property_compatibility()),
-          m_buffer(detail::get_buffer_data(buffer_ref)) {}
+          m_buffer(detail::get_buffer_data(buffer_ref)), m_access_guard(std::make_shared<detail::host_access_guard<1>>(
+                                                             buffer_ref, detail::accessed_range<1>(0, 1, AccessMode))) {
+    }
 
     bool is_placeholder() const { return false; }
 
@@ -1338,14 +1361,11 @@ class accessor<DataT, 0, AccessMode, target::host_buffer, IsPlaceholder> {
 
     std::add_pointer_t<value_type> get_pointer() const noexcept { return m_buffer; }
 
-    friend bool operator==(const accessor &lhs, const accessor &rhs) {
-        return lhs.m_buffer == rhs.m_buffer && lhs.m_required == rhs.m_required;
-    }
-
-    friend bool operator!=(const accessor &lhs, const accessor &rhs) { return !(lhs == rhs); }
+    friend bool operator==(const accessor &lhs, const accessor &rhs) = default;
 
   private:
     DataT *m_buffer = nullptr;
+    std::shared_ptr<detail::host_access_guard<1>> m_access_guard;
 };
 
 template<typename DataT, int Dimensions, access_mode AccessMode, access::placeholder IsPlaceholder>

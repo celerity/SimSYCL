@@ -1,4 +1,5 @@
 #include "test_utils.hh"
+#include <simsycl/schedule.hh>
 #include <sycl/sycl.hpp>
 
 #include <catch2/catch_test_macros.hpp>

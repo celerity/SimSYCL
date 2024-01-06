@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
+#include <simsycl/schedule.hh>
 #include <sycl/sycl.hpp>
 
 #include "test_utils.hh"
@@ -14,9 +15,9 @@ void check_group_op_sequence(const G &g, const std::vector<detail::group_operati
     for(size_t i = 0; i < expected_ids.size(); ++i) { CHECK(group_instance.operations[i].id == expected_ids[i]); }
 }
 
-#define REPEAT_FOR_ALL_SCHEDULES \
-    std::string schedule = GENERATE(values<std::string>({"round_robin", "shuffle"})); \
-    CAPTURE(schedule); \
+#define REPEAT_FOR_ALL_SCHEDULES                                                                                       \
+    std::string schedule = GENERATE(values<std::string>({"round_robin", "shuffle"}));                                  \
+    CAPTURE(schedule);                                                                                                 \
     if(schedule == "shuffle") { set_cooperative_schedule(std::make_unique<shuffle_schedule>()); }
 
 TEST_CASE("Group barriers behave as expected", "[group_op]") {

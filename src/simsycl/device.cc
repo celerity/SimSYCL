@@ -16,9 +16,7 @@ struct device_state {
     weak_ref<sycl::device> parent;
 };
 
-size_t *device_bytes_free(const sycl::device &device) {
-    return &device.state().bytes_free;
-}
+size_t *device_bytes_free(const sycl::device &device) { return &device.state().bytes_free; }
 
 int default_selector::operator()(const sycl::device &device) const {
     return device.is_gpu() || device.is_accelerator() ? 1 : 0;
@@ -473,7 +471,7 @@ SIMSYCL_DETAIL_DEPRECATED_IN_SYCL bool device::has_extension(const std::string &
 
 std::vector<device> device::get_devices(info::device_type type) {
     auto &devices = detail::get_devices();
-    if (type == info::device_type::all) return devices;
+    if(type == info::device_type::all) return devices;
 
     std::vector<device> result;
     std::copy_if(devices.begin(), devices.end(), std::back_inserter(result),
