@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
+#include <catch2/matchers/catch_matchers_string.hpp>
 
 #include <simsycl/schedule.hh>
 #include <sycl/sycl.hpp>
@@ -641,4 +642,15 @@ TEST_CASE("Group scans behave as expected", "[group_op][exclusive_scan_over_grou
             });
         });
     }
+}
+
+TEST_CASE("Divergent group execution is reported", "[check][group_op]") {
+    simsycl::detail::override_check_mode check_mode(SIMSYCL_CHECK_THROW);
+    REQUIRE_THROWS_WITH(sycl::queue{}.submit([&](sycl::handler &cgh) {
+        cgh.parallel_for(sycl::nd_range<1>{2, 2}, [](sycl::nd_item<1> it) {
+            if(it.get_global_linear_id() == 0) { group_barrier(it.get_group()); }
+        });
+    }),
+        Catch::Matchers::ContainsSubstring(
+            "group recorded operation \"barrier\", but work item #1 is trying to perform \"exit\""));
 }

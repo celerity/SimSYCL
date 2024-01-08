@@ -147,6 +147,7 @@ struct group_operation_data {
     group_operation_id id;
     size_t expected_num_work_items;
     size_t num_work_items_participating;
+    bool valid;
     std::unique_ptr<group_per_operation_data> per_op_data;
 };
 
@@ -190,6 +191,9 @@ inline detail::concurrent_sub_group &get_concurrent_group(const sycl::sub_group 
     return *g.m_concurrent_group;
 }
 
+void check_group_op_validity(
+    int linear_id_in_group, const group_operation_data &new_op, group_operation_data &existing_op);
+
 // group operation function template
 
 template<typename Func>
@@ -227,10 +231,11 @@ auto perform_group_operation(G g, group_operation_id id, const Spec &spec) {
     size_t &ops_reached
         = is_sub_group_v<G> ? this_nd_item_instance.group_ops_reached : this_nd_item_instance.sub_group_ops_reached;
 
-    detail::group_operation_data new_op;
+    group_operation_data new_op;
     new_op.id = id;
     new_op.expected_num_work_items = g.get_local_range().size();
     new_op.num_work_items_participating = 1;
+    new_op.valid = true;
     new_op.per_op_data = spec.init();
 
     const size_t new_op_index = ops_reached;
@@ -243,9 +248,7 @@ auto perform_group_operation(G g, group_operation_id id, const Spec &spec) {
         SIMSYCL_CHECK(new_op_index < group_instance.operations.size() && "group operation reached in unexpected order");
 
         auto &op = group_instance.operations[ops_reached];
-        SIMSYCL_CHECK(op.id == new_op.id);
-        SIMSYCL_CHECK(op.expected_num_work_items == new_op.expected_num_work_items);
-        SIMSYCL_CHECK(op.num_work_items_participating < op.expected_num_work_items);
+        check_group_op_validity(linear_id_in_group, new_op, op);
         spec.reached(dynamic_cast<typename Spec::per_op_t &>(*op.per_op_data));
 
         op.num_work_items_participating++;
@@ -258,6 +261,7 @@ auto perform_group_operation(G g, group_operation_id id, const Spec &spec) {
         detail::yield_to_kernel_scheduler();
         // we cannot preserve a reference into `operations` across a yield since it might be resized by another item
         const auto &op = group_instance.operations[new_op_index];
+        SIMSYCL_CHECK_MSG(op.valid, "group operation invalidated by another work item");
         if(op.num_work_items_participating == op.expected_num_work_items) break;
     }
 
