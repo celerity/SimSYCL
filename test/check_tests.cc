@@ -47,6 +47,8 @@ TEST_CASE("Exceptions are propagated out of work items", "[check][exceptions]") 
         ContainsSubstring("SimSYCL check failed: false && \"Bla\" at "));
 }
 
+SIMSYCL_START_IGNORING_DEPRECATIONS
+
 template<typename T>
 extern const sycl::access_mode accessor_mode_v;
 
@@ -99,5 +101,7 @@ TEMPLATE_LIST_TEST_CASE("Overlapping lifetimes between host- and command-group a
             submit_overlapping_command_group(), ContainsSubstring("overlaps with a live host accessor"));
     }
 }
+
+SIMSYCL_STOP_IGNORING_DEPRECATIONS
 
 #endif
