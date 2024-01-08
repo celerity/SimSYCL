@@ -64,6 +64,8 @@ enum class group_operation_id {
     exclusive_scan,
     joint_inclusive_scan,
     inclusive_scan,
+    // for verification
+    exit,
 };
 
 // additional data required to implement and check correct use for some group operations

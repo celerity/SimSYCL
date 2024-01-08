@@ -9,10 +9,16 @@
 using namespace simsycl;
 
 template<sycl::Group G>
-void check_group_op_sequence(const G &g, const std::vector<detail::group_operation_id> &expected_ids) {
+void check_group_op_sequence(const G &g, std::vector<detail::group_operation_id> expected_ids) {
     auto &group_instance = detail::get_concurrent_group(g).instance;
-    CHECK(group_instance.operations.size() == expected_ids.size());
-    for(size_t i = 0; i < expected_ids.size(); ++i) { CHECK(group_instance.operations[i].id == expected_ids[i]); }
+    // remove the potential implicit "exit" operation from the end of the sequence
+    std::vector<detail::group_operation_id> actual_sequence;
+    std::transform(group_instance.operations.begin(), group_instance.operations.end(),
+        std::back_inserter(actual_sequence), [](auto &op) { return op.id; });
+    if(actual_sequence.back() == detail::group_operation_id::exit) { actual_sequence.pop_back(); }
+
+    CHECK(actual_sequence.size() == expected_ids.size());
+    for(size_t i = 0; i < expected_ids.size(); ++i) { CHECK(actual_sequence[i] == expected_ids[i]); }
 }
 
 #define REPEAT_FOR_ALL_SCHEDULES                                                                                       \

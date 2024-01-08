@@ -104,4 +104,14 @@ TEMPLATE_LIST_TEST_CASE("Overlapping lifetimes between host- and command-group a
 
 SIMSYCL_STOP_IGNORING_DEPRECATIONS
 
+// find a way to test this, right now the macro is set differently when compiling the lib code
+// TEST_CASE("Divergent group execution is reported", "[check][group_op]") {
+//     sycl::queue q;
+//     REQUIRE_THROWS_WITH(q.submit([&](sycl::handler &cgh) {
+//         cgh.parallel_for(sycl::nd_range<1>{2, 2}, [](sycl::nd_item<1> it) {
+//             if(it.get_global_linear_id() == 0) { group_barrier(it.get_group()); }
+//         });
+//     }),
+//         ContainsSubstring("SimSYCL check failed: op.id == new_op.id"));
+// }
 #endif

@@ -266,6 +266,12 @@ void cooperative_for_nd_range(const sycl::device &device, const sycl::nd_range<D
 
                     try {
                         kernel(nd_item);
+                        // Add an implicit "exit" operations to groups and sub-groups to catch potential divergence on
+                        // the last group operation
+                        perform_group_operation(
+                            nd_item.get_group(), detail::group_operation_id::exit, detail::group_operation_spec{});
+                        perform_group_operation(
+                            nd_item.get_sub_group(), detail::group_operation_id::exit, detail::group_operation_spec{});
                     } catch(...) { //
                         caught_exceptions.push_back(std::current_exception());
                     }
