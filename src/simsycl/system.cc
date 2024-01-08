@@ -182,7 +182,9 @@ void *usm_alloc(const sycl::context &context, sycl::usm::alloc kind, std::option
 
         bytes_free = detail::device_bytes_free(*device);
         if(*bytes_free < size_bytes) {
-            throw sycl::exception(sycl::errc::memory_allocation, "Not enough memory available");
+            throw sycl::exception(sycl::errc::memory_allocation,
+                "Not enough memory available to allocate " + std::to_string(size_bytes)
+                    + " bytes (device global memory capacity reached)");
         }
     }
 
@@ -192,7 +194,11 @@ void *usm_alloc(const sycl::context &context, sycl::usm::alloc kind, std::option
 #else
     void *const ptr = std::aligned_alloc(alignment_bytes, size_bytes);
 #endif
-    if(ptr == nullptr) { throw sycl::exception(sycl::errc::memory_allocation, "Not enough memory available"); }
+    if(ptr == nullptr) {
+        throw sycl::exception(sycl::errc::memory_allocation,
+            "Not enough memory available to allocate " + std::to_string(size_bytes) + " bytes with alignment "
+                + std::to_string(alignment_bytes) + " (request not be satisfied by OS)");
+    }
 
     std::memset(ptr, static_cast<int>(uninitialized_memory_pattern), size_bytes);
 
