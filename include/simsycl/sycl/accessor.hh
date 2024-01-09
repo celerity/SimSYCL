@@ -1501,8 +1501,6 @@ class accessor<DataT, 0, AccessMode, target::local, IsPlaceholder> final : publi
     inline DataT *get_allocation() const { return static_cast<DataT *>(*m_allocation_ptr); }
 };
 
-SIMSYCL_STOP_IGNORING_DEPRECATIONS
-
 } // namespace simsycl::sycl
 
 template<typename DataT, int Dimensions, simsycl::sycl::access_mode AccessMode, simsycl::sycl::target AccessTarget,
@@ -1531,3 +1529,5 @@ struct std::hash<simsycl::sycl::host_accessor<DataT, Dimensions, AccessMode>> {
         return simsycl::detail::hash(accessor.m_buffer);
     }
 };
+
+SIMSYCL_STOP_IGNORING_DEPRECATIONS
