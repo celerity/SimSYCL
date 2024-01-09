@@ -32,9 +32,15 @@ std::string get_kernel_name_string(const std::type_info &pointer_to_name_type) {
     }
 }
 
-kernel_id_state::kernel_id_state(const std::type_info &pointer_to_name_type, const std::type_info &func_type)
-    : pointer_to_name_type(pointer_to_name_type), func_type(func_type),
-      name(get_kernel_name_string(pointer_to_name_type)) {}
+struct kernel_id_state {
+    const std::type_info &pointer_to_name_type;
+    const std::type_info &func_type;
+    std::string name;
+
+    kernel_id_state(const std::type_info &pointer_to_name_type, const std::type_info &func_type)
+        : pointer_to_name_type(pointer_to_name_type), func_type(func_type),
+          name(get_kernel_name_string(pointer_to_name_type)) {}
+};
 
 // leaked to avoid static-destruction order issues
 std::vector<sycl::kernel_id> *g_registered_kernels;
@@ -129,6 +135,11 @@ bool has_kernel_bundle(const sycl::context &ctxt, const std::vector<sycl::device
 } // namespace simsycl::detail
 
 namespace simsycl::sycl {
+
+kernel_id::kernel_id(const std::type_info &kernel_name, const std::type_info &kernel_fn)
+    : reference_type(std::in_place, kernel_name, kernel_fn) {}
+
+const char *kernel_id::get_name() const noexcept { return state().name.c_str(); }
 
 std::vector<kernel_id> get_kernel_ids() { return detail::get_registered_kernels(); }
 
