@@ -31,7 +31,7 @@ TEST_CASE("application kernels can be enumerated through get_kernel_ids()", "[ke
     }
 }
 
-[[maybe_unused]] void launch_kernels() {
+TEST_CASE("launching kernels for enumeration in other test", "[kernel]") {
     sycl::queue().parallel_for<test_simple_kernel_name>(sycl::range<1>(1), [](sycl::item<1>) {});
     sycl::queue().parallel_for<test_templated_kernel_name<42>>(sycl::range<1>(1), [](sycl::item<1>) {});
 }
