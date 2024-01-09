@@ -71,13 +71,7 @@ class kernel_handler {
 
 namespace simsycl::detail {
 
-struct kernel_id_state {
-    const std::type_info &pointer_to_name_type;
-    const std::type_info &func_type;
-    std::string name;
-
-    kernel_id_state(const std::type_info &pointer_to_name_type, const std::type_info &func_type);
-};
+struct kernel_id_state;
 
 sycl::kernel_id register_kernel(const std::type_info &pointer_to_name_type, const std::type_info &func_type);
 sycl::kernel_id get_kernel_id(const std::type_info &pointer_to_name_type);
@@ -91,7 +85,7 @@ class kernel_id : public detail::reference_type<kernel_id, detail::kernel_id_sta
     using reference_type = detail::reference_type<kernel_id, detail::kernel_id_state>;
 
   public:
-    const char *get_name() const noexcept { return state().name.c_str(); }
+    const char *get_name() const noexcept;
 
   private:
     kernel_id() = default;
@@ -100,8 +94,7 @@ class kernel_id : public detail::reference_type<kernel_id, detail::kernel_id_sta
         const std::type_info &pointer_to_name_type, const std::type_info &func_type);
     friend kernel_id detail::get_kernel_id(const std::type_info &pointer_to_name_type);
 
-    explicit kernel_id(const std::type_info &kernel_name, const std::type_info &kernel_fn)
-        : reference_type(std::in_place, kernel_name, kernel_fn) {}
+    explicit kernel_id(const std::type_info &kernel_name, const std::type_info &kernel_fn);
 };
 
 } // namespace simsycl::sycl
@@ -452,11 +445,12 @@ struct std::hash<simsycl::sycl::device_image<State>>
 namespace simsycl::detail {
 
 template<typename KernelName, typename KernelFunc>
-inline const sycl::kernel_id registered_kernel_id = register_kernel(typeid(KernelName *), typeid(KernelFunc));
+inline const sycl::kernel_id kernel_id_registration_v = register_kernel(typeid(KernelName *), typeid(KernelFunc));
 
 template<typename KernelName, typename KernelFunc>
 void register_kernel_on_static_construction() {
-    (void)registered_kernel_id<KernelName, KernelFunc>; // instantiate global const
+    // ensure global const is instantiated and not optimized out
+    (void)kernel_id_registration_v<KernelName, KernelFunc>.get_name();
 }
 
 } // namespace simsycl::detail
