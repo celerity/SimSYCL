@@ -291,12 +291,18 @@ std::shared_ptr<cooperative_schedule>
 
 void parse_environment() {
     if(g_environment_parsed) return;
+    printf("parse_environment " SIMSYCL_LINE_STRING "\n");
 
     auto prefix = env::prefix("SIMSYCL");
     const auto system = prefix.register_variable<system_config>(
-        "SYSTEM", [](const std::string_view repr) { return read_system_config(std::string(repr)); });
+        "SYSTEM", [](const std::string_view repr) { 
+        printf("parse_environment " SIMSYCL_LINE_STRING "\n");
+        return read_system_config(std::string(repr)); 
+    });
+    printf("parse_environment " SIMSYCL_LINE_STRING "\n");
     const auto schedule = prefix.register_variable<std::shared_ptr<cooperative_schedule>>(
         "SCHEDULE", [](const std::string_view repr) -> std::shared_ptr<cooperative_schedule> {
+            printf("parse_environment " SIMSYCL_LINE_STRING "\n");
             if(repr == "rr") return std::make_unique<round_robin_schedule>();
             if(repr == "shuffle") return std::make_unique<shuffle_schedule>();
             if(repr.starts_with("shuffle:")) {
@@ -306,11 +312,14 @@ void parse_environment() {
             throw env::parser_error{
                 fmt::format("Invalid schedule '{}', permitted values are 'rr', 'shuffle', and 'shuffle:<seed>'", repr)};
         });
+    printf("parse_environment " SIMSYCL_LINE_STRING "\n");
 
     if(const auto parsed = prefix.parse_and_validate(); parsed.ok()) {
+        printf("parse_environment " SIMSYCL_LINE_STRING "\n");
         g_env_system_config = parsed.get(system);
         g_env_cooperative_schedule = parsed.get_or(schedule, nullptr);
     } else {
+        printf("parse_environment " SIMSYCL_LINE_STRING "\n");
         std::cerr << parsed.warning_message() << parsed.error_message();
     }
     g_environment_parsed = true;
@@ -325,13 +334,17 @@ std::shared_ptr<cooperative_schedule> g_cooperative_schedule;
 namespace simsycl {
 
 const cooperative_schedule &get_cooperative_schedule() {
+    printf("get_cooperative_schedule " SIMSYCL_LINE_STRING "\n");
     detail::parse_environment();
+    printf("get_cooperative_schedule " SIMSYCL_LINE_STRING "\n");
     if(detail::g_cooperative_schedule == nullptr) {
+        printf("get_cooperative_schedule " SIMSYCL_LINE_STRING "\n");
         if(detail::g_env_cooperative_schedule != nullptr) {
             detail::g_cooperative_schedule = detail::g_env_cooperative_schedule;
         } else {
             detail::g_cooperative_schedule = std::make_shared<round_robin_schedule>();
         }
+        printf("get_cooperative_schedule " SIMSYCL_LINE_STRING "\n");
     }
     return *detail::g_cooperative_schedule;
 }

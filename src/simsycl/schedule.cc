@@ -43,27 +43,39 @@ namespace simsycl::detail {
 template<int Dimensions, typename Offset>
 void sequential_for(const sycl::range<Dimensions> &range, const Offset &offset,
     const simple_kernel<Dimensions, with_offset_v<Offset>> &kernel) {
+    printf("sequential_for " SIMSYCL_LINE_STRING "\n");
     // limit the number of work items scheduled at a time to avoid allocating huge index buffers
     constexpr size_t max_schedule_chunk_size = 16 << 10;
+    printf("sequential_for " SIMSYCL_LINE_STRING "\n");
     const auto schedule_chunk_size = std::min(range.size(), max_schedule_chunk_size);
+    printf("sequential_for " SIMSYCL_LINE_STRING "\n");
     const auto &schedule = get_cooperative_schedule();
+    printf("sequential_for " SIMSYCL_LINE_STRING "\n");
     std::vector<size_t> order(schedule_chunk_size);
+    printf("sequential_for " SIMSYCL_LINE_STRING "\n");
     auto schedule_state = schedule.init(order);
-
+    printf("sequential_for " SIMSYCL_LINE_STRING "\n");
+    
     for(size_t schedule_offset = 0; schedule_offset < range.size(); schedule_offset += max_schedule_chunk_size) {
+        printf("sequential_for " SIMSYCL_LINE_STRING "\n");
         for(size_t schedule_id = 0; schedule_id < schedule_chunk_size; ++schedule_id) {
+            printf("sequential_for " SIMSYCL_LINE_STRING "\n");
             const auto linear_id = schedule_offset + order[schedule_id];
             if(linear_id < range.size()) {
                 if constexpr(with_offset_v<Offset>) {
                     const auto id = offset + linear_index_to_id(range, linear_id);
-                    kernel(make_item(id, range, offset));
+                    printf("sequential_for 61\n");
+                    kernel(make_item(id, range, offset));                    
+                    printf("sequential_for 63\n");
                 } else {
                     const auto id = linear_index_to_id(range, linear_id);
                     kernel(make_item(id, range));
                 }
             }
         }
+        printf("sequential_for 68\n");
         schedule_state = schedule.update(schedule_state, order);
+        printf("sequential_for 70\n");
     }
 }
 

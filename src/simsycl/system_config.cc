@@ -354,6 +354,7 @@ void from_json(const nlohmann::json &json, system_config &system) {
 
 system_config read_system_config(const std::string &path_to_json_file) {
     std::ifstream ifs(path_to_json_file);
+    printf("read_system_config " SIMSYCL_LINE_STRING "\n");
     return nlohmann::json::parse(ifs).get<system_config>();
 }
 

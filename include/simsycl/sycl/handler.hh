@@ -91,6 +91,7 @@ class handler {
     template<typename KernelName = simsycl::detail::unnamed_kernel, typename KernelType, int Dimensions>
     SIMSYCL_DETAIL_DEPRECATED_IN_SYCL void parallel_for(
         range<Dimensions> num_work_items, id<Dimensions> work_item_offset, KernelType &&kernel_func) {
+        printf("parallel_for 94\n");
         detail::parallel_for<KernelName>(num_work_items, work_item_offset, kernel_handler(this), kernel_func);
     }
 

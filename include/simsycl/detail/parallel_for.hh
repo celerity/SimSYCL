@@ -68,7 +68,9 @@ void execute_parallel_for(const sycl::range<Dimensions> &range, const Offset &of
     const KernelFunc &func,
     Reducers &...reducers) //
 {
+    printf("execute_parallel_for 71\n");
     register_kernel_on_static_construction<KernelName, KernelFunc>();
+    printf("execute_parallel_for 73\n");
 
     simple_kernel<Dimensions, with_offset_v<Offset>> kernel;
     if constexpr(std::is_invocable_v<const KernelFunc, sycl::item<Dimensions, with_offset_v<Offset>>, Reducers &...,
@@ -79,7 +81,9 @@ void execute_parallel_for(const sycl::range<Dimensions> &range, const Offset &of
             std::is_invocable_v<const KernelFunc, sycl::item<Dimensions, with_offset_v<Offset>>, Reducers &...>);
         kernel = [&](const sycl::item<Dimensions> &item) { func(item, reducers...); };
     }
-    sequential_for(range, offset, kernel);
+    printf("execute_parallel_for 84\n");
+    sequential_for(range, offset, kernel);    
+    printf("execute_parallel_for 86\n");
 }
 
 template<typename KernelName, int Dimensions, typename KernelFunc, typename... Reducers>
@@ -137,6 +141,7 @@ void parallel_for(sycl::range<Dimensions> num_work_items, sycl::kernel_handler k
 template<typename KernelName, typename KernelFunc, int Dimensions>
 void parallel_for(sycl::range<Dimensions> num_work_items, sycl::id<Dimensions> work_item_offset,
     sycl::kernel_handler kh, const KernelFunc &kernel_func) {
+    printf("parallel_for 140\n");
     execute_parallel_for<KernelName>(num_work_items, work_item_offset, kh, kernel_func);
 }
 

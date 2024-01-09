@@ -13,33 +13,13 @@ jobs:
       fail-fast: false
 
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        build_type: [Release, Debug]
-        c_compiler: [gcc, clang, cl]
+        os: [windows-latest]
+        build_type: [Debug]
+        c_compiler: [cl]
         include:
           - os: windows-latest
             c_compiler: cl
             cpp_compiler: cl
-          - os: ubuntu-latest
-            c_compiler: gcc
-            cpp_compiler: g++
-          - os: ubuntu-latest
-            c_compiler: clang
-            cpp_compiler: clang++
-          - os: macos-latest
-            c_compiler: gcc
-            cpp_compiler: g++-13
-        exclude:
-          - os: windows-latest
-            c_compiler: gcc
-          - os: windows-latest
-            c_compiler: clang
-          - os: ubuntu-latest
-            c_compiler: cl
-          - os: macos-latest
-            c_compiler: cl
-          - os: macos-latest
-            c_compiler: clang
 
     steps:
     - uses: actions/checkout@v3
@@ -79,8 +59,7 @@ jobs:
       # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
       run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
 
-    - name: Test
+    - name: Test deprecated parallel_for signature
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
-      # Execute tests defined by the CMake configuration. Note that --build-config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
-      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
-      run: ctest --build-config ${{ matrix.build_type }}
+      timeout-minutes: 1
+      run: D:\a\SimSYCL\SimSYCL\build\test\Debug\tests.exe "Calls to the deprecated parallel_for signature are not ambiguous"
