@@ -164,8 +164,10 @@ void *usm_alloc(const sycl::context &context, sycl::usm::alloc kind, std::option
     size_t size_bytes, size_t alignment_bytes) {
     SIMSYCL_CHECK(kind != sycl::usm::alloc::unknown);
     SIMSYCL_CHECK(device.has_value() || kind == sycl::usm::alloc::host);
+    SIMSYCL_CHECK(size_bytes % alignment_bytes == 0);
+    SIMSYCL_CHECK((alignment_bytes & (alignment_bytes - 1)) == 0 && "alignment must be a power of two");
 
-    if(size_bytes == 0) { size_bytes = 1; }
+    if(size_bytes == 0) { size_bytes = alignment_bytes; }
 
     auto &system = get_system();
 
@@ -182,17 +184,31 @@ void *usm_alloc(const sycl::context &context, sycl::usm::alloc kind, std::option
 
         bytes_free = detail::device_bytes_free(*device);
         if(*bytes_free < size_bytes) {
-            throw sycl::exception(sycl::errc::memory_allocation, "Not enough memory available");
+            throw sycl::exception(sycl::errc::memory_allocation,
+                "Not enough memory available to allocate " + std::to_string(size_bytes)
+                    + " bytes (device global memory capacity reached)");
         }
     }
 
+    void *ptr;
 #if defined(_MSC_VER)
     // MSVC does not have std::aligned_alloc because the pointers it returns cannot be freed with std::free
-    void *const ptr = _aligned_malloc(size_bytes, alignment_bytes);
+    ptr = _aligned_malloc(size_bytes, alignment_bytes);
 #else
-    void *const ptr = std::aligned_alloc(alignment_bytes, size_bytes);
+    // POSIX and notably macOS requires a minimum alignment of sizeof(void*) for aligned_alloc, so we only use that for
+    // over-aligned allocations
+    if(alignment_bytes <= alignof(std::max_align_t)) {
+        ptr = std::malloc(size_bytes);
+    } else {
+        ptr = std::aligned_alloc(alignment_bytes, size_bytes);
+    }
 #endif
-    if(ptr == nullptr) { throw sycl::exception(sycl::errc::memory_allocation, "Not enough memory available"); }
+
+    if(ptr == nullptr) {
+        throw sycl::exception(sycl::errc::memory_allocation,
+            "Unable to allocate " + std::to_string(size_bytes) + " bytes with alignment "
+                + std::to_string(alignment_bytes) + " from OS");
+    }
 
     std::memset(ptr, static_cast<int>(uninitialized_memory_pattern), size_bytes);
 

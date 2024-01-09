@@ -20,6 +20,7 @@ add_executable(tests
   math_tests.cc
   reduction_tests.cc
   simulation_tests.cc
+  usm_tests.cc
   vec_tests.cc
 )
 
