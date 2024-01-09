@@ -105,6 +105,14 @@ class property_interface {
         return std::any_cast<Property>(*iter);
     }
 
+    friend bool operator==(const property_interface &lhs, const property_interface &rhs) {
+        // TODO not correct at all! property_interface should always be used together with reference_type, where
+        // equality is shared_ptr identity
+        (void)lhs;
+        (void)rhs;
+        return false;
+    }
+
   protected:
     const std::vector<std::any> &get_properties() const { return m_properties; }
 

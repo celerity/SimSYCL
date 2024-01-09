@@ -381,6 +381,9 @@ class accessor : public simsycl::detail::property_interface {
   private:
     friend class handler;
 
+    template<typename>
+    friend struct std::hash;
+
     struct internal_t {
     } constexpr inline static internal{};
 
@@ -496,7 +499,7 @@ class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> : public simsy
     using const_reference = const DataT &;
 
     template<access::decorated IsDecorated>
-    using accessor_ptr = std::enable_if_t<AccessTarget == target::device,
+    using accessor_ptr = std::enable_if_t<AccessTarget == target::device && IsDecorated == IsDecorated /* dependent */,
         multi_ptr<value_type, access::address_space::global_space, IsDecorated>>;
 
     using iterator = simsycl::detail::accessor_iterator<accessor, value_type, 0>;
@@ -614,6 +617,9 @@ class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> : public simsy
   private:
     friend class handler;
 
+    template<typename>
+    friend struct std::hash;
+
     DataT *m_buffer = nullptr;
     detail::buffer_access_validator<1> *m_access_validator = nullptr;
     // shared: require() on a copy is equivalent to require() on the original instance
@@ -713,6 +719,9 @@ class local_accessor final : public simsycl::detail::property_interface {
     friend iterator;
     friend const_iterator;
 
+    template<typename>
+    friend struct std::hash;
+
     void **m_allocation_ptr = nullptr;
     sycl::range<Dimensions> m_range;
 
@@ -747,7 +756,7 @@ class local_accessor<DataT, 0> final : public simsycl::detail::property_interfac
 
     local_accessor() = default;
 
-    local_accessor(handler &command_group_handler_ref, const property_list &prop_list)
+    local_accessor(handler &command_group_handler_ref, const property_list &prop_list = {})
         : property_interface(prop_list, property_compatibility()),
           m_allocation_ptr(detail::require_local_memory(command_group_handler_ref, sizeof(DataT), alignof(DataT))) {}
 
@@ -810,6 +819,9 @@ class local_accessor<DataT, 0> final : public simsycl::detail::property_interfac
     friend bool operator==(const local_accessor &lhs, const local_accessor &rhs) = default;
 
   private:
+    template<typename>
+    friend struct std::hash;
+
     void **m_allocation_ptr = nullptr;
 
     inline DataT *get_allocation() const {
@@ -922,6 +934,9 @@ class host_accessor : public simsycl::detail::property_interface {
 
   private:
     friend class handler;
+
+    template<typename>
+    friend struct std::hash;
 
     struct internal_t {
     } constexpr inline static internal{};
@@ -1063,6 +1078,9 @@ class host_accessor<DataT, 0, AccessMode> : public simsycl::detail::property_int
   private:
     friend class handler;
 
+    template<typename>
+    friend struct std::hash;
+
     DataT *m_buffer = nullptr;
     std::shared_ptr<detail::host_access_guard<1>> m_access_guard;
 };
@@ -1152,6 +1170,11 @@ class accessor<DataT, Dimensions, AccessMode, target::constant_buffer, IsPlaceho
     }
 
   private:
+    friend class handler;
+
+    template<typename>
+    friend struct std::hash;
+
     struct internal_t {
     } constexpr inline static internal{};
 
@@ -1189,7 +1212,7 @@ class accessor<DataT, Dimensions, AccessMode, target::constant_buffer, IsPlaceho
     void require() {
         SIMSYCL_CHECK(m_buffer != nullptr);
         SIMSYCL_CHECK(m_access_validator != nullptr);
-        m_access_validator->check_access_from_command_group({0, 1, AccessMode});
+        m_access_validator->check_access_from_command_group({m_access_offset, m_access_range, AccessMode});
         *m_required = true;
     }
 
@@ -1246,6 +1269,9 @@ class accessor<DataT, 0, AccessMode, target::constant_buffer, IsPlaceholder> fin
 
   private:
     friend class handler;
+
+    template<typename>
+    friend struct std::hash;
 
     DataT *m_buffer = nullptr;
     detail::buffer_access_validator<1> *m_access_validator = nullptr;
@@ -1319,6 +1345,9 @@ class accessor<DataT, Dimensions, AccessMode, target::host_buffer, IsPlaceholder
     friend bool operator==(const accessor &lhs, const accessor &rhs) = default;
 
   private:
+    template<typename>
+    friend struct std::hash;
+
     DataT *m_buffer = nullptr;
     range<Dimensions> m_buffer_range;
     id<Dimensions> m_access_offset;
@@ -1364,6 +1393,9 @@ class accessor<DataT, 0, AccessMode, target::host_buffer, IsPlaceholder> : publi
     friend bool operator==(const accessor &lhs, const accessor &rhs) = default;
 
   private:
+    template<typename>
+    friend struct std::hash;
+
     DataT *m_buffer = nullptr;
     std::shared_ptr<detail::host_access_guard<1>> m_access_guard;
 };
@@ -1419,6 +1451,9 @@ class accessor<DataT, Dimensions, AccessMode, target::local, IsPlaceholder> fina
     friend bool operator!=(const accessor &lhs, const accessor &rhs) { return !(lhs == rhs); }
 
   private:
+    template<typename>
+    friend struct std::hash;
+
     void **m_allocation_ptr;
     sycl::range<Dimensions> m_range;
 
@@ -1458,13 +1493,41 @@ class accessor<DataT, 0, AccessMode, target::local, IsPlaceholder> final : publi
     local_ptr<DataT> get_pointer() const noexcept { return local_ptr<DataT>(get_allocation()); }
 
   private:
+    template<typename>
+    friend struct std::hash;
+
     void **m_allocation_ptr;
 
     inline DataT *get_allocation() const { return static_cast<DataT *>(*m_allocation_ptr); }
 };
 
-
 SIMSYCL_STOP_IGNORING_DEPRECATIONS
 
-
 } // namespace simsycl::sycl
+
+template<typename DataT, int Dimensions, simsycl::sycl::access_mode AccessMode, simsycl::sycl::target AccessTarget,
+    simsycl::sycl::access::placeholder IsPlaceholder>
+struct std::hash<simsycl::sycl::accessor<DataT, Dimensions, AccessMode, AccessTarget, IsPlaceholder>> {
+    size_t operator()(
+        const simsycl::sycl::accessor<DataT, Dimensions, AccessMode, AccessTarget, IsPlaceholder> &accessor) const {
+        if constexpr(AccessTarget == simsycl::sycl::target::local) {
+            return simsycl::detail::hash(accessor.m_allocation_ptr);
+        } else {
+            return simsycl::detail::hash(accessor.m_buffer);
+        }
+    }
+};
+
+template<typename DataT, int Dimensions>
+struct std::hash<simsycl::sycl::local_accessor<DataT, Dimensions>> {
+    size_t operator()(const simsycl::sycl::local_accessor<DataT, Dimensions> &accessor) const {
+        return simsycl::detail::hash(accessor.m_allocation_ptr);
+    }
+};
+
+template<typename DataT, int Dimensions, simsycl::sycl::access_mode AccessMode>
+struct std::hash<simsycl::sycl::host_accessor<DataT, Dimensions, AccessMode>> {
+    size_t operator()(const simsycl::sycl::host_accessor<DataT, Dimensions, AccessMode> &accessor) const {
+        return simsycl::detail::hash(accessor.m_buffer);
+    }
+};

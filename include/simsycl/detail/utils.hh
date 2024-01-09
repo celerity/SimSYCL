@@ -59,4 +59,14 @@ sycl::id<Dimensions> linear_index_to_id(const sycl::range<Dimensions> &range, si
     return id;
 }
 
+template<typename T, typename... Ts>
+inline size_t hash(const T &v, const Ts &...vs) {
+    auto h = std::hash<T>()(v);
+    if constexpr(sizeof...(vs) > 0) {
+        const auto next = hash(vs...);
+        h ^= next + 0x9e3779b9 + (h << 6) + (h >> 2);
+    }
+    return h;
+}
+
 } // namespace simsycl::detail
