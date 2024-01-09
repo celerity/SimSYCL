@@ -151,8 +151,12 @@ T shift_group_left(G g, T x, typename G::linear_id_type delta = 1) {
                     return per_op_data;
                 },
             .reached =
-                [&](detail::group_shift_data<T> &per_op) {
-                    SIMSYCL_CHECK(per_op.delta == delta);
+                [&](detail::group_shift_data<T> &per_op, detail::group_operation_data &op) {
+                    op.valid = op.valid && per_op.delta == delta;
+                    SIMSYCL_CHECK_MSG(per_op.delta == delta,
+                        "group shift delta mismatch: other group items specified "
+                        "delta %d, but work item #%d is trying to specify %d",
+                        per_op.delta, g.get_local_linear_id(), delta);
                     per_op.values[g.get_local_linear_id()] = x;
                 },
             .complete = [&](detail::group_shift_data<T> &per_op) -> T {
@@ -173,8 +177,12 @@ T shift_group_right(G g, T x, typename G::linear_id_type delta = 1) {
                     return per_op_data;
                 },
             .reached =
-                [&](detail::group_shift_data<T> &per_op) {
-                    SIMSYCL_CHECK(per_op.delta == delta);
+                [&](detail::group_shift_data<T> &per_op, detail::group_operation_data &op) {
+                    op.valid = op.valid && per_op.delta == delta;
+                    SIMSYCL_CHECK_MSG(per_op.delta == delta,
+                        "group shift delta mismatch: other group items specified "
+                        "delta %d, but work item #%d is trying to specify %d",
+                        per_op.delta, g.get_local_linear_id(), delta);
                     per_op.values[g.get_local_linear_id()] = x;
                 },
             .complete = [&](detail::group_shift_data<T> &per_op) -> T {
@@ -197,8 +205,12 @@ T permute_group(G g, T x, typename G::linear_id_type mask) {
                     return per_op_data;
                 },
             .reached =
-                [&](detail::group_permute_data<T> &per_op) {
-                    SIMSYCL_CHECK(per_op.mask == mask);
+                [&](detail::group_permute_data<T> &per_op, detail::group_operation_data &op) {
+                    op.valid = op.valid && per_op.mask == mask;
+                    SIMSYCL_CHECK_MSG(per_op.mask == mask,
+                        "group permute mask mismatch: other group items specified mask "
+                        "%d, but work item #%d is trying to specify %d",
+                        per_op.mask, g.get_local_linear_id(), mask);
                     per_op.values[g.get_local_linear_id()] = x;
                 },
             .complete = [&](detail::group_permute_data<T> &per_op) -> T {

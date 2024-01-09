@@ -654,3 +654,23 @@ TEST_CASE("Divergent group execution is reported", "[check][group_op]") {
         Catch::Matchers::ContainsSubstring(
             "group recorded operation \"barrier\", but work item #1 is trying to perform \"exit\""));
 }
+
+
+TEST_CASE("Mismatched parameters for group ops are reported", "[check][group_op]") {
+    simsycl::detail::override_check_mode check_mode(SIMSYCL_CHECK_THROW);
+    REQUIRE_THROWS_WITH(sycl::queue{}.submit([&](sycl::handler &cgh) {
+        cgh.parallel_for(sycl::nd_range<1>{2, 2},
+            [](sycl::nd_item<1> it) { sycl::shift_group_right(it.get_sub_group(), 0, it.get_local_linear_id()); });
+    }),
+        Catch::Matchers::ContainsSubstring("group shift delta mismatch"));
+    // REQUIRE_THROWS_WITH(sycl::queue{}.submit([&](sycl::handler &cgh) {
+    //     cgh.parallel_for(sycl::nd_range<1>{2, 2},
+    //         [](sycl::nd_item<1> it) { sycl::shift_group_left(it.get_sub_group(), 0, it.get_local_linear_id()); });
+    // }),
+    //     Catch::Matchers::ContainsSubstring("group shift delta mismatch"));
+    // REQUIRE_THROWS_WITH(sycl::queue{}.submit([&](sycl::handler &cgh) {
+    //     cgh.parallel_for(sycl::nd_range<1>{2, 2},
+    //         [](sycl::nd_item<1> it) { sycl::permute_group(it.get_sub_group(), 0, it.get_local_linear_id()); });
+    // }),
+    //     Catch::Matchers::ContainsSubstring("group permute mask mismatch"));
+}

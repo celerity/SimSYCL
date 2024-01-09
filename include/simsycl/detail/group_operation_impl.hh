@@ -214,7 +214,9 @@ template<GroupOpInitFunction InitF = decltype(default_group_op_init_function),
     typename CompleteF = decltype(default_group_op_function<PerOpT>)>
 struct group_operation_spec {
     using per_op_t = PerOpT;
-    static_assert(std::is_invocable_r_v<void, ReachedF, PerOpT &>, "reached must be of type (PerOpT&) -> void");
+    static_assert(std::is_invocable_r_v<void, ReachedF, PerOpT &>
+            || std::is_invocable_r_v<void, ReachedF, PerOpT &, group_operation_data &>,
+        "reached must be of type (PerOpT&) -> void or (PerOpT&, group_operation_data&) -> void");
     static_assert(std::is_invocable_v<CompleteF, PerOpT &>, "complete must be invocable with PerOpT&");
     const InitF &init = default_group_op_init_function;
     const ReachedF &reached = default_group_op_function<PerOpT>;
@@ -249,7 +251,11 @@ auto perform_group_operation(G g, group_operation_id id, const Spec &spec) {
 
         auto &op = group_instance.operations[ops_reached];
         check_group_op_validity(linear_id_in_group, new_op, op);
-        spec.reached(dynamic_cast<typename Spec::per_op_t &>(*op.per_op_data));
+        if constexpr(requires(Spec::per_op_t &per_t, group_operation_data &op_t) { spec.reached(per_t, op_t); }) {
+            spec.reached(dynamic_cast<typename Spec::per_op_t &>(*op.per_op_data), op);
+        } else {
+            spec.reached(dynamic_cast<typename Spec::per_op_t &>(*op.per_op_data));
+        }
 
         op.num_work_items_participating++;
     }
