@@ -247,16 +247,20 @@ T select_from_group(G g, T x, typename G::id_type remote_local_id) {
 // reduce
 
 
-template<Group G, Pointer Ptr, SyclFunctionObject Op, typename T = typename std::iterator_traits<Ptr>::value_type>
-T joint_reduce(G g, Ptr first, Ptr last, Op binary_op) {
-    T result = *first;
+template<Group G, Pointer Ptr, SyclFunctionObject Op>
+typename std::iterator_traits<Ptr>::value_type joint_reduce(G g, Ptr first, Ptr last, Op binary_op)
+    requires(std::is_same_v<decltype(binary_op(*first, *first)), typename std::iterator_traits<Ptr>::value_type>)
+{
+    auto result = *first;
     for(auto i = first + 1; first != last && i != last; ++i) { result = binary_op(result, *i); }
     simsycl::detail::joint_reduce_impl(g, first, last, {}, result);
     return result;
 }
 
 template<Group G, Pointer Ptr, Fundamental T, SyclFunctionObject Op>
-T joint_reduce(G g, Ptr first, Ptr last, T init, Op binary_op) {
+T joint_reduce(G g, Ptr first, Ptr last, T init, Op binary_op)
+    requires(std::is_same_v<decltype(binary_op(*first, *first)), T>)
+{
     T result = init;
     for(auto i = first; i != last; ++i) { result = binary_op(result, *i); }
     simsycl::detail::joint_reduce_impl(g, first, last, {init}, result);
@@ -264,22 +268,28 @@ T joint_reduce(G g, Ptr first, Ptr last, T init, Op binary_op) {
 }
 
 template<Group G, Fundamental T, SyclFunctionObject Op>
-T reduce_over_group(G g, T x, Op binary_op) {
+T reduce_over_group(G g, T x, Op binary_op)
+    requires(std::is_same_v<decltype(binary_op(x, x)), T>)
+{
     return simsycl::detail::group_reduce_impl(g, x, {}, binary_op);
 }
 
 template<Group G, Fundamental V, Fundamental T, SyclFunctionObject Op>
-T reduce_over_group(G g, V x, T init, Op binary_op) {
+T reduce_over_group(G g, V x, T init, Op binary_op)
+    requires(std::is_same_v<decltype(binary_op(init, x)), T>)
+{
     return simsycl::detail::group_reduce_impl(g, x, {init}, binary_op);
 }
 
 // exclusive_scan
 
-template<Group G, PointerToFundamental InPtr, PointerToFundamental OutPtr, SyclFunctionObject Op,
-    typename T = typename std::iterator_traits<InPtr>::value_type>
-OutPtr joint_exclusive_scan(G g, InPtr first, InPtr last, OutPtr result, Op binary_op) {
-    std::vector<T> results(std::distance(first, last));
-    results[0] = known_identity_v<Op, T>;
+template<Group G, PointerToFundamental InPtr, PointerToFundamental OutPtr, SyclFunctionObject Op>
+OutPtr joint_exclusive_scan(G g, InPtr first, InPtr last, OutPtr result, Op binary_op)
+    requires(std::is_same_v<decltype(binary_op(*first, *first)), typename std::iterator_traits<OutPtr>::value_type>)
+{
+    using value_type = typename std::iterator_traits<OutPtr>::value_type;
+    std::vector<value_type> results(std::distance(first, last));
+    results[0] = known_identity_v<Op, value_type>;
     for(auto i = 0u; i < results.size() - 1; ++i) { results[i + 1] = binary_op(results[i], first[i]); }
     simsycl::detail::joint_scan_impl(
         g, simsycl::detail::group_operation_id::joint_exclusive_scan, first, last, {}, results);
@@ -288,7 +298,9 @@ OutPtr joint_exclusive_scan(G g, InPtr first, InPtr last, OutPtr result, Op bina
 }
 
 template<Group G, PointerToFundamental InPtr, PointerToFundamental OutPtr, Fundamental T, SyclFunctionObject Op>
-OutPtr joint_exclusive_scan(G g, InPtr first, InPtr last, OutPtr result, T init, Op binary_op) {
+OutPtr joint_exclusive_scan(G g, InPtr first, InPtr last, OutPtr result, T init, Op binary_op)
+    requires(std::is_same_v<decltype(binary_op(init, *first)), T>)
+{
     std::vector<T> results(std::distance(first, last));
     results[0] = init;
     for(auto i = 0u; i < results.size() - 1; ++i) { results[i + 1] = binary_op(results[i], first[i]); }
@@ -299,22 +311,28 @@ OutPtr joint_exclusive_scan(G g, InPtr first, InPtr last, OutPtr result, T init,
 }
 
 template<Group G, Fundamental T, SyclFunctionObject Op>
-T exclusive_scan_over_group(G g, T x, Op binary_op) {
+T exclusive_scan_over_group(G g, T x, Op binary_op)
+    requires(std::is_same_v<decltype(binary_op(x, x)), T>)
+{
     return simsycl::detail::group_scan_impl(g, simsycl::detail::group_operation_id::exclusive_scan, x, {}, binary_op);
 }
 
 template<Group G, Fundamental V, Fundamental T, SyclFunctionObject Op>
-T exclusive_scan_over_group(G g, V x, T init, Op binary_op) {
+T exclusive_scan_over_group(G g, V x, T init, Op binary_op)
+    requires(std::is_same_v<decltype(binary_op(init, x)), T>)
+{
     return simsycl::detail::group_scan_impl(
         g, simsycl::detail::group_operation_id::exclusive_scan, x, {init}, binary_op);
 }
 
 // inclusive_scan
 
-template<Group G, PointerToFundamental InPtr, PointerToFundamental OutPtr, SyclFunctionObject Op,
-    typename T = typename std::iterator_traits<InPtr>::value_type>
-OutPtr joint_inclusive_scan(G g, InPtr first, InPtr last, OutPtr result, Op binary_op) {
-    std::vector<T> results(std::distance(first, last));
+template<Group G, PointerToFundamental InPtr, PointerToFundamental OutPtr, SyclFunctionObject Op>
+OutPtr joint_inclusive_scan(G g, InPtr first, InPtr last, OutPtr result, Op binary_op)
+    requires(std::is_same_v<decltype(binary_op(*first, *first)), typename std::iterator_traits<OutPtr>::value_type>)
+{
+    using value_type = typename std::iterator_traits<OutPtr>::value_type;
+    std::vector<value_type> results(std::distance(first, last));
     results[0] = *first;
     for(auto i = 1u; i < results.size(); ++i) { results[i] = binary_op(results[i - 1], first[i]); }
     simsycl::detail::joint_scan_impl(
@@ -324,7 +342,9 @@ OutPtr joint_inclusive_scan(G g, InPtr first, InPtr last, OutPtr result, Op bina
 }
 
 template<Group G, PointerToFundamental InPtr, PointerToFundamental OutPtr, Fundamental T, SyclFunctionObject Op>
-OutPtr joint_inclusive_scan(G g, InPtr first, InPtr last, OutPtr result, Op binary_op, T init) {
+OutPtr joint_inclusive_scan(G g, InPtr first, InPtr last, OutPtr result, Op binary_op, T init)
+    requires(std::is_same_v<decltype(binary_op(init, *first)), T>)
+{
     std::vector<T> results(std::distance(first, last));
     results[0] = binary_op(init, *first);
     for(auto i = 1u; i < results.size(); ++i) { results[i] = binary_op(results[i - 1], first[i]); }
@@ -335,12 +355,16 @@ OutPtr joint_inclusive_scan(G g, InPtr first, InPtr last, OutPtr result, Op bina
 }
 
 template<Group G, Fundamental T, SyclFunctionObject Op>
-T inclusive_scan_over_group(G g, T x, Op binary_op) {
+T inclusive_scan_over_group(G g, T x, Op binary_op)
+    requires(std::is_same_v<decltype(binary_op(x, x)), T>)
+{
     return simsycl::detail::group_scan_impl(g, simsycl::detail::group_operation_id::inclusive_scan, x, {}, binary_op);
 }
 
 template<Group G, Fundamental V, Fundamental T, SyclFunctionObject Op>
-T inclusive_scan_over_group(G g, V x, Op binary_op, T init) {
+T inclusive_scan_over_group(G g, V x, Op binary_op, T init)
+    requires(std::is_same_v<decltype(binary_op(init, x)), T>)
+{
     return simsycl::detail::group_scan_impl(
         g, simsycl::detail::group_operation_id::inclusive_scan, x, {init}, binary_op);
 }
