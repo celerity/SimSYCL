@@ -8,8 +8,8 @@ namespace simsycl::sycl {
 
 // any_of
 
-template<Group G, Pointer Ptr, typename Predicate, typename T = std::remove_pointer_t<Ptr>>
-    requires std::predicate<Predicate, T>
+template<Group G, Pointer Ptr, typename Predicate>
+    requires std::predicate<Predicate, std::remove_pointer_t<Ptr>>
 bool joint_any_of(G g, Ptr first, Ptr last, Predicate pred) {
     // approach: perform the operation sequentially on all work items, confirm that they compute the same result
     // (this is the closest we can easily get to verifying the standard requirement that
@@ -20,9 +20,9 @@ bool joint_any_of(G g, Ptr first, Ptr last, Predicate pred) {
 
     detail::perform_group_operation(g, detail::group_operation_id::joint_any_of,
         detail::group_operation_spec{//
-            .init = [&]() { return std::make_unique<detail::group_joint_bool_op_data<T>>(first, last, result); },
+            .init = [&]() { return std::make_unique<detail::group_joint_bool_op_data<Ptr>>(first, last, result); },
             .reached =
-                [&](detail::group_joint_bool_op_data<T> &per_op) {
+                [&](detail::group_joint_bool_op_data<Ptr> &per_op) {
                     SIMSYCL_CHECK(per_op.first == first);
                     SIMSYCL_CHECK(per_op.last == last);
                     SIMSYCL_CHECK(per_op.result == result);
@@ -56,16 +56,16 @@ bool any_of_group(G g, bool pred) {
 
 // all_of
 
-template<Group G, Pointer Ptr, typename Predicate, typename T = std::remove_pointer_t<Ptr>>
-    requires std::predicate<Predicate, T>
+template<Group G, Pointer Ptr, typename Predicate>
+    requires std::predicate<Predicate, std::remove_pointer_t<Ptr>>
 bool joint_all_of(G g, Ptr first, Ptr last, Predicate pred) {
     bool result = true;
     for(auto start = first; result && start != last; ++start) { result = pred(*start); }
     detail::perform_group_operation(g, detail::group_operation_id::joint_all_of,
         detail::group_operation_spec{//
-            .init = [&]() { return std::make_unique<detail::group_joint_bool_op_data<T>>(first, last, result); },
+            .init = [&]() { return std::make_unique<detail::group_joint_bool_op_data<Ptr>>(first, last, result); },
             .reached =
-                [&](detail::group_joint_bool_op_data<T> &per_op) {
+                [&](detail::group_joint_bool_op_data<Ptr> &per_op) {
                     SIMSYCL_CHECK(per_op.first == first);
                     SIMSYCL_CHECK(per_op.last == last);
                     SIMSYCL_CHECK(per_op.result == result);
@@ -98,16 +98,16 @@ bool all_of_group(G g, bool pred) {
 
 // none_of
 
-template<Group G, Pointer Ptr, typename Predicate, typename T = std::remove_pointer_t<Ptr>>
-    requires std::predicate<Predicate, T>
+template<Group G, Pointer Ptr, typename Predicate>
+    requires std::predicate<Predicate, std::remove_pointer_t<Ptr>>
 bool joint_none_of(G g, Ptr first, Ptr last, Predicate pred) {
     bool result = true;
     for(auto start = first; result && start != last; ++start) { result = !pred(*start); }
     detail::perform_group_operation(g, detail::group_operation_id::joint_none_of,
         detail::group_operation_spec{//
-            .init = [&]() { return std::make_unique<detail::group_joint_bool_op_data<T>>(first, last, result); },
+            .init = [&]() { return std::make_unique<detail::group_joint_bool_op_data<Ptr>>(first, last, result); },
             .reached =
-                [&](detail::group_joint_bool_op_data<T> &per_op) {
+                [&](detail::group_joint_bool_op_data<Ptr> &per_op) {
                     SIMSYCL_CHECK(per_op.first == first);
                     SIMSYCL_CHECK(per_op.last == last);
                     SIMSYCL_CHECK(per_op.result == result);
@@ -194,8 +194,8 @@ T shift_group_right(G g, T x, typename G::linear_id_type delta = 1) {
 // permute
 
 template<SubGroup G, TriviallyCopyable T>
-T permute_group(G g, T x, typename G::linear_id_type mask) {
-    return detail::perform_group_operation(g, detail::group_operation_id::permute,
+T permute_group_by_xor(G g, T x, typename G::linear_id_type mask) {
+    return detail::perform_group_operation(g, detail::group_operation_id::permute_by_xor,
         detail::group_operation_spec{//
             .init =
                 [&]() {
@@ -219,10 +219,6 @@ T permute_group(G g, T x, typename G::linear_id_type mask) {
                 return per_op.values[target];
             }});
 }
-
-template<typename Group, typename T>
-T permute_group_by_xor(Group g, T x, typename Group::linear_id_type mask); // TODO
-
 
 // select
 

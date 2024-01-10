@@ -399,7 +399,7 @@ TEST_CASE("Group shift operation behave as expected", "[group_op][shift]") {
     }
 }
 
-TEST_CASE("Group permute behaves as expected", "[group_op][permute]") {
+TEST_CASE("Group permute by XOR behaves as expected", "[group_op][permute]") {
     REPEAT_FOR_ALL_SCHEDULES
 
     int inputs[4] = {1, 2, 3, 4};
@@ -408,14 +408,14 @@ TEST_CASE("Group permute behaves as expected", "[group_op][permute]") {
     sycl::queue().submit([&inputs](sycl::handler &cgh) {
         cgh.parallel_for(sycl::nd_range<1>{8, 8}, [&inputs](sycl::nd_item<1> it) {
             auto id = it.get_sub_group().get_local_linear_id();
-            auto val = sycl::permute_group(it.get_sub_group(), inputs[id], 0b0101u);
+            auto val = sycl::permute_group_by_xor(it.get_sub_group(), inputs[id], 0b0101u);
             auto target = id ^ 0b0101u;
             if(target < 4) {
                 CHECK(val == inputs[target]);
             } else {
                 CHECK(val == detail::unspecified<int>());
             }
-            check_group_op_sequence(it.get_sub_group(), {detail::group_operation_id::permute});
+            check_group_op_sequence(it.get_sub_group(), {detail::group_operation_id::permute_by_xor});
         });
     });
 }
@@ -670,7 +670,7 @@ TEST_CASE("Mismatched parameters for group ops are reported", "[check][group_op]
         Catch::Matchers::ContainsSubstring("group shift delta mismatch"));
     REQUIRE_THROWS_WITH(sycl::queue{}.submit([&](sycl::handler &cgh) {
         cgh.parallel_for(sycl::nd_range<1>{2, 2},
-            [](sycl::nd_item<1> it) { sycl::permute_group(it.get_sub_group(), 0, it.get_local_linear_id()); });
+            [](sycl::nd_item<1> it) { sycl::permute_group_by_xor(it.get_sub_group(), 0, it.get_local_linear_id()); });
     }),
         Catch::Matchers::ContainsSubstring("group permute mask mismatch"));
 }

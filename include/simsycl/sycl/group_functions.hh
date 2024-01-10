@@ -41,7 +41,7 @@ T group_broadcast(G g, T x, typename G::linear_id_type local_linear_id) {
 template<Group G, TriviallyCopyable T>
 T group_broadcast(G g, T x, typename G::id_type local_id) {
     SIMSYCL_CHECK(all_true(local_id < id(g.get_local_range())));
-    group_broadcast(g, x, detail::get_linear_index(g.get_local_range(), local_id));
+    return group_broadcast(g, x, detail::get_linear_index(g.get_local_range(), local_id));
 }
 
 template<Group G>

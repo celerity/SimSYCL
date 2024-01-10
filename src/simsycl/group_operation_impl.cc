@@ -14,7 +14,7 @@ const char *group_operation_id_to_string(group_operation_id id) {
         case group_operation_id::none_of: return "none_of";
         case group_operation_id::shift_left: return "shift_left";
         case group_operation_id::shift_right: return "shift_right";
-        case group_operation_id::permute: return "permute";
+        case group_operation_id::permute_by_xor: return "permute";
         case group_operation_id::select: return "select";
         case group_operation_id::joint_reduce: return "joint_reduce";
         case group_operation_id::reduce: return "reduce";

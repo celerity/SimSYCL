@@ -56,7 +56,7 @@ enum class group_operation_id {
     none_of,
     shift_left,
     shift_right,
-    permute,
+    permute_by_xor,
     select,
     joint_reduce,
     reduce,
@@ -84,12 +84,12 @@ struct group_broadcast_data : group_per_operation_data {
 struct group_barrier_data : group_per_operation_data {
     sycl::memory_scope fence_scope;
 };
-template<typename T>
+template<typename Ptr>
 struct group_joint_bool_op_data : group_per_operation_data {
-    T *first;
-    T *last;
+    Ptr first;
+    Ptr last;
     bool result;
-    group_joint_bool_op_data(T *first, T *last, bool result) : first(first), last(last), result(result) {}
+    group_joint_bool_op_data(Ptr first, Ptr last, bool result) : first(first), last(last), result(result) {}
 };
 struct group_bool_data : group_per_operation_data {
     std::vector<bool> values;
@@ -112,13 +112,13 @@ struct group_select_data : group_per_operation_data {
     std::vector<T> values;
     group_select_data(size_t num_work_items) : values(num_work_items) {}
 };
-template<typename T>
+template<typename Ptr, typename T>
 struct group_joint_reduce_data : group_per_operation_data {
-    T *first;
-    T *last;
+    Ptr first;
+    Ptr last;
     std::optional<T> init;
     T result;
-    group_joint_reduce_data(T *first, T *last, std::optional<T> init, T result)
+    group_joint_reduce_data(Ptr first, Ptr last, std::optional<T> init, T result)
         : first(first), last(last), init(init), result(result) {}
 };
 template<typename T>
@@ -127,13 +127,13 @@ struct group_reduce_data : group_per_operation_data {
     std::vector<T> values;
     group_reduce_data(size_t num_work_items, std::optional<T> init) : init(init), values(num_work_items) {}
 };
-template<typename T>
+template<typename Ptr, typename T>
 struct group_joint_scan_data : group_per_operation_data {
-    T *first;
-    T *last;
+    Ptr first;
+    Ptr last;
     std::optional<T> init;
     std::vector<T> results;
-    group_joint_scan_data(T *first, T *last, std::optional<T> init, const std::vector<T> &results)
+    group_joint_scan_data(Ptr first, Ptr last, std::optional<T> init, const std::vector<T> &results)
         : first(first), last(last), init(init), results(results) {}
 };
 template<typename T>
@@ -280,15 +280,9 @@ template<sycl::Group G, sycl::Pointer Ptr, sycl::Fundamental T>
 void joint_reduce_impl(G g, Ptr first, Ptr last, std::optional<T> init, T result) {
     perform_group_operation(g, group_operation_id::joint_reduce,
         group_operation_spec{//
-            .init =
-                [&] {
-                    // TODO there was a strange error when using make_unique here - investigate if necessary after
-                    // group_operations CTS test is fixed
-                    return std::unique_ptr<group_joint_reduce_data<T>>(
-                        new group_joint_reduce_data<T>(first, last, init, result));
-                },
+            .init = [&] { return std::make_unique<group_joint_reduce_data<Ptr, T>>(first, last, init, result); },
             .reached =
-                [&](group_joint_reduce_data<T> &per_op) {
+                [&](group_joint_reduce_data<Ptr, T> &per_op) {
                     SIMSYCL_CHECK(per_op.first == first);
                     SIMSYCL_CHECK(per_op.last == last);
                     SIMSYCL_CHECK(per_op.init == init);
@@ -302,10 +296,7 @@ T group_reduce_impl(G g, T x, std::optional<T> init, Op op) {
         group_operation_spec{//
             .init =
                 [&] {
-                    // TODO there was a strange error when using make_unique here - investigate if necessary after
-                    // group_operations CTS test is fixed
-                    auto per_op = std::unique_ptr<group_reduce_data<T>>(
-                        new group_reduce_data<T>(g.get_local_range().size(), init));
+                    auto per_op = std::make_unique<group_reduce_data<T>>(g.get_local_range().size(), init);
                     per_op->values[g.get_local_linear_id()] = x;
                     return per_op;
                 },
@@ -333,15 +324,9 @@ void joint_scan_impl(
     G g, group_operation_id op_id, Ptr first, Ptr last, std::optional<T> init, const std::vector<T> &results) {
     perform_group_operation(g, op_id,
         group_operation_spec{//
-            .init =
-                [&] {
-                    // TODO there was a strange error when using make_unique here - investigate if necessary after
-                    // group_operations CTS test is fixed
-                    return std::unique_ptr<group_joint_scan_data<T>>(
-                        new group_joint_scan_data<T>(first, last, init, results));
-                },
+            .init = [&] { return std::make_unique<group_joint_scan_data<Ptr, T>>(first, last, init, results); },
             .reached =
-                [&](group_joint_scan_data<T> &per_op) {
+                [&](group_joint_scan_data<Ptr, T> &per_op) {
                     SIMSYCL_CHECK(per_op.first == first);
                     SIMSYCL_CHECK(per_op.last == last);
                     SIMSYCL_CHECK(per_op.init == init);
@@ -355,10 +340,7 @@ T group_scan_impl(G g, group_operation_id op_id, T x, std::optional<T> init, Op 
         group_operation_spec{//
             .init =
                 [&] {
-                    // TODO there was a strange error when using make_unique here - investigate if necessary after
-                    // group_operations CTS test is fixed
-                    auto per_op
-                        = std::unique_ptr<group_scan_data<T>>(new group_scan_data<T>(g.get_local_range().size(), init));
+                    auto per_op = std::make_unique<group_scan_data<T>>(g.get_local_range().size(), init);
                     per_op->values[g.get_local_linear_id()] = x;
                     return per_op;
                 },
