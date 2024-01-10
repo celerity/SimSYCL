@@ -14,7 +14,7 @@ sycl::item<Dimensions, true> make_item(
 }
 template<int Dimensions>
 sycl::item<Dimensions, false> make_item(const sycl::id<Dimensions> &the_id, const sycl::range<Dimensions> &range) {
-    return sycl::item<Dimensions, false>(the_id, range, sycl::id<Dimensions>::zero());
+    return sycl::item<Dimensions, false>(the_id, range, sycl::id<Dimensions>());
 }
 
 } // namespace simsycl::detail

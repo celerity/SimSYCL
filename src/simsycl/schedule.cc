@@ -95,10 +95,11 @@ void sequential_for_work_group(sycl::range<Dimensions> num_work_groups,
     for(size_t group_linear_id = 0; group_linear_id < num_work_groups.size(); ++group_linear_id) {
         const auto group_id = linear_index_to_id(num_work_groups, group_linear_id);
         const auto group_item = make_item(group_id, num_work_groups);
-        const auto local_item = make_item(sycl::id<Dimensions>(), work_group_size.value_or(unit_range<Dimensions>()));
-        const auto global_item = make_item(group_id * sycl::id(local_item.get_range()),
-            local_item.get_range() * group_item.get_range(), sycl::id<Dimensions>());
-        kernel(make_group(type, local_item, global_item, group_item, nullptr));
+        const auto physical_local_item
+            = make_item(sycl::id<Dimensions>(), work_group_size.value_or(unit_range<Dimensions>()));
+        const auto global_item = make_item(group_id * sycl::id(physical_local_item.get_range()),
+            physical_local_item.get_range() * group_item.get_range(), sycl::id<Dimensions>());
+        kernel(make_group(type, physical_local_item, global_item, group_item, nullptr));
     }
 }
 

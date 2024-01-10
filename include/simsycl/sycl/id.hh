@@ -33,12 +33,6 @@ class id : public detail::coordinate<id<Dimensions>, Dimensions> {
     {
         return (*this)[0];
     }
-
-    static id<Dimensions> zero() {
-        id<Dimensions> zero;
-        for(int d = 0; d < Dimensions; ++d) { zero[d] = 0; }
-        return zero;
-    }
 };
 
 id(size_t) -> id<1>;

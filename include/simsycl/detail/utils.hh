@@ -59,6 +59,31 @@ sycl::id<Dimensions> linear_index_to_id(const sycl::range<Dimensions> &range, si
     return id;
 }
 
+template<typename F>
+void for_each_id_in_range(const sycl::range<1> &range, F &&f) {
+    for(size_t i = 0; i < range[0]; ++i) { f(sycl::id<1>(i)); }
+}
+
+template<typename F>
+void for_each_id_in_range(const sycl::range<2> &range, F &&f) {
+    for(size_t i = 0; i < range[0]; ++i) {
+        for(size_t j = 0; j < range[1]; ++j) { //
+            f(sycl::id<2>(i, j));
+        }
+    }
+}
+
+template<typename F>
+void for_each_id_in_range(const sycl::range<3> &range, F &&f) {
+    for(size_t i = 0; i < range[0]; ++i) {
+        for(size_t j = 0; j < range[1]; ++j) {
+            for(size_t k = 0; k < range[2]; ++k) { //
+                f(sycl::id<3>(i, j, k));
+            }
+        }
+    }
+}
+
 template<typename T, typename... Ts>
 inline size_t hash(const T &v, const Ts &...vs) {
     auto h = std::hash<T>()(v);
