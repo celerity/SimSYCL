@@ -167,12 +167,6 @@ class host_access_guard {
 
 } // namespace simsycl::detail
 
-namespace simsycl::sycl::property {
-
-struct no_init {};
-
-} // namespace simsycl::sycl::property
-
 namespace simsycl::sycl {
 
 template<>

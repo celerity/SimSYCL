@@ -121,3 +121,9 @@ class property_interface {
 };
 
 } // namespace simsycl::detail
+
+namespace simsycl::sycl::property {
+
+struct no_init {};
+
+} // namespace simsycl::sycl::property

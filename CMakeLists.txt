@@ -109,6 +109,7 @@ add_library(simsycl
     include/simsycl/sycl/handler.hh
     include/simsycl/sycl/id.hh
     include/simsycl/sycl/image.hh
+    include/simsycl/sycl/image_accessor.hh
     include/simsycl/sycl/info.hh
     include/simsycl/sycl/interop_handle.hh
     include/simsycl/sycl/item.hh

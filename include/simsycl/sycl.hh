@@ -23,6 +23,7 @@
 #include "sycl/handler.hh"
 #include "sycl/id.hh"
 #include "sycl/image.hh"
+#include "sycl/image_accessor.hh"
 #include "sycl/item.hh"
 #include "sycl/kernel.hh"
 #include "sycl/marray.hh"
