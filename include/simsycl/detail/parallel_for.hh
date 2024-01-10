@@ -68,16 +68,16 @@ void execute_parallel_for(const sycl::range<Dimensions> &range, const Offset &of
     const KernelFunc &func,
     Reducers &...reducers) //
 {
+    using item_type = sycl::item<Dimensions, with_offset_v<Offset>>;
+
     register_kernel_on_static_construction<KernelName, KernelFunc>();
 
     simple_kernel<Dimensions, with_offset_v<Offset>> kernel;
-    if constexpr(std::is_invocable_v<const KernelFunc, sycl::item<Dimensions, with_offset_v<Offset>>, Reducers &...,
-                     sycl::kernel_handler>) {
-        kernel = [&](const sycl::item<Dimensions> &item) { func(item, reducers..., kh); };
+    if constexpr(std::is_invocable_v<const KernelFunc, item_type, Reducers &..., sycl::kernel_handler>) {
+        kernel = [&](const item_type &item) { func(item, reducers..., kh); };
     } else {
-        static_assert(
-            std::is_invocable_v<const KernelFunc, sycl::item<Dimensions, with_offset_v<Offset>>, Reducers &...>);
-        kernel = [&](const sycl::item<Dimensions> &item) { func(item, reducers...); };
+        static_assert(std::is_invocable_v<const KernelFunc, item_type, Reducers &...>);
+        kernel = [&](const item_type &item) { func(item, reducers...); };
     }
     sequential_for(range, offset, kernel);
 }
