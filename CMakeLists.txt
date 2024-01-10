@@ -32,7 +32,7 @@ include(FetchContent)
 set(LIBENVPP_INSTALL ON CACHE BOOL "" FORCE) # If installation is desired.
 FetchContent_Declare(libenvpp
     GIT_REPOSITORY https://github.com/ph3at/libenvpp.git
-    GIT_TAG v1.4.0
+    GIT_TAG f1076eb6f759b23b482f730fa43460077a844797
 )
 FetchContent_MakeAvailable(libenvpp)
 
