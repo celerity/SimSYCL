@@ -11,12 +11,13 @@ namespace simsycl::detail {
 const std::type_info &unnamed_kernel_type = typeid(unnamed_kernel *);
 
 std::string demangle_name_from_pointer_type(const std::type_info &pointer_type) {
+    const auto mangled = pointer_type.name();
 #if !defined(_MSC_VER)
     const std::unique_ptr<char, void (*)(void *)> demangle_buffer(
-        abi::__cxa_demangle(pointer_type.name(), nullptr, nullptr, nullptr), std::free);
-    std::string demangled = demangle_buffer.get();
+        abi::__cxa_demangle(mangled, nullptr, nullptr, nullptr), std::free);
+    std::string demangled = demangle_buffer != nullptr ? demangle_buffer.get() : mangled;
 #else
-    std::string demangled = pointer_type.name();
+    std::string demangled = mangled;
 #endif
 
     // get rid of the pointer "*"
