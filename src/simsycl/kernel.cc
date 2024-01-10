@@ -52,17 +52,19 @@ std::vector<sycl::kernel_id> &get_registered_kernels() {
 }
 
 sycl::kernel_id register_kernel(const std::type_info &pointer_to_name_type, const std::type_info &func_type) {
+    const sycl::kernel_id kernel_id(pointer_to_name_type, func_type);
+
 #if SIMSYCL_CHECK_MODE != SIMSYCL_CHECK_NONE
     for(const auto &existing_id : get_registered_kernels()) {
         const auto &existing_name_type = existing_id.state().pointer_to_name_type;
         if(existing_name_type != unnamed_kernel_type) {
-            SIMSYCL_CHECK(existing_name_type != pointer_to_name_type && "kernel name not unique");
+            SIMSYCL_CHECK_MSG(
+                existing_name_type != pointer_to_name_type, "kernel name %s not unique", kernel_id.get_name());
         }
         // the same kernel may be registered under multiple names, so we don't check for duplicate func_type
     }
 #endif
 
-    sycl::kernel_id kernel_id(pointer_to_name_type, func_type);
     get_registered_kernels().push_back(kernel_id);
     return kernel_id;
 }

@@ -215,8 +215,8 @@ class atomic_ref<Integral, DefaultOrder, DefaultScope, AddressSpace>
     Integral operator+=(Integral operand) noexcept { return fetch_add(operand) + operand; }
     Integral operator-=(Integral operand) noexcept { return fetch_sub(operand) - operand; }
     Integral operator&=(Integral operand) noexcept { return fetch_and(operand) & operand; }
-    Integral operator|=(Integral operand) noexcept { return fetch_and(operand) | operand; }
-    Integral operator^=(Integral operand) noexcept { return fetch_and(operand) ^ operand; }
+    Integral operator|=(Integral operand) noexcept { return fetch_or(operand) | operand; }
+    Integral operator^=(Integral operand) noexcept { return fetch_xor(operand) ^ operand; }
 
   private:
     using base::m_ref;
