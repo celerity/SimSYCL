@@ -28,7 +28,7 @@ const char *group_operation_id_to_string(group_operation_id id) {
 }
 
 void check_group_op_validity(
-    int linear_id_in_group, const group_operation_data &new_op, group_operation_data &existing_op) {
+    [[maybe_unused]] int linear_id_in_group, const group_operation_data &new_op, group_operation_data &existing_op) {
     const bool id_equivalent = existing_op.id == new_op.id;
     const bool participant_count_equivalent = existing_op.expected_num_work_items == new_op.expected_num_work_items;
     const bool still_incomplete = existing_op.num_work_items_participating < existing_op.expected_num_work_items;

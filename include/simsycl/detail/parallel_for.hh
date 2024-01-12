@@ -10,6 +10,7 @@
 #include "../sycl/nd_item.hh"
 #include "../sycl/nd_range.hh"
 #include "../sycl/range.hh"
+#include "simsycl/schedule.hh"
 
 #include <cstddef>
 #include <cstring>
@@ -25,15 +26,21 @@ struct no_offset_t {
 template<typename>
 struct with_offset;
 template<>
-
 struct with_offset<no_offset_t> : std::false_type {};
 template<int Dimensions>
-
 struct with_offset<sycl::id<Dimensions>> : std::true_type {};
 
 template<typename T>
 inline constexpr bool with_offset_v = with_offset<T>::value;
 
+template<int Dimensions, typename Offset>
+auto make_offset_item(const sycl::id<Dimensions> &the_id, const sycl::range<Dimensions> &range, const Offset &offset) {
+    if constexpr(std::is_same_v<Offset, no_offset_t>) {
+        return make_item(the_id, range);
+    } else {
+        return make_item(the_id + offset, range, offset);
+    }
+}
 
 struct local_memory_requirement {
     std::unique_ptr<void *> ptr;
@@ -71,6 +78,18 @@ void execute_parallel_for(const sycl::range<Dimensions> &range, const Offset &of
     using item_type = sycl::item<Dimensions, with_offset_v<Offset>>;
 
     register_kernel_on_static_construction<KernelName, KernelFunc>();
+
+    // directly execute the kernel if the schedule is round robin
+    if(dynamic_cast<const round_robin_schedule *>(&get_cooperative_schedule())) {
+        if constexpr(std::is_invocable_v<const KernelFunc, item_type, Reducers &..., sycl::kernel_handler>) {
+            for_each_id_in_range(range,
+                [&](const sycl::id<Dimensions> &id) { func(make_offset_item(id, range, offset), reducers..., kh); });
+        } else {
+            for_each_id_in_range(
+                range, [&](const sycl::id<Dimensions> &id) { func(make_offset_item(id, range, offset), reducers...); });
+        }
+        return;
+    }
 
     simple_kernel<Dimensions, with_offset_v<Offset>> kernel;
     if constexpr(std::is_invocable_v<const KernelFunc, item_type, Reducers &..., sycl::kernel_handler>) {

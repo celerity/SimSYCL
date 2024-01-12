@@ -124,6 +124,8 @@ class group {
         parallel_for_work_item(m_physical_local_item.get_range(), func);
     }
 
+    SIMSYCL_START_IGNORING_DEPRECATIONS
+
     // All parallel_for_work_item calls within a given parallel_for_work_group execution must have the same dimensions
     template<typename WorkItemFunctionT>
     void parallel_for_work_item(range<Dimensions> flexible_range, WorkItemFunctionT func) const {
@@ -141,6 +143,8 @@ class group {
             func(detail::make_h_item(global_item, logical_local_item, physical_local_item));
         });
     }
+
+    SIMSYCL_STOP_IGNORING_DEPRECATIONS
 
     // TODO not in the spec, remove
     template<access_mode AccessMode = access_mode::read_write>
