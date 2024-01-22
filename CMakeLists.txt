@@ -29,20 +29,32 @@ find_package(Boost 1.70 COMPONENTS context REQUIRED)
 
 include(FetchContent)
 
+macro(fetch_content_from_remote DEPNAME)
+  set(FETCH_REMOTE "${ARGN}")
+  if(${DEPNAME}_FOUND)
+    message(STATUS "Using system ${DEPNAME} in ${${DEPNAME}_DIR}")
+    set(SIMSYCL_DETAIL_USE_SYSTEM_${DEPNAME} ON)
+  else()
+    list(JOIN FETCH_REMOTE " " FETCH_REMOTE_S)
+    message(STATUS "Fetching ${DEPNAME} from ${FETCH_REMOTE_S}")
+    set(SIMSYCL_DETAIL_USE_SYSTEM_${DEPNAME} OFF)
+    FetchContent_Declare("${DEPNAME}" "${FETCH_REMOTE}")
+    FetchContent_MakeAvailable("${DEPNAME}")
+  endif()
+endmacro()
+
 set(LIBENVPP_INSTALL ON CACHE BOOL "" FORCE) # If installation is desired.
-FetchContent_Declare(libenvpp
+fetch_content_from_remote(libenvpp
     GIT_REPOSITORY https://github.com/ph3at/libenvpp.git
     GIT_TAG f1076eb6f759b23b482f730fa43460077a844797
 )
-FetchContent_MakeAvailable(libenvpp)
 
 set(JSON_BuildTests OFF CACHE INTERNAL "")
 set(JSON_Install ON CACHE INTERNAL "")
-FetchContent_Declare(nlohmann_json
+fetch_content_from_remote(nlohmann_json
   URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
   URL_HASH SHA256=d6c65aca6b1ed68e7a182f4757257b107ae403032760ed6ef121c9d55e81757d
 )
-FetchContent_MakeAvailable(nlohmann_json)
 
 include(CheckTypeSize)
 check_type_size(_Float16 FLOAT16 BUILTIN_TYPES_ONLY LANGUAGE CXX)
