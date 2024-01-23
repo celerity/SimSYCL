@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.13)
-cmake_policy(SET CMP0135 NEW) # ExternalProject downloads will have archive timestamps
+
+if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.24)
+  cmake_policy(SET CMP0135 NEW) # ExternalProject downloads will have archive timestamps
+endif()
 
 set(SIMSYCL_VERSION 0.1)
 set(SIMSYCL_VERSION_MAJOR 0)
