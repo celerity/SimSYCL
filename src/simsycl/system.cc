@@ -94,12 +94,12 @@ struct usm_allocation_order {
     using is_transparent = std::true_type;
 
     bool operator()(const usm_allocation &lhs, const usm_allocation &rhs) const {
-        SIMSYCL_CHECK((lhs.m_end <= rhs.m_begin || rhs.m_end <= lhs.m_begin)
+        SIMSYCL_CHECK(lhs.m_end <= rhs.m_begin || rhs.m_end <= lhs.m_begin
             || (lhs.m_begin == rhs.m_begin && lhs.m_end == rhs.m_end));
         return lhs.m_begin < rhs.m_begin;
     }
 
-    bool operator()(const usm_allocation &lhs, const void *rhs) const { return lhs.m_end < rhs; }
+    bool operator()(const usm_allocation &lhs, const void *rhs) const { return lhs.m_end <= rhs; }
     bool operator()(const void *lhs, const usm_allocation &rhs) const { return lhs < rhs.m_begin; }
 };
 
