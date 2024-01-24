@@ -178,16 +178,8 @@ void *usm_alloc(const sycl::context &context, sycl::usm::alloc kind, std::option
             throw sycl::exception(sycl::errc::invalid, "Device not associated with context");
         }
 
-        if(size_bytes > device->get_info<sycl::info::device::max_mem_alloc_size>()) {
-            throw sycl::exception(sycl::errc::memory_allocation, "Allocation size exceeds device limit");
-        }
-
         bytes_free = detail::device_bytes_free(*device);
-        if(*bytes_free < size_bytes) {
-            throw sycl::exception(sycl::errc::memory_allocation,
-                "Not enough memory available to allocate " + std::to_string(size_bytes)
-                    + " bytes (device global memory capacity reached)");
-        }
+        if(*bytes_free < size_bytes) return nullptr;
     }
 
     void *ptr;
@@ -204,12 +196,7 @@ void *usm_alloc(const sycl::context &context, sycl::usm::alloc kind, std::option
     }
 #endif
 
-    if(ptr == nullptr) {
-        throw sycl::exception(sycl::errc::memory_allocation,
-            "Unable to allocate " + std::to_string(size_bytes) + " bytes with alignment "
-                + std::to_string(alignment_bytes) + " from OS");
-    }
-
+    if(ptr == nullptr) return nullptr;
     std::memset(ptr, static_cast<int>(uninitialized_memory_pattern), size_bytes);
 
     if(bytes_free != nullptr) { *bytes_free -= size_bytes; }

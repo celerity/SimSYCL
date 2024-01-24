@@ -25,6 +25,9 @@ namespace simsycl::sycl {
 
 template<typename T, usm::alloc AllocKind, size_t Alignment = 0>
 class usm_allocator {
+    static_assert(AllocKind == usm::alloc::host || AllocKind == usm::alloc::shared,
+        "Allocations made by sycl::usm_allocator must be host-accessible");
+
   public:
     using value_type = T;
     using propagate_on_container_copy_assignment = std::true_type;
@@ -58,8 +61,10 @@ class usm_allocator {
     usm_allocator &operator=(usm_allocator &&) = default;
 
     T *allocate(size_t count) {
-        return static_cast<T *>(detail::usm_alloc(
+        const auto ptr = static_cast<T *>(detail::usm_alloc(
             m_context, AllocKind, m_device, count * sizeof(T), detail::least_common_alignment(alignof(T), Alignment)));
+        if(ptr == nullptr) throw std::bad_alloc();
+        return ptr;
     }
 
     void deallocate(T *ptr, size_t count) {
