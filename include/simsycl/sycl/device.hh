@@ -69,6 +69,8 @@ class device final : public detail::reference_type<device, detail::device_state>
     template<DeviceSelector Selector>
     explicit device(const Selector &device_selector) : device(detail::device_selector(device_selector)) {}
 
+    backend get_backend() const noexcept { return backend::simsycl; }
+
     bool is_cpu() const { return has(aspect::cpu); }
 
     bool is_gpu() const { return has(aspect::gpu); }
