@@ -14,5 +14,7 @@ TEST_CASE("usm_alloc allocates memory of any alignment", "[usm]") {
         errno = 0;
         const auto p = simsycl::detail::usm_alloc(ctx, sycl::usm::alloc::host, std::nullopt, size_bytes, align_bytes);
         CHECK(p != nullptr);
+        CHECK(reinterpret_cast<std::uintptr_t>(p) % align_bytes == 0);
+        simsycl::detail::usm_free(p, ctx);
     }
 }
