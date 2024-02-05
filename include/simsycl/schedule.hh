@@ -9,7 +9,7 @@ namespace simsycl {
 
 class cooperative_schedule {
   public:
-    using state = uint64_t;
+    using state = unsigned int;
 
     cooperative_schedule() = default;
     cooperative_schedule(const cooperative_schedule &) = delete;
@@ -31,13 +31,13 @@ class round_robin_schedule final : public cooperative_schedule {
 class shuffle_schedule final : public cooperative_schedule {
   public:
     shuffle_schedule() = default;
-    explicit shuffle_schedule(uint64_t seed) : m_seed(seed) {}
+    explicit shuffle_schedule(unsigned int seed) : m_seed(seed) {}
 
     [[nodiscard]] state init(std::vector<size_t> &order) const override;
     [[nodiscard]] state update(state state_before, std::vector<size_t> &order) const override;
 
   private:
-    uint64_t m_seed = 1234567890;
+    unsigned int m_seed = 1234567890;
 };
 
 const cooperative_schedule &get_cooperative_schedule();

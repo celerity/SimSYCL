@@ -168,7 +168,7 @@ class coordinate {
 template<typename Interface, int Dimensions>
 constexpr bool all_true(const coordinate<Interface, Dimensions> &c) {
     bool result = true;
-    for(int d = 0; d < Dimensions; ++d) { result &= c[d]; }
+    for(int d = 0; d < Dimensions; ++d) { result = result && c[d]; }
     return result;
 }
 

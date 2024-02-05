@@ -288,7 +288,7 @@ void parse_environment() {
             if(repr == "shuffle") return std::make_unique<shuffle_schedule>();
             if(repr.starts_with("shuffle:")) {
                 const auto seed_repr = repr.substr(strlen("shuffle:"));
-                return std::make_unique<shuffle_schedule>(env::default_parser<uint64_t>{}(seed_repr));
+                return std::make_unique<shuffle_schedule>(env::default_parser<unsigned int>{}(seed_repr));
             }
             throw env::parser_error{
                 fmt::format("Invalid schedule '{}', permitted values are 'rr', 'shuffle', and 'shuffle:<seed>'", repr)};

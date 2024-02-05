@@ -85,8 +85,6 @@ TEST_CASE("Basic hierarchical parallel for functionality",
 
     SECTION("3D") {
         int test_total = 0;
-        constexpr int value = 7;
-
         q.submit([&](handler &cgh) {
             // Issue 8 work-groups of 8 work-items each
             cgh.parallel_for_work_group(range<3>(2, 2, 2), range<3>(2, 2, 2), [=, &test_total](group<3> g) {

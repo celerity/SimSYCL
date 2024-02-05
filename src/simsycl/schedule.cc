@@ -307,8 +307,8 @@ void cooperative_for_nd_range(const sycl::device &device, const sycl::nd_range<D
 
             // adjust local memory pointers before switching fibers
             const auto concurrent_group_idx = concurrent_global_idx / local_linear_range;
-            for(size_t i = 0; i < local_memory.size(); ++i) {
-                *local_memory[i].ptr = concurrent_groups[concurrent_group_idx].local_memory_allocations[i].get();
+            for(size_t j = 0; j < local_memory.size(); ++j) {
+                *local_memory[j].ptr = concurrent_groups[concurrent_group_idx].local_memory_allocations[j].get();
             }
 
             fibers[concurrent_global_idx] = fibers[concurrent_global_idx].resume();
@@ -316,8 +316,8 @@ void cooperative_for_nd_range(const sycl::device &device, const sycl::nd_range<D
         schedule_state = schedule.update(schedule_state, order);
     }
 
-    // rethrow any encountered exceptions
-    for(auto &exception : caught_exceptions) { std::rethrow_exception(exception); }
+    // rethrow the first encountered exception
+    if(!caught_exceptions.empty()) { std::rethrow_exception(caught_exceptions.front()); }
 }
 
 template void cooperative_for_nd_range<1>(const sycl::device &device, const sycl::nd_range<1> &range,

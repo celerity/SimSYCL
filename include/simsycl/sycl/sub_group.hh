@@ -84,9 +84,9 @@ class sub_group {
         SIMSYCL_NOT_IMPLEMENTED_UNUSED_ARGS(x, init, op);
     }
 
-    linear_id_type get_group_linear_range() const { return m_group_range.size(); }
+    linear_id_type get_group_linear_range() const { return static_cast<linear_id_type>(m_group_range.size()); }
 
-    linear_id_type get_local_linear_range() const { return m_local_range.size(); }
+    linear_id_type get_local_linear_range() const { return static_cast<linear_id_type>(m_local_range.size()); }
 
     bool leader() const { return get_local_linear_id() == 0; }
 

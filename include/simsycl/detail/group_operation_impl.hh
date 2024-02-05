@@ -250,7 +250,7 @@ auto perform_group_operation(G g, group_operation_id id, const Spec &spec) {
         SIMSYCL_CHECK(new_op_index < group_instance.operations.size() && "group operation reached in unexpected order");
 
         auto &op = group_instance.operations[ops_reached];
-        check_group_op_validity(linear_id_in_group, new_op, op);
+        check_group_op_validity(static_cast<int>(linear_id_in_group), new_op, op);
         if constexpr(requires(Spec::per_op_t &per_t, group_operation_data &op_t) { spec.reached(per_t, op_t); }) {
             spec.reached(dynamic_cast<typename Spec::per_op_t &>(*op.per_op_data), op);
         } else {
