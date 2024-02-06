@@ -3,6 +3,7 @@
 #include "../sycl/enums.hh"
 #include "../sycl/forward.hh"
 
+#include <cstddef>
 #include <cstdlib>
 #include <cstring>
 #include <optional>
@@ -15,9 +16,16 @@ namespace simsycl::detail {
 // NOTE: returned pointers must be freed with aligned_free
 inline void *aligned_alloc(size_t alignment, size_t size) {
 #if defined(_MSC_VER)
+    // MSVC does not have std::aligned_alloc because the pointers it returns cannot be freed with std::free
     return _aligned_malloc(size, alignment);
 #else
-    return std::aligned_alloc(alignment, size);
+    // POSIX and notably macOS requires a minimum alignment of sizeof(void*) for aligned_alloc, so we only use that for
+    // over-aligned allocations
+    if(alignment <= alignof(std::max_align_t)) {
+        return std::malloc(size);
+    } else {
+        return std::aligned_alloc(alignment, size);
+    }
 #endif
 }
 
