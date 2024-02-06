@@ -182,19 +182,7 @@ void *usm_alloc(const sycl::context &context, sycl::usm::alloc kind, std::option
         if(*bytes_free < size_bytes) return nullptr;
     }
 
-    void *ptr;
-#if defined(_MSC_VER)
-    // MSVC does not have std::aligned_alloc because the pointers it returns cannot be freed with std::free
-    ptr = _aligned_malloc(size_bytes, alignment_bytes);
-#else
-    // POSIX and notably macOS requires a minimum alignment of sizeof(void*) for aligned_alloc, so we only use that for
-    // over-aligned allocations
-    if(alignment_bytes <= alignof(std::max_align_t)) {
-        ptr = std::malloc(size_bytes);
-    } else {
-        ptr = std::aligned_alloc(alignment_bytes, size_bytes);
-    }
-#endif
+    void *ptr = detail::aligned_alloc(alignment_bytes, size_bytes);
 
     if(ptr == nullptr) return nullptr;
     std::memset(ptr, static_cast<int>(uninitialized_memory_pattern), size_bytes);
@@ -220,11 +208,7 @@ void usm_free(void *ptr, const sycl::context &context) {
         throw sycl::exception(sycl::errc::invalid, "Pointer is not associated with the given context");
     }
 
-#if defined(_MSC_VER)
-    _aligned_free(ptr);
-#else
-    std::free(ptr);
-#endif
+    detail::aligned_free(ptr);
 
     if(iter->get_device().has_value()) {
         *detail::device_bytes_free(iter->get_device().value()) += iter->get_size_bytes();
