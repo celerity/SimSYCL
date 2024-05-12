@@ -13,6 +13,7 @@
 #include "../detail/group_operation_impl.hh"
 #include "../detail/utils.hh"
 
+#include <algorithm>
 
 namespace simsycl::detail {
 
