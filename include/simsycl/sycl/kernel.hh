@@ -444,8 +444,15 @@ struct std::hash<simsycl::sycl::device_image<State>>
 
 namespace simsycl::detail {
 
+// apple std library has a bug where type_info for the same type don't compare equal across shared libraries
+const std::type_info &get_unnamed_kernel_name_type_info();
+
 template<typename KernelName, typename KernelFunc>
 inline const sycl::kernel_id kernel_id_registration_v = register_kernel(typeid(KernelName *), typeid(KernelFunc));
+
+template<typename KernelFunc>
+inline const sycl::kernel_id kernel_id_registration_v<unnamed_kernel, KernelFunc>
+    = register_kernel(get_unnamed_kernel_name_type_info(), typeid(KernelFunc));
 
 template<typename KernelName, typename KernelFunc>
 void register_kernel_on_static_construction() {
