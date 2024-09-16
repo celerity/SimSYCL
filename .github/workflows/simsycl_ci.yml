@@ -20,15 +20,19 @@ jobs:
           - os: windows-latest
             c_compiler: cl
             cpp_compiler: cl
+            arch: x86
           - os: ubuntu-latest
             c_compiler: gcc
             cpp_compiler: g++
+            arch: x86
           - os: ubuntu-latest
             c_compiler: clang
             cpp_compiler: clang++
+            arch: x86
           - os: macos-latest
             c_compiler: gcc
             cpp_compiler: g++-13
+            arch: aarch64
         exclude:
           - os: windows-latest
             c_compiler: gcc
@@ -52,10 +56,11 @@ jobs:
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
     - name: Install boost
-      uses: MarkusJx/install-boost@v2.4.4
+      uses: MarkusJx/install-boost@v2.4.5
       id: install-boost
       with:
-        boost_version: 1.78.0
+        boost_version: 1.81.0
+        arch: ${{matrix.arch}}
 
     - name: Install LLVM and Clang
       uses: KyleMayes/install-llvm-action@v1
