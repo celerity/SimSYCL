@@ -8,7 +8,7 @@
 
 namespace simsycl::detail {
 
-const std::type_info &unnamed_kernel_type = typeid(unnamed_kernel *);
+const std::type_info &get_unnamed_kernel_name_type_info() { return typeid(unnamed_kernel *); }
 
 std::string demangle_name_from_pointer_type(const std::type_info &pointer_type) {
     const auto mangled = pointer_type.name();
@@ -26,7 +26,7 @@ std::string demangle_name_from_pointer_type(const std::type_info &pointer_type) 
 }
 
 std::string get_kernel_name_string(const std::type_info &pointer_to_name_type) {
-    if(pointer_to_name_type == unnamed_kernel_type) {
+    if(pointer_to_name_type == get_unnamed_kernel_name_type_info()) {
         return "(unnamed kernel)";
     } else {
         return demangle_name_from_pointer_type(pointer_to_name_type);
@@ -57,7 +57,7 @@ sycl::kernel_id register_kernel(const std::type_info &pointer_to_name_type, cons
 #if SIMSYCL_CHECK_MODE != SIMSYCL_CHECK_NONE
     for(const auto &existing_id : get_registered_kernels()) {
         const auto &existing_name_type = existing_id.state().pointer_to_name_type;
-        if(existing_name_type != unnamed_kernel_type) {
+        if(existing_name_type != get_unnamed_kernel_name_type_info()) {
             SIMSYCL_CHECK_MSG(
                 existing_name_type != pointer_to_name_type, "kernel name %s not unique", kernel_id.get_name());
         }
