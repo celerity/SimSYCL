@@ -49,7 +49,7 @@ endmacro()
 set(LIBENVPP_INSTALL ON CACHE BOOL "" FORCE) # If installation is desired.
 fetch_content_from_remote(libenvpp
     GIT_REPOSITORY https://github.com/ph3at/libenvpp.git
-    GIT_TAG v1.5.0
+    GIT_TAG v1.5.1
 )
 
 set(JSON_BuildTests OFF CACHE INTERNAL "")
