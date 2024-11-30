@@ -205,8 +205,8 @@ class accessor : public simsycl::detail::property_interface {
     using const_reference = const DataT &;
 
     template<access::decorated IsDecorated>
-    using accessor_ptr = std::enable_if_t<AccessTarget == target::device && IsDecorated == IsDecorated /* dependent */,
-        multi_ptr<value_type, access::address_space::global_space, IsDecorated>>;
+        requires(AccessTarget == target::device)
+    using accessor_ptr = multi_ptr<value_type, access::address_space::global_space, IsDecorated>;
 
     using iterator = simsycl::detail::accessor_iterator<accessor, value_type, Dimensions>;
     using const_iterator = simsycl::detail::accessor_iterator<accessor, const value_type, Dimensions>;
@@ -493,8 +493,8 @@ class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> : public simsy
     using const_reference = const DataT &;
 
     template<access::decorated IsDecorated>
-    using accessor_ptr = std::enable_if_t<AccessTarget == target::device && IsDecorated == IsDecorated /* dependent */,
-        multi_ptr<value_type, access::address_space::global_space, IsDecorated>>;
+        requires(AccessTarget == target::device)
+    using accessor_ptr = multi_ptr<value_type, access::address_space::global_space, IsDecorated>;
 
     using iterator = simsycl::detail::accessor_iterator<accessor, value_type, 0>;
     using const_iterator = simsycl::detail::accessor_iterator<accessor, const value_type, 0>;

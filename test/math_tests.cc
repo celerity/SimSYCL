@@ -34,7 +34,7 @@ TEST_CASE("Length function works as expected", "[math][geometric]") {
 
 #if SIMSYCL_FEATURE_HALF_TYPE
     using sycl::half;
-    half h = 7.0f;
+    half h = static_cast<half>(7.0f);
     auto vh1 = vec<half, 2>(half(3.0), half(4.0));
     CHECK(length(h) == Catch::Approx(7.0f));
     CHECK(length(vh1) == Catch::Approx(5.0f));
