@@ -1,3 +1,4 @@
+#include <simsycl/detail/lock.hh>
 #include <simsycl/sycl/exception.hh>
 #include <simsycl/sycl/kernel.hh>
 
@@ -43,19 +44,19 @@ struct kernel_id_state {
           name(get_kernel_name_string(pointer_to_name_type)) {}
 };
 
-// leaked to avoid static-destruction order issues
-std::vector<sycl::kernel_id> *g_registered_kernels;
-
-std::vector<sycl::kernel_id> &get_registered_kernels() {
-    if(g_registered_kernels == nullptr) { g_registered_kernels = new std::vector<sycl::kernel_id>(); }
-    return *g_registered_kernels;
+std::vector<sycl::kernel_id> &get_registered_kernels(system_lock & /* lock */) {
+    // leaked to avoid static-destruction order issues
+    static auto kernels = new std::vector<sycl::kernel_id>;
+    assert(kernels != nullptr);
+    return *kernels;
 }
 
 sycl::kernel_id register_kernel(const std::type_info &pointer_to_name_type, const std::type_info &func_type) {
     const sycl::kernel_id kernel_id(pointer_to_name_type, func_type);
 
+    system_lock lock;
 #if SIMSYCL_CHECK_MODE != SIMSYCL_CHECK_NONE
-    for(const auto &existing_id : get_registered_kernels()) {
+    for(const auto &existing_id : get_registered_kernels(lock)) {
         const auto &existing_name_type = existing_id.state().pointer_to_name_type;
         if(existing_name_type != get_unnamed_kernel_name_type_info()) {
             SIMSYCL_CHECK_MSG(
@@ -65,12 +66,13 @@ sycl::kernel_id register_kernel(const std::type_info &pointer_to_name_type, cons
     }
 #endif
 
-    get_registered_kernels().push_back(kernel_id);
+    get_registered_kernels(lock).push_back(kernel_id);
     return kernel_id;
 }
 
 sycl::kernel_id get_kernel_id(const std::type_info &pointer_to_name_type) {
-    for(const auto &existing_id : get_registered_kernels()) {
+    system_lock lock;
+    for(const auto &existing_id : get_registered_kernels(lock)) {
         if(existing_id.state().pointer_to_name_type == pointer_to_name_type) { return existing_id; }
     }
     SIMSYCL_CHECK(false && "no such kernel in application");
@@ -144,6 +146,9 @@ kernel_id::kernel_id(const std::type_info &kernel_name, const std::type_info &ke
 
 const char *kernel_id::get_name() const noexcept { return state().name.c_str(); }
 
-std::vector<kernel_id> get_kernel_ids() { return detail::get_registered_kernels(); }
+std::vector<kernel_id> get_kernel_ids() {
+    detail::system_lock lock;
+    return detail::get_registered_kernels(lock);
+}
 
 } // namespace simsycl::sycl

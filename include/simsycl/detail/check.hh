@@ -14,6 +14,7 @@ void check(
     bool condition, const char *cond_string, std::source_location location, int default_mode, const char *message, ...);
 
 struct override_check_mode {
+    // effect is thread-local
     override_check_mode(int mode);
     ~override_check_mode();
 };

@@ -110,7 +110,7 @@ template void sequential_for_work_group(sycl::range<2> num_work_groups, std::opt
 template void sequential_for_work_group(sycl::range<3> num_work_groups, std::optional<sycl::range<3>> work_group_size,
     const hierarchical_kernel<3> &kernel);
 
-boost::context::continuation g_scheduler;
+thread_local boost::context::continuation g_scheduler;
 
 void enter_kernel_fiber(boost::context::continuation &&from_scheduler) {
     assert(!g_scheduler && "attempting to enter a nd_range kernel fiber from within another fiber");
@@ -367,4 +367,23 @@ template std::vector<allocation> prepare_hierarchical_parallel_for<2>(const sycl
 template std::vector<allocation> prepare_hierarchical_parallel_for<3>(const sycl::device &device,
     std::optional<sycl::range<3>> work_group_size, const std::vector<local_memory_requirement> &local_memory);
 
+
+thread_local std::shared_ptr<const cooperative_schedule> g_cooperative_schedule;
+
 } // namespace simsycl::detail
+
+namespace simsycl {
+
+const cooperative_schedule &get_cooperative_schedule() {
+    if(detail::g_cooperative_schedule == nullptr) {
+        detail::g_cooperative_schedule = get_default_cooperative_schedule();
+    }
+    assert(detail::g_cooperative_schedule != nullptr);
+    return *detail::g_cooperative_schedule;
+}
+
+void set_cooperative_schedule(std::shared_ptr<const cooperative_schedule> schedule) {
+    detail::g_cooperative_schedule = std::move(schedule);
+}
+
+} // namespace simsycl
