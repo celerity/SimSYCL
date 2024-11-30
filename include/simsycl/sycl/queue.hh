@@ -5,6 +5,7 @@
 #include "handler.hh"
 #include "property.hh"
 
+#include "../detail/lock.hh"
 #include "../detail/reference_type.hh"
 
 
@@ -91,6 +92,7 @@ class queue final : public detail::reference_type<queue, detail::queue_state>,
     template<typename T>
     event submit(T cgf) {
         auto status = detail::event_state::submit();
+        detail::system_lock lock; // implicitly enforce dependency ordering by keeping a lock within every task
         auto cgh = simsycl::detail::make_handler(get_device());
         status.start();
         cgf(cgh);
@@ -230,26 +232,34 @@ class queue final : public detail::reference_type<queue, detail::queue_state>,
     /* -- USM functions -- */
 
     event memcpy(void *dest, const void *src, size_t num_bytes) {
-        auto status = detail::event_state::submit_and_start();
+        auto status = detail::event_state::submit();
+        detail::system_lock lock; // implicitly enforce dependency ordering by keeping a lock within every task
+        status.start();
         ::memcpy(dest, src, num_bytes);
         return status.end();
     }
 
     event memcpy(void *dest, const void *src, size_t num_bytes, event /* dep_event */) {
-        auto status = detail::event_state::submit_and_start();
+        auto status = detail::event_state::submit();
+        detail::system_lock lock; // implicitly enforce dependency ordering by keeping a lock within every task
+        status.start();
         ::memcpy(dest, src, num_bytes);
         return status.end();
     }
 
     event memcpy(void *dest, const void *src, size_t num_bytes, const std::vector<event> & /* dep_events */) {
-        auto status = detail::event_state::submit_and_start();
+        auto status = detail::event_state::submit();
+        detail::system_lock lock; // implicitly enforce dependency ordering by keeping a lock within every task
+        status.start();
         ::memcpy(dest, src, num_bytes);
         return status.end();
     }
 
     template<typename T>
     event copy(const T *src, T *dest, size_t count) {
-        auto status = detail::event_state::submit_and_start();
+        auto status = detail::event_state::submit();
+        detail::system_lock lock; // implicitly enforce dependency ordering by keeping a lock within every task
+        status.start();
         std::copy_n(src, count, dest);
         return status.end();
     }
@@ -257,7 +267,9 @@ class queue final : public detail::reference_type<queue, detail::queue_state>,
     template<typename T>
     event copy(const T *src, T *dest, size_t count, event dep_event) {
         (void)(dep_event);
-        auto status = detail::event_state::submit_and_start();
+        auto status = detail::event_state::submit();
+        detail::system_lock lock; // implicitly enforce dependency ordering by keeping a lock within every task
+        status.start();
         std::copy_n(src, count, dest);
         return status.end();
     }
@@ -265,46 +277,60 @@ class queue final : public detail::reference_type<queue, detail::queue_state>,
     template<typename T>
     event copy(const T *src, T *dest, size_t count, const std::vector<event> &dep_events) {
         (void)(dep_events);
-        auto status = detail::event_state::submit_and_start();
+        auto status = detail::event_state::submit();
+        detail::system_lock lock; // implicitly enforce dependency ordering by keeping a lock within every task
+        status.start();
         std::copy_n(src, count, dest);
         return status.end();
     }
 
     event memset(void *ptr, int value, size_t num_bytes) {
-        auto status = detail::event_state::submit_and_start();
+        auto status = detail::event_state::submit();
+        detail::system_lock lock; // implicitly enforce dependency ordering by keeping a lock within every task
+        status.start();
         ::memset(ptr, value, num_bytes);
         return status.end();
     }
 
     event memset(void *ptr, int value, size_t num_bytes, event /* dep_event */) {
-        auto status = detail::event_state::submit_and_start();
+        auto status = detail::event_state::submit();
+        detail::system_lock lock; // implicitly enforce dependency ordering by keeping a lock within every task
+        status.start();
         ::memset(ptr, value, num_bytes);
         return status.end();
     }
 
     event memset(void *ptr, int value, size_t num_bytes, const std::vector<event> & /* dep_events */) {
-        auto status = detail::event_state::submit_and_start();
+        auto status = detail::event_state::submit();
+        detail::system_lock lock; // implicitly enforce dependency ordering by keeping a lock within every task
+        status.start();
         ::memset(ptr, value, num_bytes);
         return status.end();
     }
 
     template<typename T>
     event fill(void *ptr, const T &pattern, size_t count) {
-        auto status = detail::event_state::submit_and_start();
+        auto status = detail::event_state::submit();
+        detail::system_lock lock; // implicitly enforce dependency ordering by keeping a lock within every task
+        status.start();
         std::fill_n(static_cast<T *>(ptr), count, pattern);
         return status.end();
     }
 
     template<typename T>
     event fill(void *ptr, const T &pattern, size_t count, event /* dep_event */) {
-        auto status = detail::event_state::submit_and_start();
+        auto status = detail::event_state::submit();
+        detail::system_lock lock; // implicitly enforce dependency ordering by keeping a lock within every task
+        status.start();
         std::fill_n(static_cast<T *>(ptr), count, pattern);
         return status.end();
     }
 
     template<typename T>
     event fill(void *ptr, const T &pattern, size_t count, const std::vector<event> & /* dep_events */) {
-        auto status = detail::event_state::submit_and_start();
+        auto status = detail::event_state::submit();
+        detail::system_lock lock; // implicitly enforce dependency ordering by keeping a lock within every task
+        status.start();
         std::fill_n(static_cast<T *>(ptr), count, pattern);
         return status.end();
     }

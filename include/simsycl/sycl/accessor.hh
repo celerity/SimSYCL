@@ -148,7 +148,7 @@ class host_access_guard {
     template<typename T, typename AllocatorT>
     explicit host_access_guard(
         const sycl::buffer<T, Dimensions, AllocatorT> &buf, const accessed_range<Dimensions> &range)
-        : m_validator(&detail::get_buffer_access_validator(buf)), m_range(range) //
+        : m_validator(&detail::get_buffer_access_validator(buf, m_lock)), m_range(range) //
     {
         m_validator->begin_host_access(m_range);
     }
@@ -161,8 +161,25 @@ class host_access_guard {
     ~host_access_guard() { m_validator->end_host_access(m_range); }
 
   private:
+    system_lock m_lock;
     buffer_access_validator<Dimensions> *m_validator;
     accessed_range<Dimensions> m_range;
+};
+
+template<int Dimensions>
+class command_group_access_guard {
+  public:
+    template<typename T, typename AllocatorT>
+    explicit command_group_access_guard(const sycl::buffer<T, Dimensions, AllocatorT> &buf)
+        : m_validator(&detail::get_buffer_access_validator(buf, m_lock)) {}
+
+    void check_access_from_command_group(const accessed_range<Dimensions> &range) {
+        m_validator->check_access_from_command_group(range);
+    }
+
+  private:
+    system_lock m_lock;
+    buffer_access_validator<Dimensions> *m_validator;
 };
 
 } // namespace simsycl::detail
@@ -382,7 +399,7 @@ class accessor : public simsycl::detail::property_interface {
     } constexpr inline static internal{};
 
     DataT *m_buffer = nullptr;
-    detail::buffer_access_validator<Dimensions> *m_access_validator = nullptr;
+    std::shared_ptr<detail::command_group_access_guard<Dimensions>> m_guard; // shared_ptr: accessors must be copyable
     range<Dimensions> m_buffer_range;
     id<Dimensions> m_access_offset;
     range<Dimensions> m_access_range;
@@ -392,9 +409,9 @@ class accessor : public simsycl::detail::property_interface {
     template<typename AllocatorT>
     void init(buffer<DataT, Dimensions, AllocatorT> &buffer_ref) {
         m_buffer = detail::get_buffer_data(buffer_ref);
+        m_guard = std::make_shared<detail::command_group_access_guard<Dimensions>>(buffer_ref);
         m_buffer_range = buffer_ref.get_range();
         m_access_range = m_buffer_range;
-        m_access_validator = &detail::get_buffer_access_validator(buffer_ref);
     }
     void init(const id<Dimensions> &access_offset) { m_access_offset = access_offset; }
 
@@ -416,8 +433,8 @@ class accessor : public simsycl::detail::property_interface {
 
     void require() {
         SIMSYCL_CHECK(m_buffer != nullptr);
-        SIMSYCL_CHECK(m_access_validator != nullptr);
-        m_access_validator->check_access_from_command_group({m_access_offset, m_access_range, AccessMode});
+        SIMSYCL_CHECK(m_guard != nullptr);
+        m_guard->check_access_from_command_group({m_access_offset, m_access_range, AccessMode});
         *m_required = true;
     }
 
@@ -429,8 +446,8 @@ accessor(buffer<DataT, Dimensions, AllocatorT> &, detail::accessor_tag<AccessMod
     -> accessor<DataT, Dimensions, AccessMode, AccessTarget, access::placeholder::false_t>;
 
 template<typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
-accessor(buffer<DataT, Dimensions, AllocatorT> &, detail::accessor_tag<AccessMode, AccessTarget>, const property_list &)
-    -> accessor<DataT, Dimensions, AccessMode, AccessTarget, access::placeholder::false_t>;
+accessor(buffer<DataT, Dimensions, AllocatorT> &, detail::accessor_tag<AccessMode, AccessTarget>,
+    const property_list &) -> accessor<DataT, Dimensions, AccessMode, AccessTarget, access::placeholder::false_t>;
 
 template<typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
 accessor(buffer<DataT, Dimensions, AllocatorT> &, handler &, detail::accessor_tag<AccessMode, AccessTarget>)
@@ -455,8 +472,8 @@ accessor(buffer<DataT, Dimensions, AllocatorT> &, handler &, range<Dimensions>,
 
 template<typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
 accessor(buffer<DataT, Dimensions, AllocatorT> &, handler &, range<Dimensions>,
-    detail::accessor_tag<AccessMode, AccessTarget>, const property_list &)
-    -> accessor<DataT, Dimensions, AccessMode, AccessTarget, access::placeholder::false_t>;
+    detail::accessor_tag<AccessMode, AccessTarget>,
+    const property_list &) -> accessor<DataT, Dimensions, AccessMode, AccessTarget, access::placeholder::false_t>;
 
 template<typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
 accessor(buffer<DataT, Dimensions, AllocatorT> &, range<Dimensions>, id<Dimensions>,
@@ -465,8 +482,8 @@ accessor(buffer<DataT, Dimensions, AllocatorT> &, range<Dimensions>, id<Dimensio
 
 template<typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
 accessor(buffer<DataT, Dimensions, AllocatorT> &, range<Dimensions>, id<Dimensions>,
-    detail::accessor_tag<AccessMode, AccessTarget>, const property_list &)
-    -> accessor<DataT, Dimensions, AccessMode, AccessTarget, access::placeholder::false_t>;
+    detail::accessor_tag<AccessMode, AccessTarget>,
+    const property_list &) -> accessor<DataT, Dimensions, AccessMode, AccessTarget, access::placeholder::false_t>;
 
 template<typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
 accessor(buffer<DataT, Dimensions, AllocatorT> &, handler &, range<Dimensions>, id<Dimensions>,
@@ -475,8 +492,8 @@ accessor(buffer<DataT, Dimensions, AllocatorT> &, handler &, range<Dimensions>, 
 
 template<typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
 accessor(buffer<DataT, Dimensions, AllocatorT> &, handler &, range<Dimensions>, id<Dimensions>,
-    detail::accessor_tag<AccessMode, AccessTarget>, const property_list &)
-    -> accessor<DataT, Dimensions, AccessMode, AccessTarget, access::placeholder::false_t>;
+    detail::accessor_tag<AccessMode, AccessTarget>,
+    const property_list &) -> accessor<DataT, Dimensions, AccessMode, AccessTarget, access::placeholder::false_t>;
 
 
 template<typename DataT, access_mode AccessMode, target AccessTarget, access::placeholder IsPlaceholder>
@@ -509,7 +526,7 @@ class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> : public simsy
     accessor(buffer<DataT, 1, AllocatorT> &buffer_ref, const property_list &prop_list = {})
         : simsycl::detail::property_interface(prop_list, property_compatibility()),
           m_buffer(detail::get_buffer_data(buffer_ref)),
-          m_access_validator(&detail::get_buffer_access_validator(buffer_ref)) {}
+          m_guard(std::make_shared<detail::command_group_access_guard<1>>(buffer_ref)) {}
 
     template<typename AllocatorT>
     accessor(buffer<DataT, 1, AllocatorT> &buffer_ref, handler &command_group_handler_ref,
@@ -615,14 +632,14 @@ class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> : public simsy
     friend struct std::hash;
 
     DataT *m_buffer = nullptr;
-    detail::buffer_access_validator<1> *m_access_validator = nullptr;
+    std::shared_ptr<detail::command_group_access_guard<1>> m_guard; // shared_ptr: accessors must be copyable
     // shared: require() on a copy is equivalent to require() on the original instance
     std::shared_ptr<bool> m_required = std::make_shared<bool>(false);
 
     void require() {
         SIMSYCL_CHECK(m_buffer != nullptr);
-        SIMSYCL_CHECK(m_access_validator != nullptr);
-        m_access_validator->check_access_from_command_group({0, 1, AccessMode});
+        SIMSYCL_CHECK(m_guard != nullptr);
+        m_guard->check_access_from_command_group({0, 1, AccessMode});
         *m_required = true;
     }
 };
@@ -972,8 +989,8 @@ class host_accessor : public simsycl::detail::property_interface {
 
 template<typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode>
 host_accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, range<Dimensions> access_range,
-    detail::accessor_tag<AccessMode, target::device> tag, const property_list &prop_list = {})
-    -> host_accessor<DataT, Dimensions, AccessMode>;
+    detail::accessor_tag<AccessMode, target::device> tag,
+    const property_list &prop_list = {}) -> host_accessor<DataT, Dimensions, AccessMode>;
 
 template<typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode>
 host_accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, range<Dimensions> access_range,
@@ -1173,7 +1190,7 @@ class accessor<DataT, Dimensions, AccessMode, target::constant_buffer, IsPlaceho
     } constexpr inline static internal{};
 
     DataT *m_buffer = nullptr;
-    detail::buffer_access_validator<Dimensions> *m_access_validator = nullptr;
+    std::shared_ptr<detail::command_group_access_guard<1>> m_guard; // shared_ptr: accessors must be copyable
     range<Dimensions> m_buffer_range;
     id<Dimensions> m_access_offset;
     range<Dimensions> m_access_range;
@@ -1183,9 +1200,9 @@ class accessor<DataT, Dimensions, AccessMode, target::constant_buffer, IsPlaceho
     template<typename AllocatorT>
     void init(buffer<DataT, Dimensions, AllocatorT> &buffer_ref) {
         m_buffer = detail::get_buffer_data(buffer_ref);
+        m_guard = std::make_shared<detail::command_group_access_guard<Dimensions>>(buffer_ref);
         m_buffer_range = buffer_ref.get_range();
         m_access_range = m_buffer_range;
-        m_access_validator = &detail::get_buffer_access_validator(buffer_ref);
     }
     void init(const id<Dimensions> &access_offset) { m_access_offset = access_offset; }
 
@@ -1205,8 +1222,8 @@ class accessor<DataT, Dimensions, AccessMode, target::constant_buffer, IsPlaceho
 
     void require() {
         SIMSYCL_CHECK(m_buffer != nullptr);
-        SIMSYCL_CHECK(m_access_validator != nullptr);
-        m_access_validator->check_access_from_command_group({m_access_offset, m_access_range, AccessMode});
+        SIMSYCL_CHECK(m_guard != nullptr);
+        m_guard->check_access_from_command_group({m_access_offset, m_access_range, AccessMode});
         *m_required = true;
     }
 
@@ -1231,7 +1248,7 @@ class accessor<DataT, 0, AccessMode, target::constant_buffer, IsPlaceholder> fin
     accessor(buffer<DataT, 1, AllocatorT> &buffer_ref, const property_list &prop_list = {})
         : simsycl::detail::property_interface(prop_list, property_compatibility()),
           m_buffer(detail::get_buffer_data(buffer_ref)),
-          m_access_validator(&detail::get_buffer_access_validator(buffer_ref)) {}
+          m_guard(std::make_shared<detail::command_group_access_guard<1>>(buffer_ref)) {}
 
     template<typename AllocatorT>
     accessor(buffer<DataT, 1, AllocatorT> &buffer_ref, handler &command_group_handler_ref,
@@ -1268,14 +1285,14 @@ class accessor<DataT, 0, AccessMode, target::constant_buffer, IsPlaceholder> fin
     friend struct std::hash;
 
     DataT *m_buffer = nullptr;
-    detail::buffer_access_validator<1> *m_access_validator = nullptr;
+    std::shared_ptr<detail::command_group_access_guard<1>> m_guard;
     // shared: require() on a copy is equivalent to require() on the original instance
     std::shared_ptr<bool> m_required = std::make_shared<bool>(false);
 
     void require() {
         SIMSYCL_CHECK(m_buffer != nullptr);
-        SIMSYCL_CHECK(m_access_validator != nullptr);
-        m_access_validator->check_access_from_command_group({0, 1, AccessMode});
+        SIMSYCL_CHECK(m_guard != nullptr);
+        m_guard->check_access_from_command_group({0, 1, AccessMode});
         *m_required = true;
     }
 };
@@ -1312,6 +1329,8 @@ class accessor<DataT, Dimensions, AccessMode, target::host_buffer, IsPlaceholder
           m_access_offset(access_offset), m_access_range(access_range),
           m_access_guard(std::make_shared<detail::host_access_guard<Dimensions>>(
               buffer_ref, detail::accessed_range<Dimensions>(m_access_offset, m_access_range, AccessMode))) {}
+
+    // non-copyable and immovable, because it holds a system_lock
 
     bool is_placeholder() const { return false; }
 
@@ -1371,6 +1390,8 @@ class accessor<DataT, 0, AccessMode, target::host_buffer, IsPlaceholder> : publi
                                                              buffer_ref, detail::accessed_range<1>(0, 1, AccessMode))) {
     }
 
+    // non-copyable and immovable, because it holds a system_lock
+
     bool is_placeholder() const { return false; }
 
     size_t get_size() const { return sizeof(DataT); }
@@ -1390,6 +1411,7 @@ class accessor<DataT, 0, AccessMode, target::host_buffer, IsPlaceholder> : publi
     template<typename>
     friend struct std::hash;
 
+    detail::system_lock m_lock; // active host accessors must block command-group submission on other threads
     DataT *m_buffer = nullptr;
     std::shared_ptr<detail::host_access_guard<1>> m_access_guard;
 };

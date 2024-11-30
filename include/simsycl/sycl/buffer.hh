@@ -5,6 +5,7 @@
 #include "property.hh"
 
 #include "../detail/allocation.hh"
+#include "../detail/lock.hh"
 #include "../detail/reference_type.hh"
 
 #include <cstring>
@@ -128,7 +129,7 @@ struct buffer_access_validator {
 };
 
 template<typename T, int Dimensions, typename AllocatorT>
-struct buffer_state : buffer_access_validator<Dimensions> {
+struct buffer_state {
     using write_back_fn = std::function<void(const T *, size_t)>;
 
     sycl::range<Dimensions> range;
@@ -137,6 +138,7 @@ struct buffer_state : buffer_access_validator<Dimensions> {
     write_back_fn write_back;
     bool write_back_enabled;
     std::shared_ptr<const void> shared_host_ptr; // keep the std::shared_ptr host pointer alive
+    mutable shared_value<buffer_access_validator<Dimensions>> validator;
 
     buffer_state(sycl::range<Dimensions> range, const AllocatorT &allocator = {}, const T *init_from = nullptr,
         write_back_fn write_back = {}, const std::shared_ptr<const void> &shared_host_ptr = nullptr)
@@ -162,7 +164,10 @@ struct buffer_state : buffer_access_validator<Dimensions> {
     buffer_state &operator=(buffer_state &&) = delete;
 
     ~buffer_state() {
-        if(write_back_enabled) { write_back(buffer, range.size()); }
+        if(write_back_enabled) {
+            system_lock lock; // writeback must not overlap with command groups in other threads
+            write_back(buffer, range.size());
+        }
         allocator.deallocate(buffer, range.size());
     }
 };
@@ -343,7 +348,8 @@ class buffer final : public detail::reference_type<buffer<T, Dimensions, Allocat
     friend U *simsycl::detail::get_buffer_data(sycl::buffer<U, D, A> &buf);
 
     template<typename U, int D, typename A>
-    friend detail::buffer_access_validator<D> &detail::get_buffer_access_validator(const sycl::buffer<U, D, A> &buf);
+    friend detail::buffer_access_validator<D> &detail::get_buffer_access_validator(
+        const sycl::buffer<U, D, A> &buf, detail::system_lock &lock);
 
     using reference_type::state;
 
@@ -412,8 +418,9 @@ T *get_buffer_data(sycl::buffer<T, Dimensions, AllocatorT> &buf) {
 }
 
 template<typename T, int Dimensions, typename AllocatorT>
-buffer_access_validator<Dimensions> &get_buffer_access_validator(const sycl::buffer<T, Dimensions, AllocatorT> &buf) {
-    return buf.state();
+buffer_access_validator<Dimensions> &get_buffer_access_validator(
+    const sycl::buffer<T, Dimensions, AllocatorT> &buf, system_lock &lock) {
+    return buf.state().validator.with(lock);
 }
 
 } // namespace simsycl::detail

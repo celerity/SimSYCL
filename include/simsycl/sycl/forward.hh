@@ -148,6 +148,7 @@ class vec;
 namespace simsycl::detail {
 
 class unnamed_kernel;
+class system_lock;
 
 struct concurrent_nd_item;
 struct concurrent_group;
@@ -169,7 +170,8 @@ template<typename T, int Dimensions, typename AllocatorT>
 T *get_buffer_data(sycl::buffer<T, Dimensions, AllocatorT> &buf);
 
 template<typename T, int Dimensions, typename AllocatorT>
-buffer_access_validator<Dimensions> &get_buffer_access_validator(const sycl::buffer<T, Dimensions, AllocatorT> &buf);
+buffer_access_validator<Dimensions> &get_buffer_access_validator(
+    const sycl::buffer<T, Dimensions, AllocatorT> &buf, system_lock &lock);
 
 sycl::handler make_handler(const sycl::device &device);
 
