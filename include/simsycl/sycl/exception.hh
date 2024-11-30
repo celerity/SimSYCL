@@ -11,21 +11,21 @@ namespace simsycl::sycl {
 
 class exception : public virtual std::exception {
   public:
-    exception(std::error_code ec, const std::string &what_arg) : m_error(ec, what_arg){};
-    exception(std::error_code ec, const char *what_arg) : m_error(ec, what_arg){};
-    exception(std::error_code ec) : m_error(ec){};
-    exception(int ev, const std::error_category &ecat, const std::string &what_arg) : m_error(ev, ecat, what_arg){};
-    exception(int ev, const std::error_category &ecat, const char *what_arg) : m_error(ev, ecat, what_arg){};
-    exception(int ev, const std::error_category &ecat) : m_error(ev, ecat){};
+    exception(std::error_code ec, const std::string &what_arg) : m_error(ec, what_arg) {}
+    exception(std::error_code ec, const char *what_arg) : m_error(ec, what_arg) {}
+    exception(std::error_code ec) : m_error(ec) {}
+    exception(int ev, const std::error_category &ecat, const std::string &what_arg) : m_error(ev, ecat, what_arg) {}
+    exception(int ev, const std::error_category &ecat, const char *what_arg) : m_error(ev, ecat, what_arg) {}
+    exception(int ev, const std::error_category &ecat) : m_error(ev, ecat) {}
 
-    exception(context ctx, std::error_code ec, const std::string &what_arg) : m_error(ec, what_arg), m_context(ctx){};
-    exception(context ctx, std::error_code ec, const char *what_arg) : m_error(ec, what_arg), m_context(ctx){};
-    exception(context ctx, std::error_code ec) : m_error(ec), m_context(ctx){};
+    exception(context ctx, std::error_code ec, const std::string &what_arg) : m_error(ec, what_arg), m_context(ctx) {}
+    exception(context ctx, std::error_code ec, const char *what_arg) : m_error(ec, what_arg), m_context(ctx) {}
+    exception(context ctx, std::error_code ec) : m_error(ec), m_context(ctx) {}
     exception(context ctx, int ev, const std::error_category &ecat, const std::string &what_arg)
-        : m_error(ev, ecat, what_arg), m_context(ctx){};
+        : m_error(ev, ecat, what_arg), m_context(ctx) {}
     exception(context ctx, int ev, const std::error_category &ecat, const char *what_arg)
-        : m_error(ev, ecat, what_arg), m_context(ctx){};
-    exception(context ctx, int ev, const std::error_category &ecat) : m_error(ev, ecat), m_context(ctx){};
+        : m_error(ev, ecat, what_arg), m_context(ctx) {}
+    exception(context ctx, int ev, const std::error_category &ecat) : m_error(ev, ecat), m_context(ctx) {}
 
     const std::error_code &code() const noexcept { return m_error.code(); }
     const std::error_category &category() const noexcept { return m_error.code().category(); }

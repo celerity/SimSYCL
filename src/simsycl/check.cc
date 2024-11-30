@@ -19,7 +19,7 @@ std::string format_error(const char *cond_string, std::source_location location)
 namespace simsycl::detail {
 
 constexpr int no_check_override = 0;
-int g_check_mode_override = no_check_override;
+thread_local int g_check_mode_override = no_check_override;
 
 override_check_mode::override_check_mode(int mode) {
     assert(g_check_mode_override == no_check_override && "check mode already overridden");

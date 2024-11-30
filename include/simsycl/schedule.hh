@@ -40,7 +40,8 @@ class shuffle_schedule final : public cooperative_schedule {
     uint64_t m_seed = 1234567890;
 };
 
+// effect is thread-local
 const cooperative_schedule &get_cooperative_schedule();
-void set_cooperative_schedule(std::unique_ptr<cooperative_schedule> schedule);
+void set_cooperative_schedule(std::shared_ptr<const cooperative_schedule> schedule);
 
 } // namespace simsycl

@@ -6,7 +6,7 @@ namespace simsycl::sycl {
 
 class device_selector {
   public:
-    device_selector(){};
+    device_selector() {}
 
     device_selector(const device_selector &rhs) { (void)rhs; };
 
@@ -15,7 +15,7 @@ class device_selector {
         return *this;
     };
 
-    virtual ~device_selector(){};
+    virtual ~device_selector() {}
 
     device select_device() const { return {}; }
 

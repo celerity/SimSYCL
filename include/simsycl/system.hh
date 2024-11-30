@@ -10,6 +10,8 @@
 
 namespace simsycl {
 
+class cooperative_schedule;
+
 using platform_id = std::string;
 using device_id = std::string;
 using system_id = std::string;
@@ -117,12 +119,14 @@ system_config read_system_config(const std::string &path_to_json_file);
 void write_system_config(const std::string &path_to_json_file, const system_config &config);
 void configure_system(const system_config &system);
 
+std::shared_ptr<const cooperative_schedule> get_default_cooperative_schedule();
+
 } // namespace simsycl
 
 namespace simsycl::detail {
 
-const std::vector<sycl::platform> &get_platforms();
-const std::vector<sycl::device> &get_devices();
+const std::vector<sycl::platform> &get_platforms(system_lock &lock);
+const std::vector<sycl::device> &get_devices(system_lock &lock);
 sycl::device select_device(const device_selector &selector);
 
 } // namespace simsycl::detail

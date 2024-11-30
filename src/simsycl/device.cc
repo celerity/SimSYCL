@@ -1,4 +1,5 @@
 #include "simsycl/sycl/device.hh"
+#include "simsycl/detail/lock.hh"
 #include "simsycl/sycl/exception.hh"
 #include "simsycl/sycl/kernel.hh"
 #include "simsycl/sycl/range.hh"
@@ -11,12 +12,14 @@ namespace simsycl::detail {
 
 struct device_state {
     device_config config;
-    size_t bytes_free = 0;
+    mutable shared_value<size_t> bytes_free = 0;
     weak_ref<sycl::platform> platform;
-    weak_ref<sycl::device> parent;
+    mutable shared_value<weak_ref<sycl::device>> parent;
 };
 
-size_t *device_bytes_free(const sycl::device &device) { return &device.state().bytes_free; }
+size_t &device_bytes_free(const sycl::device &device, system_lock &lock) {
+    return (device.state().bytes_free.with(lock));
+}
 
 int default_selector::operator()(const sycl::device &device) const {
     return device.is_gpu() || device.is_accelerator() ? 1 : 0;
@@ -427,7 +430,8 @@ bool device::get_info<info::device::preferred_interop_user_sync>() const {
 
 template<>
 sycl::device device::get_info<info::device::parent_device>() const {
-    const auto parent_instance = state().parent.lock();
+    detail::system_lock lock;
+    const auto parent_instance = state().parent.with(lock).lock();
     assert(parent_instance.has_value() == state().config.parent_device_id.has_value());
     if(!parent_instance.has_value()) { throw exception(errc::invalid, "not a sub-device"); }
     return *parent_instance;
@@ -470,7 +474,8 @@ SIMSYCL_DETAIL_DEPRECATED_IN_SYCL bool device::has_extension(const std::string &
 }
 
 std::vector<device> device::get_devices(info::device_type type) {
-    auto &devices = detail::get_devices();
+    detail::system_lock lock;
+    auto &devices = detail::get_devices(lock);
     if(type == info::device_type::all) return devices;
 
     std::vector<device> result;
@@ -485,17 +490,19 @@ std::vector<device> device::get_devices(info::device_type type) {
 namespace simsycl {
 
 sycl::device make_device(sycl::platform &platform, const device_config &config) {
+    detail::system_lock lock;
     auto state = std::make_shared<detail::device_state>();
     state->config = config;
     state->platform = detail::weak_ref(platform);
-    state->bytes_free = config.global_mem_size;
+    state->bytes_free.with(lock) = config.global_mem_size;
     sycl::device device(std::move(state));
-    platform.add_device(device);
+    platform.add_device(device, lock);
     return device;
 }
 
 void set_parent_device(sycl::device &device, const sycl::device &parent) {
-    device.state().parent = detail::weak_ref<sycl::device>(parent);
+    detail::system_lock lock;
+    device.state().parent.with(lock) = detail::weak_ref<sycl::device>(parent);
 }
 
 } // namespace simsycl

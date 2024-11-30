@@ -23,6 +23,7 @@ sycl::device make_device(sycl::platform &platform, const device_config &config);
 
 namespace simsycl::detail {
 
+class system_lock;
 struct platform_state;
 
 } // namespace simsycl::detail
@@ -65,7 +66,7 @@ class platform final : public detail::reference_type<platform, detail::platform_
     platform(const detail::device_selector &selector);
     platform(std::shared_ptr<detail::platform_state> &&state) : reference_type(std::move(state)) {}
 
-    void add_device(const device &dev);
+    void add_device(const device &dev, detail::system_lock &lock);
 };
 
 } // namespace simsycl::sycl

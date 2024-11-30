@@ -1,6 +1,7 @@
 #include "simsycl/system.hh"
 #include "simsycl/detail/allocation.hh"
 #include "simsycl/detail/check.hh"
+#include "simsycl/detail/lock.hh"
 #include "simsycl/schedule.hh"
 #include "simsycl/sycl/device.hh"
 #include "simsycl/sycl/exception.hh"
@@ -13,12 +14,15 @@
 #include <limits>
 #include <set>
 #include <unordered_map>
-#include <variant>
 
 #include <libenvpp/env.hpp>
 
 
 namespace simsycl::detail {
+
+std::recursive_mutex g_system_mutex;
+
+system_lock::system_lock() : m_lock(g_system_mutex) {}
 
 class error_category : public std::error_category {
     const char *name() const noexcept override { return "sycl"; }
@@ -136,18 +140,21 @@ struct system_state {
     }
 };
 
-std::optional<system_state> g_system;
+shared_value<std::optional<system_state>> g_system;
 
-system_state &get_system() {
-    if(!g_system.has_value()) { g_system.emplace(get_default_system_config()); }
-    return g_system.value();
+system_state &get_system(system_lock &lock) {
+    auto &system = g_system.with(lock);
+    if(!system.has_value()) { system.emplace(get_default_system_config()); }
+    return *system;
 }
 
-const std::vector<sycl::platform> &get_platforms() { return get_system().platforms; }
-const std::vector<sycl::device> &get_devices() { return get_system().devices; }
+const std::vector<sycl::platform> &get_platforms(system_lock &lock) { return get_system(lock).platforms; }
+
+const std::vector<sycl::device> &get_devices(system_lock &lock) { return get_system(lock).devices; }
 
 sycl::device select_device(const device_selector &selector) {
-    auto &devices = get_devices();
+    system_lock lock;
+    auto &devices = get_devices(lock);
     SIMSYCL_CHECK(!devices.empty());
     int max_rating = std::numeric_limits<int>::lowest();
     for(const auto &device : devices) {
@@ -161,7 +168,8 @@ sycl::device select_device(const device_selector &selector) {
 }
 
 void *usm_alloc(const sycl::context &context, sycl::usm::alloc kind, std::optional<sycl::device> device,
-    size_t size_bytes, size_t alignment_bytes) {
+    size_t size_bytes, size_t alignment_bytes) //
+{
     SIMSYCL_CHECK(kind != sycl::usm::alloc::unknown);
     SIMSYCL_CHECK(device.has_value() || kind == sycl::usm::alloc::host);
     SIMSYCL_CHECK(size_bytes % alignment_bytes == 0);
@@ -169,7 +177,8 @@ void *usm_alloc(const sycl::context &context, sycl::usm::alloc kind, std::option
 
     if(size_bytes == 0) { size_bytes = alignment_bytes; }
 
-    auto &system = get_system();
+    system_lock lock;
+    auto &system = get_system(lock);
 
     size_t *bytes_free = nullptr;
     if(device.has_value()) {
@@ -178,7 +187,7 @@ void *usm_alloc(const sycl::context &context, sycl::usm::alloc kind, std::option
             throw sycl::exception(sycl::errc::invalid, "Device not associated with context");
         }
 
-        bytes_free = detail::device_bytes_free(*device);
+        bytes_free = &detail::device_bytes_free(*device, lock);
         if(*bytes_free < size_bytes) return nullptr;
     }
 
@@ -196,7 +205,9 @@ void *usm_alloc(const sycl::context &context, sycl::usm::alloc kind, std::option
 void usm_free(void *ptr, const sycl::context &context) {
     if(ptr == nullptr) return;
 
-    auto &system = get_system();
+    system_lock lock;
+
+    auto &system = get_system(lock);
     const auto iter = system.usm_allocations.find(ptr);
     if(iter == system.usm_allocations.end()) {
         throw sycl::exception(sycl::errc::invalid, "Pointer does not point to an allocation");
@@ -211,7 +222,7 @@ void usm_free(void *ptr, const sycl::context &context) {
     detail::aligned_free(ptr);
 
     if(iter->get_device().has_value()) {
-        *detail::device_bytes_free(iter->get_device().value()) += iter->get_size_bytes();
+        detail::device_bytes_free(iter->get_device().value(), lock) += iter->get_size_bytes();
     }
     system.usm_allocations.erase(iter);
 }
@@ -225,7 +236,8 @@ std::error_code make_error_code(errc e) noexcept { return {static_cast<int>(e), 
 const std::error_category &sycl_category() noexcept { return detail::error_category_v; }
 
 usm::alloc get_pointer_type(const void *ptr, const context &sycl_context) {
-    auto &system = detail::get_system();
+    detail::system_lock lock;
+    auto &system = detail::get_system(lock);
     if(const auto iter = system.usm_allocations.find(ptr); iter != system.usm_allocations.end()) {
         return iter->get_context() == sycl_context ? iter->get_kind() : usm::alloc::unknown;
     }
@@ -233,7 +245,9 @@ usm::alloc get_pointer_type(const void *ptr, const context &sycl_context) {
 }
 
 device get_pointer_device(const void *ptr, const context &sycl_context) {
-    auto &system = detail::get_system();
+    detail::system_lock lock;
+
+    auto &system = detail::get_system(lock);
     const auto iter = system.usm_allocations.find(ptr);
     if(iter == system.usm_allocations.end()) {
         throw sycl::exception(sycl::errc::invalid, "Pointer does not point to an allocation");
@@ -255,13 +269,17 @@ device get_pointer_device(const void *ptr, const context &sycl_context) {
 
 namespace simsycl::detail {
 
-bool g_environment_parsed = false;
-std::optional<system_config> g_env_system_config;
-std::shared_ptr<cooperative_schedule>
-    g_env_cooperative_schedule; // must be copyable to be returned from libenvpp parser
+struct environment {
+    std::optional<simsycl::system_config> system_config;
+    // must be copyable to be returned from libenvpp parser
+    std::shared_ptr<const simsycl::cooperative_schedule> cooperative_schedule;
+};
 
-void parse_environment() {
-    if(g_environment_parsed) return;
+shared_value<std::optional<environment>> g_parsed_environment;
+
+const environment &parse_environment(system_lock &lock) {
+    auto &parsed_env = g_parsed_environment.with(lock);
+    if(parsed_env.has_value()) return *parsed_env;
 
     auto prefix = env::prefix("SIMSYCL");
     const auto system = prefix.register_variable<system_config>(
@@ -279,47 +297,60 @@ void parse_environment() {
         });
 
     if(const auto parsed = prefix.parse_and_validate(); parsed.ok()) {
-        g_env_system_config = parsed.get(system);
-        g_env_cooperative_schedule = parsed.get_or(schedule, nullptr);
+        parsed_env.emplace(environment{
+            .system_config = parsed.get(system),
+            .cooperative_schedule = parsed.get_or(schedule, nullptr),
+        });
     } else {
         std::cerr << parsed.warning_message() << parsed.error_message();
+        parsed_env.emplace(environment{});
     }
-    g_environment_parsed = true;
+
+    assert(parsed_env.has_value());
+    return *parsed_env;
 }
-
-std::optional<system_config> g_default_system_config;
-std::shared_ptr<cooperative_schedule> g_cooperative_schedule;
-
 
 } // namespace simsycl::detail
 
 namespace simsycl {
 
-const cooperative_schedule &get_cooperative_schedule() {
-    detail::parse_environment();
-    if(detail::g_cooperative_schedule == nullptr) {
-        if(detail::g_env_cooperative_schedule != nullptr) {
-            detail::g_cooperative_schedule = detail::g_env_cooperative_schedule;
-        } else {
-            detail::g_cooperative_schedule = std::make_shared<round_robin_schedule>();
-        }
-    }
-    return *detail::g_cooperative_schedule;
-}
-
-void set_cooperative_schedule(std::unique_ptr<cooperative_schedule> schedule) {
-    detail::g_cooperative_schedule = std::move(schedule);
-}
-
 const system_config &get_default_system_config() {
-    detail::parse_environment();
-    if(!detail::g_default_system_config.has_value()) {
-        detail::g_default_system_config = detail::g_env_system_config.value_or(builtin_system);
+    static std::optional<system_config> s_default_config;
+
+    detail::system_lock lock;
+    if(s_default_config.has_value()) return *s_default_config;
+
+    detail::parse_environment(lock);
+    if(!s_default_config.has_value()) {
+        s_default_config = detail::g_parsed_environment.with(lock)->system_config.value_or(builtin_system);
     }
-    return detail::g_default_system_config.value();
+
+    // we return an unprotected reference, so `config` must remain invariant for the remaining duration of the program
+    assert(s_default_config.has_value());
+    return *s_default_config;
 }
 
-void configure_system(const system_config &system) { detail::g_system.emplace(system); }
+void configure_system(const system_config &system) {
+    detail::system_lock lock;
+    detail::g_system.with(lock).emplace(system);
+}
+
+std::shared_ptr<const cooperative_schedule> get_default_cooperative_schedule() {
+    static std::shared_ptr<const cooperative_schedule> s_default_schedule;
+
+    detail::system_lock lock;
+    if(s_default_schedule != nullptr) return s_default_schedule;
+
+    const auto &env = detail::parse_environment(lock);
+    if(env.cooperative_schedule != nullptr) {
+        s_default_schedule = env.cooperative_schedule;
+    } else {
+        s_default_schedule = std::make_shared<round_robin_schedule>();
+    }
+
+    assert(s_default_schedule != nullptr);
+    return s_default_schedule;
+}
 
 const platform_config builtin_platform{
     .version = "0.1",

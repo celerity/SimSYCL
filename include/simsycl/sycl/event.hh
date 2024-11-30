@@ -13,21 +13,15 @@
 namespace simsycl::detail {
 
 struct event_state {
-    std::chrono::steady_clock::time_point t_submit{};
-    std::chrono::steady_clock::time_point t_start{};
-    std::chrono::steady_clock::time_point t_end{};
+    std::chrono::steady_clock::time_point t_submit;
+    std::chrono::steady_clock::time_point t_start;
+    std::chrono::steady_clock::time_point t_end;
 
     void start() { t_start = std::chrono::steady_clock::now(); }
 
     [[nodiscard]] static event_state submit() {
         event_state status;
         status.t_submit = std::chrono::steady_clock::now();
-        return status;
-    }
-
-    [[nodiscard]] static event_state submit_and_start() {
-        auto status = submit();
-        status.start();
         return status;
     }
 
@@ -118,6 +112,9 @@ inline sycl::event event_state::end() {
     return make_event(*this);
 }
 
-inline sycl::event event_state::instant() { return submit_and_start().end(); }
+inline sycl::event event_state::instant() {
+    const auto now = std::chrono::steady_clock::now();
+    return make_event(event_state{now, now, now});
+}
 
 } // namespace simsycl::detail
