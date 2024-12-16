@@ -1190,7 +1190,7 @@ class accessor<DataT, Dimensions, AccessMode, target::constant_buffer, IsPlaceho
     } constexpr inline static internal{};
 
     DataT *m_buffer = nullptr;
-    std::shared_ptr<detail::command_group_access_guard<1>> m_guard; // shared_ptr: accessors must be copyable
+    std::shared_ptr<detail::command_group_access_guard<Dimensions>> m_guard; // shared_ptr: accessors must be copyable
     range<Dimensions> m_buffer_range;
     id<Dimensions> m_access_offset;
     range<Dimensions> m_access_range;
