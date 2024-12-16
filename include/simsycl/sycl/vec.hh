@@ -359,8 +359,18 @@ class swizzled_vec {
         for(int i = 0; i < num_elements; ++i) { m_elems[indices[i]] = ptr[offset + i]; }
     }
 
+    void load(size_t offset, const value_type *ptr) const
+        requires(allow_assign)
+    {
+        for(int i = 0; i < num_elements; ++i) { m_elems[indices[i]] = ptr[offset + i]; }
+    }
+
     template<sycl::access::address_space AddressSpace, sycl::access::decorated IsDecorated>
     void store(size_t offset, sycl::multi_ptr<value_type, AddressSpace, IsDecorated> ptr) const {
+        for(int i = 0; i < num_elements; ++i) { ptr[offset + i] = m_elems[indices[i]]; }
+    }
+
+    void store(size_t offset, value_type *ptr) const {
         for(int i = 0; i < num_elements; ++i) { ptr[offset + i] = m_elems[indices[i]]; }
     }
 
@@ -693,8 +703,16 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
         for(int i = 0; i < NumElements; ++i) { m_elems[i] = ptr[offset + i]; }
     }
 
+    void load(size_t offset, const DataT *ptr) {
+        for(int i = 0; i < NumElements; ++i) { m_elems[i] = ptr[offset + i]; }
+    }
+
     template<access::address_space AddressSpace, access::decorated IsDecorated>
     void store(size_t offset, multi_ptr<DataT, AddressSpace, IsDecorated> ptr) const {
+        for(int i = 0; i < NumElements; ++i) { ptr[offset + i] = m_elems[i]; }
+    }
+
+    void store(size_t offset, DataT *ptr) const {
         for(int i = 0; i < NumElements; ++i) { ptr[offset + i] = m_elems[i]; }
     }
 
