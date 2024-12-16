@@ -10,14 +10,14 @@
 
 namespace simsycl::detail {
 
-template<typename DataT, typename VecLike>
+template<typename DataT, typename MarrayLike>
 struct marray_like_num_elements {};
 
 template<typename DataT, std::convertible_to<DataT> ElementT>
-struct marray_like_num_elements<DataT, ElementT> : std::integral_constant<int, 1> {};
+struct marray_like_num_elements<DataT, ElementT> : std::integral_constant<size_t, 1> {};
 
-template<typename DataT, int N>
-struct marray_like_num_elements<DataT, sycl::marray<DataT, N>> : std::integral_constant<int, N> {};
+template<typename DataT, size_t N>
+struct marray_like_num_elements<DataT, sycl::marray<DataT, N>> : std::integral_constant<size_t, N> {};
 
 
 template<typename T>
