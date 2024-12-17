@@ -58,11 +58,11 @@ TEMPLATE_TEST_CASE(
         })
         .wait();
 
-    CHECK(*detail::get_buffer_data(plus_buf) == 100 + 0 + 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9);
+    CHECK(*detail::get_buffer_state(plus_buf).data == 100 + 0 + 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9);
     CHECK(mult_var == 1 * 2 * 3 * 4 * 5 * 6 * 7 * 8 * 9 * 10);
-    CHECK(*detail::get_buffer_data(bit_and_buf) == 16);
+    CHECK(*detail::get_buffer_state(bit_and_buf).data == 16);
     CHECK(bit_or_var == (128 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9));
-    CHECK(*detail::get_buffer_data(bit_xor_buf) == (0 ^ 1 ^ 2 ^ 3 ^ 4 ^ 5 ^ 6 ^ 7 ^ 8 ^ 9));
+    CHECK(*detail::get_buffer_state(bit_xor_buf).data == (0 ^ 1 ^ 2 ^ 3 ^ 4 ^ 5 ^ 6 ^ 7 ^ 8 ^ 9));
     CHECK(min_var == -4.0f);
     CHECK(max_var == 9.0f);
 }

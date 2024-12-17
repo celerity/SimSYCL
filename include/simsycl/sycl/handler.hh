@@ -171,8 +171,8 @@ class handler {
         typename DestT>
     void copy(accessor<SrcT, SrcDim, SrcMode, SrcTgt, IsPlaceholder> src, DestT *dest) {
         static_assert(sizeof(SrcT) == sizeof(DestT));
-        detail::memcpy_strided_host(src.get_pointer(), dest, sizeof(SrcT), src.get_buffer_range(), src.get_offset(),
-            src.get_range(), sycl::id<SrcDim>(), src.get_range());
+        detail::memcpy_strided_host(src.get_pointer(), dest, sizeof(SrcT), get_buffer_state(src).range,
+            src.get_offset(), src.get_range(), sycl::id<SrcDim>(), src.get_range());
     }
 
     template<typename SrcT, typename DestT, int DestDim, access_mode DestMode, target DestTgt,
@@ -180,7 +180,7 @@ class handler {
     void copy(const SrcT *src, accessor<DestT, DestDim, DestMode, DestTgt, IsPlaceholder> dest) {
         static_assert(sizeof(SrcT) == sizeof(DestT));
         detail::memcpy_strided_host(src, dest.get_pointer(), sizeof(SrcT), dest.get_range(), sycl::id<DestDim>(),
-            dest.get_buffer_range(), dest.get_offset(), dest.get_range());
+            get_buffer_state(dest).range, dest.get_offset(), dest.get_range());
     }
 
     template<typename SrcT, int SrcDim, access_mode SrcMode, target SrcTgt, access::placeholder SrcIsPlaceholder,
@@ -191,14 +191,20 @@ class handler {
         static_assert(SrcDim == DestDim, "copy between different accessor dimensions not implemented");
         if constexpr(SrcDim == DestDim) { // stop printing follow-up compiler errors if the above static_assert fails
             assert(src.get_range() == dest.get_range() && "copy between differently-ranged accessors not implemented");
-            detail::memcpy_strided_host(src.get_pointer(), dest.get_pointer(), sizeof(SrcT), src.get_buffer_range(),
-                src.get_offset(), dest.get_buffer_range(), dest.get_offset(), dest.get_range());
+            detail::memcpy_strided_host(src.get_pointer(), dest.get_pointer(), sizeof(SrcT),
+                get_buffer_state(src).range, src.get_offset(), get_buffer_state(dest).range, dest.get_offset(),
+                dest.get_range());
         }
     }
 
     template<typename T, int Dim, access_mode Mode, target Tgt, access::placeholder IsPlaceholder>
     void update_host(accessor<T, Dim, Mode, Tgt, IsPlaceholder> acc) {
-        acc.update_host();
+        const auto &buffer = get_buffer_state(acc);
+        detail::system_lock lock; // writeback must not overlap with command groups in other threads
+        const auto &write_back = buffer.write_back.with(lock);
+        SIMSYCL_CHECK_MSG(static_cast<bool>(write_back),
+            "Cannot update_host on an buffer that was not constructed with a host pointer");
+        write_back(buffer.data, buffer.range.size());
     }
 
     template<typename T, int Dim, access_mode Mode, target Tgt, access::placeholder IsPlaceholder>
@@ -247,6 +253,12 @@ class handler {
             return &it->second;
         }
         return nullptr;
+    }
+
+    template<typename Accessor>
+    const auto &get_buffer_state(const Accessor &acc) {
+        SIMSYCL_CHECK(acc.m_buffer);
+        return *acc.m_buffer;
     }
 };
 

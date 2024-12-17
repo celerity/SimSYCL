@@ -162,7 +162,7 @@ auto reduction(buffer<T, Dimensions, AllocatorT> &vars, handler &cgh, BinaryOper
     const property_list &prop_list = {}) {
     (void)cgh;
     SIMSYCL_CHECK(vars.get_range().size() == 1);
-    T *value = detail::get_buffer_data(vars);
+    T *value = detail::get_buffer_state(vars).data;
     detail::begin_reduction(value, combiner, nullptr, prop_list);
     return detail::reducer<T, BinaryOperation, 0>(value, combiner);
 }
@@ -183,7 +183,7 @@ auto reduction(buffer<T, Dimensions, AllocatorT> &vars, handler &cgh, const T &i
     const property_list &prop_list = {}) {
     (void)cgh;
     SIMSYCL_CHECK(vars.get_range().size() == 1);
-    T *value = detail::get_buffer_data(vars);
+    T *value = detail::get_buffer_state(vars).data;
     detail::begin_reduction(value, combiner, &identity, prop_list);
     return detail::reducer<T, BinaryOperation, 0>(value, combiner);
 }

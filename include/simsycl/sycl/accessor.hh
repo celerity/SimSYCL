@@ -148,7 +148,7 @@ class host_access_guard {
     template<typename T, typename AllocatorT>
     explicit host_access_guard(
         const sycl::buffer<T, Dimensions, AllocatorT> &buf, const accessed_range<Dimensions> &range)
-        : m_validator(&detail::get_buffer_access_validator(buf, m_lock)), m_range(range) //
+        : m_validator(&detail::get_buffer_state(buf).validator.with(m_lock)), m_range(range) //
     {
         m_validator->begin_host_access(m_range);
     }
@@ -169,9 +169,9 @@ class host_access_guard {
 template<int Dimensions>
 class command_group_access_guard {
   public:
-    template<typename T, typename AllocatorT>
-    explicit command_group_access_guard(const sycl::buffer<T, Dimensions, AllocatorT> &buf)
-        : m_validator(&detail::get_buffer_access_validator(buf, m_lock)) {}
+    template<typename T>
+    explicit command_group_access_guard(const buffer_state<T, Dimensions> &state)
+        : m_validator(&state.validator.with(m_lock)) {}
 
     void check_access_from_command_group(const accessed_range<Dimensions> &range) {
         m_validator->check_access_from_command_group(range);
@@ -335,7 +335,7 @@ class accessor : public simsycl::detail::property_interface {
     {
         SIMSYCL_CHECK(m_buffer != nullptr);
         SIMSYCL_CHECK(*m_required);
-        return m_buffer[detail::get_linear_index(m_buffer_range, index)];
+        return m_buffer->data[detail::get_linear_index(m_buffer->range, index)];
     }
 
     SIMSYCL_DETAIL_DEPRECATED_IN_SYCL atomic<DataT, access::address_space::global_space> operator[](
@@ -353,7 +353,7 @@ class accessor : public simsycl::detail::property_interface {
     {
         SIMSYCL_CHECK(m_buffer != nullptr);
         SIMSYCL_CHECK(*m_required);
-        return m_buffer;
+        return m_buffer->data;
     }
 
     std::add_pointer_t<value_type> get_pointer() const noexcept
@@ -361,7 +361,7 @@ class accessor : public simsycl::detail::property_interface {
     {
         SIMSYCL_CHECK(m_buffer != nullptr);
         SIMSYCL_CHECK(*m_required);
-        return m_buffer;
+        return m_buffer->data;
     }
 
     template<access::decorated IsDecorated>
@@ -370,7 +370,7 @@ class accessor : public simsycl::detail::property_interface {
     {
         SIMSYCL_CHECK(m_buffer != nullptr);
         SIMSYCL_CHECK(*m_required);
-        return accessor_ptr<IsDecorated>(m_buffer);
+        return accessor_ptr<IsDecorated>(m_buffer->data);
     }
 
     iterator begin() const noexcept { return iterator(this, iterator::begin); }
@@ -398,9 +398,8 @@ class accessor : public simsycl::detail::property_interface {
     struct internal_t {
     } constexpr inline static internal{};
 
-    DataT *m_buffer = nullptr;
+    const detail::buffer_state<std::remove_const_t<DataT>, Dimensions> *m_buffer = nullptr;
     std::shared_ptr<detail::command_group_access_guard<Dimensions>> m_guard; // shared_ptr: accessors must be copyable
-    range<Dimensions> m_buffer_range;
     id<Dimensions> m_access_offset;
     range<Dimensions> m_access_range;
     // shared: require() on a copy is equivalent to require() on the original instance
@@ -408,11 +407,11 @@ class accessor : public simsycl::detail::property_interface {
 
     template<typename AllocatorT>
     void init(buffer<DataT, Dimensions, AllocatorT> &buffer_ref) {
-        m_buffer = detail::get_buffer_data(buffer_ref);
-        m_guard = std::make_shared<detail::command_group_access_guard<Dimensions>>(buffer_ref);
-        m_buffer_range = buffer_ref.get_range();
-        m_access_range = m_buffer_range;
+        m_buffer = &detail::get_buffer_state(buffer_ref);
+        m_guard = std::make_shared<detail::command_group_access_guard<Dimensions>>(*m_buffer);
+        m_access_range = m_buffer->range;
     }
+
     void init(const id<Dimensions> &access_offset) { m_access_offset = access_offset; }
 
     void init(const range<Dimensions> &access_range) { m_access_range = access_range; }
@@ -437,8 +436,6 @@ class accessor : public simsycl::detail::property_interface {
         m_guard->check_access_from_command_group({m_access_offset, m_access_range, AccessMode});
         *m_required = true;
     }
-
-    const range<Dimensions> &get_buffer_range() const { return m_buffer_range; }
 };
 
 template<typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode, target AccessTarget>
@@ -525,8 +522,8 @@ class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> : public simsy
     template<typename AllocatorT>
     accessor(buffer<DataT, 1, AllocatorT> &buffer_ref, const property_list &prop_list = {})
         : simsycl::detail::property_interface(prop_list, property_compatibility()),
-          m_buffer(detail::get_buffer_data(buffer_ref)),
-          m_guard(std::make_shared<detail::command_group_access_guard<1>>(buffer_ref)) {}
+          m_buffer(&detail::get_buffer_state(buffer_ref)),
+          m_guard(std::make_shared<detail::command_group_access_guard<1>>(*m_buffer)) {}
 
     template<typename AllocatorT>
     accessor(buffer<DataT, 1, AllocatorT> &buffer_ref, handler &command_group_handler_ref,
@@ -559,7 +556,7 @@ class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> : public simsy
     {
         SIMSYCL_CHECK(m_buffer != nullptr);
         SIMSYCL_CHECK(*m_required);
-        return *m_buffer;
+        return *m_buffer->data;
     }
 
     const accessor &operator=(const value_type &other) const
@@ -567,7 +564,7 @@ class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> : public simsy
     {
         SIMSYCL_CHECK(m_buffer != nullptr);
         SIMSYCL_CHECK(*m_required);
-        *m_buffer = other;
+        *m_buffer->data = other;
         return *this;
     }
 
@@ -576,7 +573,7 @@ class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> : public simsy
     {
         SIMSYCL_CHECK(m_buffer != nullptr);
         SIMSYCL_CHECK(*m_required);
-        *m_buffer = std::move(other);
+        *m_buffer->data = std::move(other);
         return *this;
     }
 
@@ -588,7 +585,7 @@ class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> : public simsy
     {
         SIMSYCL_CHECK(m_buffer != nullptr);
         SIMSYCL_CHECK(*m_required);
-        return m_buffer;
+        return m_buffer->data;
     }
 
     std::add_pointer_t<value_type> get_pointer() const noexcept
@@ -596,7 +593,7 @@ class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> : public simsy
     {
         SIMSYCL_CHECK(m_buffer != nullptr);
         SIMSYCL_CHECK(*m_required);
-        return m_buffer;
+        return m_buffer->data;
     }
 
     template<access::decorated IsDecorated>
@@ -605,7 +602,7 @@ class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> : public simsy
     {
         SIMSYCL_CHECK(m_buffer != nullptr);
         SIMSYCL_CHECK(*m_required);
-        return accessor_ptr<IsDecorated>(m_buffer);
+        return accessor_ptr<IsDecorated>(m_buffer->data);
     }
 
 
@@ -631,7 +628,7 @@ class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> : public simsy
     template<typename>
     friend struct std::hash;
 
-    DataT *m_buffer = nullptr;
+    const detail::buffer_state<std::remove_const_t<DataT>, 1> *m_buffer = nullptr;
     std::shared_ptr<detail::command_group_access_guard<1>> m_guard; // shared_ptr: accessors must be copyable
     // shared: require() on a copy is equivalent to require() on the original instance
     std::shared_ptr<bool> m_required = std::make_shared<bool>(false);
@@ -735,8 +732,6 @@ class local_accessor final : public simsycl::detail::property_interface {
 
     void **m_allocation_ptr = nullptr;
     sycl::range<Dimensions> m_range;
-
-    const range<Dimensions> &get_buffer_range() const { return get_range(); }
 
     id<Dimensions> get_offset() const { return {}; }
 
@@ -916,7 +911,7 @@ class host_accessor : public simsycl::detail::property_interface {
         requires(AccessMode != access_mode::atomic)
     {
         SIMSYCL_CHECK(m_buffer != nullptr);
-        return m_buffer[detail::get_linear_index(m_buffer_range, index)];
+        return m_buffer->data[detail::get_linear_index(m_buffer->range, index)];
     }
 
     decltype(auto) operator[](size_t index) const
@@ -925,7 +920,10 @@ class host_accessor : public simsycl::detail::property_interface {
         return detail::subscript<Dimensions>(*this, index);
     }
 
-    std::add_pointer_t<value_type> get_pointer() const noexcept { return m_buffer; }
+    std::add_pointer_t<value_type> get_pointer() const noexcept {
+        SIMSYCL_CHECK(m_buffer != nullptr);
+        return m_buffer->data;
+    }
 
     iterator begin() const noexcept { return iterator(this, iterator::begin); }
 
@@ -952,8 +950,7 @@ class host_accessor : public simsycl::detail::property_interface {
     struct internal_t {
     } constexpr inline static internal{};
 
-    DataT *m_buffer = nullptr;
-    range<Dimensions> m_buffer_range;
+    const detail::buffer_state<std::remove_const_t<DataT>, Dimensions> *m_buffer = nullptr;
     id<Dimensions> m_access_offset;
     range<Dimensions> m_access_range;
     // guard is a shared_ptr because accessors need to be copyable
@@ -961,9 +958,8 @@ class host_accessor : public simsycl::detail::property_interface {
 
     template<typename AllocatorT>
     void init(buffer<DataT, Dimensions, AllocatorT> &buffer_ref) {
-        m_buffer = detail::get_buffer_data(buffer_ref);
-        m_buffer_range = buffer_ref.get_range();
-        m_access_range = m_buffer_range;
+        m_buffer = &detail::get_buffer_state(buffer_ref);
+        m_access_range = m_buffer->range;
         m_access_guard = std::make_shared<detail::host_access_guard<Dimensions>>(
             buffer_ref, detail::accessed_range<Dimensions>(m_access_offset, m_access_range, AccessMode));
     }
@@ -983,8 +979,6 @@ class host_accessor : public simsycl::detail::property_interface {
     explicit host_accessor(internal_t /* tag */, Params &&...args) {
         (init(args), ...);
     }
-
-    const range<Dimensions> &get_buffer_range() const { return m_buffer_range; }
 };
 
 template<typename DataT, int Dimensions, typename AllocatorT, access_mode AccessMode>
@@ -1025,8 +1019,9 @@ class host_accessor<DataT, 0, AccessMode> : public simsycl::detail::property_int
     template<typename AllocatorT>
     host_accessor(buffer<DataT, 1, AllocatorT> &buffer_ref, const property_list &prop_list = {})
         : detail::property_interface(prop_list, property_compatibility()),
-          m_buffer(detail::get_buffer_data(buffer_ref)), m_access_guard(std::make_shared<detail::host_access_guard<1>>(
-                                                             buffer_ref, detail::accessed_range<1>(0, 1, AccessMode))) {
+          m_buffer(&detail::get_buffer_state(buffer_ref)),
+          m_access_guard(
+              std::make_shared<detail::host_access_guard<1>>(buffer_ref, detail::accessed_range<1>(0, 1, AccessMode))) {
     }
 
     friend bool operator==(const host_accessor &lhs, const host_accessor &rhs) = default;
@@ -1049,14 +1044,14 @@ class host_accessor<DataT, 0, AccessMode> : public simsycl::detail::property_int
         requires(AccessMode != access_mode::atomic)
     {
         SIMSYCL_CHECK(m_buffer != nullptr);
-        return *m_buffer;
+        return *m_buffer->data;
     }
 
     const host_accessor &operator=(const value_type &other) const
         requires(AccessMode != access_mode::atomic && AccessMode != access_mode::read)
     {
         SIMSYCL_CHECK(m_buffer != nullptr);
-        *m_buffer = other;
+        *m_buffer->data = other;
         return *this;
     }
 
@@ -1064,11 +1059,14 @@ class host_accessor<DataT, 0, AccessMode> : public simsycl::detail::property_int
         requires(AccessMode != access_mode::atomic && AccessMode != access_mode::read)
     {
         SIMSYCL_CHECK(m_buffer != nullptr);
-        *m_buffer = std::move(other);
+        *m_buffer->data = std::move(other);
         return *this;
     }
 
-    std::add_pointer_t<value_type> get_pointer() const noexcept { return m_buffer; }
+    std::add_pointer_t<value_type> get_pointer() const noexcept {
+        SIMSYCL_CHECK(m_buffer != nullptr);
+        return m_buffer->data;
+    }
 
     iterator begin() const noexcept { return iterator(this, iterator::begin); }
 
@@ -1092,7 +1090,7 @@ class host_accessor<DataT, 0, AccessMode> : public simsycl::detail::property_int
     template<typename>
     friend struct std::hash;
 
-    DataT *m_buffer = nullptr;
+    const detail::buffer_state<std::remove_const_t<DataT>, 1> *m_buffer = nullptr;
     std::shared_ptr<detail::host_access_guard<1>> m_access_guard;
 };
 
@@ -1165,7 +1163,7 @@ class accessor<DataT, Dimensions, AccessMode, target::constant_buffer, IsPlaceho
     {
         SIMSYCL_CHECK(m_buffer != nullptr);
         SIMSYCL_CHECK(*m_required);
-        return m_buffer[detail::get_linear_index(m_buffer_range, index)];
+        return m_buffer->data[detail::get_linear_index(m_buffer->range, index)];
     }
 
     decltype(auto) operator[](size_t index) const
@@ -1177,7 +1175,7 @@ class accessor<DataT, Dimensions, AccessMode, target::constant_buffer, IsPlaceho
     constant_ptr<DataT> get_pointer() const noexcept {
         SIMSYCL_CHECK(m_buffer != nullptr);
         SIMSYCL_CHECK(*m_required);
-        return m_buffer;
+        return m_buffer->data;
     }
 
   private:
@@ -1189,9 +1187,8 @@ class accessor<DataT, Dimensions, AccessMode, target::constant_buffer, IsPlaceho
     struct internal_t {
     } constexpr inline static internal{};
 
-    DataT *m_buffer = nullptr;
+    const detail::buffer_state<std::remove_const_t<DataT>, Dimensions> *m_buffer = nullptr;
     std::shared_ptr<detail::command_group_access_guard<Dimensions>> m_guard; // shared_ptr: accessors must be copyable
-    range<Dimensions> m_buffer_range;
     id<Dimensions> m_access_offset;
     range<Dimensions> m_access_range;
     // shared: require() on a copy is equivalent to require() on the original instance
@@ -1199,11 +1196,11 @@ class accessor<DataT, Dimensions, AccessMode, target::constant_buffer, IsPlaceho
 
     template<typename AllocatorT>
     void init(buffer<DataT, Dimensions, AllocatorT> &buffer_ref) {
-        m_buffer = detail::get_buffer_data(buffer_ref);
-        m_guard = std::make_shared<detail::command_group_access_guard<Dimensions>>(buffer_ref);
-        m_buffer_range = buffer_ref.get_range();
-        m_access_range = m_buffer_range;
+        m_buffer = &detail::get_buffer_state(buffer_ref);
+        m_guard = std::make_shared<detail::command_group_access_guard<Dimensions>>(*m_buffer);
+        m_access_range = m_buffer->range;
     }
+
     void init(const id<Dimensions> &access_offset) { m_access_offset = access_offset; }
 
     void init(const range<Dimensions> &access_range) { m_access_range = access_range; }
@@ -1226,8 +1223,6 @@ class accessor<DataT, Dimensions, AccessMode, target::constant_buffer, IsPlaceho
         m_guard->check_access_from_command_group({m_access_offset, m_access_range, AccessMode});
         *m_required = true;
     }
-
-    const range<Dimensions> &get_buffer_range() const { return m_buffer_range; }
 };
 
 template<typename DataT, access_mode AccessMode, access::placeholder IsPlaceholder>
@@ -1247,8 +1242,8 @@ class accessor<DataT, 0, AccessMode, target::constant_buffer, IsPlaceholder> fin
     template<typename AllocatorT>
     accessor(buffer<DataT, 1, AllocatorT> &buffer_ref, const property_list &prop_list = {})
         : simsycl::detail::property_interface(prop_list, property_compatibility()),
-          m_buffer(detail::get_buffer_data(buffer_ref)),
-          m_guard(std::make_shared<detail::command_group_access_guard<1>>(buffer_ref)) {}
+          m_buffer(&detail::get_buffer_state(buffer_ref)),
+          m_guard(std::make_shared<detail::command_group_access_guard<1>>(*m_buffer)) {}
 
     template<typename AllocatorT>
     accessor(buffer<DataT, 1, AllocatorT> &buffer_ref, handler &command_group_handler_ref,
@@ -1269,13 +1264,13 @@ class accessor<DataT, 0, AccessMode, target::constant_buffer, IsPlaceholder> fin
     operator reference() const {
         SIMSYCL_CHECK(m_buffer != nullptr);
         SIMSYCL_CHECK(*m_required);
-        return *m_buffer;
+        return *m_buffer->data;
     }
 
     global_ptr<DataT> get_pointer() const noexcept {
         SIMSYCL_CHECK(m_buffer != nullptr);
         SIMSYCL_CHECK(*m_required);
-        return m_buffer;
+        return m_buffer->data;
     }
 
   private:
@@ -1284,7 +1279,7 @@ class accessor<DataT, 0, AccessMode, target::constant_buffer, IsPlaceholder> fin
     template<typename>
     friend struct std::hash;
 
-    DataT *m_buffer = nullptr;
+    const detail::buffer_state<std::remove_const_t<DataT>, 1> *m_buffer = nullptr;
     std::shared_ptr<detail::command_group_access_guard<1>> m_guard;
     // shared: require() on a copy is equivalent to require() on the original instance
     std::shared_ptr<bool> m_required = std::make_shared<bool>(false);
@@ -1325,8 +1320,7 @@ class accessor<DataT, Dimensions, AccessMode, target::host_buffer, IsPlaceholder
     accessor(buffer<DataT, Dimensions, AllocatorT> &buffer_ref, range<Dimensions> access_range,
         id<Dimensions> access_offset, const property_list &prop_list = {})
         : detail::property_interface(prop_list, property_compatibility()),
-          m_buffer(detail::get_buffer_data(buffer_ref)), m_buffer_range(buffer_ref.get_range()),
-          m_access_offset(access_offset), m_access_range(access_range),
+          m_buffer(&detail::get_buffer_state(buffer_ref)), m_access_offset(access_offset), m_access_range(access_range),
           m_access_guard(std::make_shared<detail::host_access_guard<Dimensions>>(
               buffer_ref, detail::accessed_range<Dimensions>(m_access_offset, m_access_range, AccessMode))) {}
 
@@ -1344,7 +1338,7 @@ class accessor<DataT, Dimensions, AccessMode, target::host_buffer, IsPlaceholder
 
     reference operator[](id<Dimensions> index) const {
         SIMSYCL_CHECK(m_buffer != nullptr);
-        return m_buffer[detail::get_linear_index(m_buffer_range, index)];
+        return m_buffer->data[detail::get_linear_index(m_buffer->range, index)];
     }
 
     decltype(auto) operator[](size_t index) const
@@ -1353,7 +1347,10 @@ class accessor<DataT, Dimensions, AccessMode, target::host_buffer, IsPlaceholder
         return detail::subscript<Dimensions>(*this, index);
     }
 
-    std::add_pointer_t<value_type> get_pointer() const noexcept { return m_buffer; }
+    std::add_pointer_t<value_type> get_pointer() const noexcept {
+        SIMSYCL_CHECK(m_buffer != nullptr);
+        return m_buffer->data;
+    }
 
     friend bool operator==(const accessor &lhs, const accessor &rhs) = default;
 
@@ -1361,8 +1358,7 @@ class accessor<DataT, Dimensions, AccessMode, target::host_buffer, IsPlaceholder
     template<typename>
     friend struct std::hash;
 
-    DataT *m_buffer = nullptr;
-    range<Dimensions> m_buffer_range;
+    const detail::buffer_state<std::remove_const_t<DataT>, Dimensions> *m_buffer = nullptr;
     id<Dimensions> m_access_offset;
     range<Dimensions> m_access_range;
     // guard is a shared_ptr because accessors need to be copyable
@@ -1386,8 +1382,9 @@ class accessor<DataT, 0, AccessMode, target::host_buffer, IsPlaceholder> : publi
     template<typename AllocatorT>
     accessor(buffer<DataT, 1, AllocatorT> &buffer_ref, const property_list &prop_list = {})
         : detail::property_interface(prop_list, property_compatibility()),
-          m_buffer(detail::get_buffer_data(buffer_ref)), m_access_guard(std::make_shared<detail::host_access_guard<1>>(
-                                                             buffer_ref, detail::accessed_range<1>(0, 1, AccessMode))) {
+          m_buffer(&detail::get_buffer_state(buffer_ref)),
+          m_access_guard(
+              std::make_shared<detail::host_access_guard<1>>(buffer_ref, detail::accessed_range<1>(0, 1, AccessMode))) {
     }
 
     // non-copyable and immovable, because it holds a system_lock
@@ -1400,10 +1397,13 @@ class accessor<DataT, 0, AccessMode, target::host_buffer, IsPlaceholder> : publi
 
     operator reference() const {
         SIMSYCL_CHECK(m_buffer != nullptr);
-        return *m_buffer;
+        return *m_buffer->data;
     }
 
-    std::add_pointer_t<value_type> get_pointer() const noexcept { return m_buffer; }
+    std::add_pointer_t<value_type> get_pointer() const noexcept {
+        SIMSYCL_CHECK(m_buffer != nullptr);
+        return m_buffer->data;
+    }
 
     friend bool operator==(const accessor &lhs, const accessor &rhs) = default;
 
@@ -1412,7 +1412,7 @@ class accessor<DataT, 0, AccessMode, target::host_buffer, IsPlaceholder> : publi
     friend struct std::hash;
 
     detail::system_lock m_lock; // active host accessors must block command-group submission on other threads
-    DataT *m_buffer = nullptr;
+    const detail::buffer_state<std::remove_const_t<DataT>, 1> *m_buffer = nullptr;
     std::shared_ptr<detail::host_access_guard<1>> m_access_guard;
 };
 
@@ -1472,8 +1472,6 @@ class accessor<DataT, Dimensions, AccessMode, target::local, IsPlaceholder> fina
 
     void **m_allocation_ptr;
     sycl::range<Dimensions> m_range;
-
-    const range<Dimensions> &get_buffer_range() const { return get_range(); }
 
     inline DataT *get_allocation() const { return static_cast<DataT *>(*m_allocation_ptr); }
 };
