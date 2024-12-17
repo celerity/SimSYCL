@@ -201,7 +201,7 @@ class handler {
 
     template<typename T, int Dim, access_mode Mode, target Tgt, access::placeholder IsPlaceholder>
     void fill(accessor<T, Dim, Mode, Tgt, IsPlaceholder> dest, const T &src) {
-        detail::sequential_for(dest.get_range(), dest.get_offset(), [&](const item<Dim> &item) { dest[item] = src; });
+        parallel_for(dest.get_range(), dest.get_offset(), [&](item<Dim> item) { dest[item] = src; });
     }
 
     SIMSYCL_STOP_IGNORING_DEPRECATIONS
