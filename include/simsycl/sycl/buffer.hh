@@ -35,7 +35,7 @@ class context_bound {
   public:
     context_bound(context bound_context) : m_context(std::move(bound_context)) {}
 
-    context get_context() const;
+    context get_context() const { return m_context; }
 
   private:
     context m_context;
