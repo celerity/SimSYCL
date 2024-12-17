@@ -189,9 +189,11 @@ class handler {
         accessor<DestT, DestDim, DestMode, DestTgt, DestIsPlaceholder> dest) {
         static_assert(sizeof(SrcT) == sizeof(DestT));
         static_assert(SrcDim == DestDim, "copy between different accessor dimensions not implemented");
-        assert(src.get_range() == dest.get_range() && "copy between differently-ranged accessors not implemented");
-        detail::memcpy_strided_host(src.get_pointer(), dest.get_pointer(), sizeof(SrcT), src.get_buffer_range(),
-            src.get_offset(), dest.get_buffer_range(), dest.get_offset(), dest.get_range());
+        if constexpr(SrcDim == DestDim) { // stop printing follow-up compiler errors if the above static_assert fails
+            assert(src.get_range() == dest.get_range() && "copy between differently-ranged accessors not implemented");
+            detail::memcpy_strided_host(src.get_pointer(), dest.get_pointer(), sizeof(SrcT), src.get_buffer_range(),
+                src.get_offset(), dest.get_buffer_range(), dest.get_offset(), dest.get_range());
+        }
     }
 
     template<typename T, int Dim, access_mode Mode, target Tgt, access::placeholder IsPlaceholder>
