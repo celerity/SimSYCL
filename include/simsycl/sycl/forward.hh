@@ -163,15 +163,15 @@ concurrent_sub_group &get_concurrent_group(const sycl::sub_group &g);
 template<int Dimensions>
 concurrent_group &get_concurrent_group(const sycl::group<Dimensions> &g);
 
+template<typename T, int Dimensions>
+struct buffer_state;
+
 template<int Dimensions>
 struct buffer_access_validator;
 
 template<typename T, int Dimensions, typename AllocatorT>
-T *get_buffer_data(sycl::buffer<T, Dimensions, AllocatorT> &buf);
-
-template<typename T, int Dimensions, typename AllocatorT>
-buffer_access_validator<Dimensions> &get_buffer_access_validator(
-    const sycl::buffer<T, Dimensions, AllocatorT> &buf, system_lock &lock);
+const buffer_state<std::remove_const_t<T>, Dimensions> &get_buffer_state(
+    const sycl::buffer<T, Dimensions, AllocatorT> &buf);
 
 sycl::handler make_handler(const sycl::device &device);
 
