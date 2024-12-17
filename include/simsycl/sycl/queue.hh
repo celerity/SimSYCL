@@ -46,9 +46,11 @@ class queue final : public detail::reference_type<queue, detail::queue_state>,
         property::queue::enable_profiling, property::queue::in_order>;
 
   public:
-    explicit queue(const property_list &prop_list = {});
+    explicit queue(const property_list &prop_list = {})
+        : queue(internal, default_selector_v, async_handler{}, prop_list) {}
 
-    explicit queue(const async_handler &async_handler, const property_list &prop_list = {});
+    explicit queue(const async_handler &async_handler, const property_list &prop_list = {})
+        : queue(internal, default_selector_v, async_handler, prop_list) {}
 
     template<DeviceSelector Selector>
     explicit queue(const Selector &device_selector, const property_list &prop_list = {})
@@ -59,21 +61,27 @@ class queue final : public detail::reference_type<queue, detail::queue_state>,
         const Selector &device_selector, const async_handler &async_handler, const property_list &prop_list = {})
         : queue(internal, detail::device_selector(device_selector), async_handler, prop_list) {}
 
-    explicit queue(const device &sycl_device, const property_list &prop_list = {});
+    explicit queue(const device &sycl_device, const property_list &prop_list = {})
+        : queue(internal, sycl_device, async_handler{}, prop_list) {}
 
-    explicit queue(const device &sycl_device, const async_handler &async_handler, const property_list &prop_list = {});
+    explicit queue(const device &sycl_device, const async_handler &async_handler, const property_list &prop_list = {})
+        : queue(internal, sycl_device, async_handler, prop_list) {}
 
     template<DeviceSelector Selector>
-    explicit queue(const context &sycl_context, const Selector &device_selector, const property_list &prop_list = {});
+    explicit queue(const context &sycl_context, const Selector &device_selector, const property_list &prop_list = {})
+        : queue(internal, sycl_context, detail::device_selector(device_selector), async_handler{}, prop_list) {}
 
     template<DeviceSelector Selector>
     explicit queue(const context &sycl_context, const Selector &device_selector, const async_handler &async_handler,
-        const property_list &prop_list = {});
+        const property_list &prop_list = {})
+        : queue(internal, sycl_context, detail::device_selector(device_selector), async_handler, prop_list) {}
 
-    explicit queue(const context &sycl_context, const device &sycl_device, const property_list &prop_list = {});
+    explicit queue(const context &sycl_context, const device &sycl_device, const property_list &prop_list = {})
+        : queue(internal, sycl_context, sycl_device, async_handler{}, prop_list) {}
 
     explicit queue(const context &sycl_context, const device &sycl_device, const async_handler &async_handler,
-        const property_list &prop_list = {});
+        const property_list &prop_list = {})
+        : queue(internal, sycl_context, sycl_device, async_handler, prop_list) {}
 
     backend get_backend() const noexcept;
 
@@ -444,6 +452,9 @@ class queue final : public detail::reference_type<queue, detail::queue_state>,
 
     explicit queue(internal_t /* tag */, const device &sycl_device, const async_handler &async_handler,
         const property_list &prop_list);
+
+    explicit queue(internal_t /* tag */, const context &sycl_context, const detail::device_selector &selector,
+        const async_handler &async_handler, const property_list &prop_list);
 
     explicit queue(internal_t /* tag */, const context &sycl_context, const device &sycl_device,
         const async_handler &async_handler, const property_list &prop_list);
