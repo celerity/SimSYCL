@@ -1,0 +1,76 @@
+suite;status;reason
+accessor_basic;run failed;accessor implicit conversions
+accessor_generic;run failed;everything
+accessor_legacy;build failed;image targets, sycl::atomic NYI
+accessor_placeholder;run failed;conditions check (investigate)
+address_space;passed;
+atomic;build failed;deprecated atomic types (return values of accessor<atomic>::operator[])
+atomic_fence;passed;
+atomic_ref;passed;
+atomic_ref_stress;passed;
+bit_cast;passed;
+buffer;run failed;sub-buffers NYI
+context;passed;
+cuda_interop;not applicable;
+device;run failed;sub-devices NYI
+device_event;passed;
+device_selector;passed;
+error;passed;
+event;run failed;async_handler NYI, Limitation: no asynchronicity between application thread and host tasks
+exception_handling;build failed;sub-devices NYI
+exceptions;run failed;"async" error handling NYI
+full_feature_set;passed;
+function_objects;passed;
+group;passed;
+group_functions;run failed;group scan defective?
+handler;run failed;hierarchical parallel for requires known local range
+header;passed;
+hierarchical;passed;
+h_item;passed;
+host_accessor;run failed;reference semantics (copy equality), ...
+host_task;passed;
+id;passed;
+image;build failed;images NYI
+image_accessor;build failed;images NYI
+invoke;run failed;parallel_for 2D / 3D short-hands NYI
+is_device_copyable;passed;
+item;passed;
+kernel;build failed;kernel bundle global functions NYI
+kernel_args;build failed;samplers NYI
+kernel_bundle;build failed;device_image NYI, ...
+language;passed;
+local_accessor;run failed;reference semantics (copy equality), ...
+marray_arithmetic_assignment;passed;
+marray_arithmetic_binary;passed;
+marray_basic;passed;
+marray_bitwise;passed;
+marray_pre_post;passed;
+marray_relational;passed;
+math_builtin_api;build failed;math functions incomplete (only using std)
+multi_ptr;build failed;multi_ptr<legacy> == element* is ambiguous (incorrect in CTS / DPC++?)
+namespace;passed;
+nd_item;passed;
+nd_range;passed;
+opencl_interop;not applicable;
+optional_kernel_features;run failed;incorrect exception codes thrown (investigate)
+platform;passed;
+pointers;passed;
+property;passed;
+queue;passed;
+range;passed;
+reduction;build failed;reductions on `span` NYI
+sampler;build failed;samplers / images NYI
+scalars;passed;
+spec_constants;build failed;use_kernel_bundle() and associated checking NYI
+stream;build failed;sycl:stream NYI
+sub_group;passed;
+sycl_external;run failed;UBSan: reached an unreachable program point in kernel_between_aspects, Clang compiler bug?
+usm;passed;Limitation: SimSYCL cannot communicate from main thread to kernel through SHMEM
+vector_alias;passed;
+vector_api;run failed;convert() tests fail because rounding modes are NYI
+vector_constructors;passed;
+vector_deduction_guides;passed;
+vector_load_store;passed;
+vector_operators;passed;
+vector_swizzle_assignment;passed;
+vector_swizzles;passed;
