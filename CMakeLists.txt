@@ -74,19 +74,8 @@ configure_file(
   @ONLY
 )
 
-# Function to set properties, compile options, and link options for all simsycl targets
-function(set_simsycl_target_options target)
-    set_target_properties(${target} PROPERTIES CXX_STANDARD 20)
-    set_target_properties(${target} PROPERTIES CXX_STANDARD_REQUIRED ON)
-    target_compile_options(${target} PRIVATE
-        # 4180 is a false positive in MSVC in group_operation_impl -- "fixing" it actually breaks the code
-        $<$<CXX_COMPILER_ID:MSVC>:/W4 /wd4180>
-        $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic $<$<BOOL:${SIMSYCL_ENABLE_ASAN}>:-fsanitize=address>>
-    )
-    target_link_options(${target} PRIVATE
-        $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:$<$<BOOL:${SIMSYCL_ENABLE_ASAN}>:-fsanitize=address>>
-    )
-endfunction()
+set(SIMSYCL_LIBRARY simsycl)
+include("${CMAKE_CURRENT_LIST_DIR}/cmake/AddToTarget.cmake")
 
 add_library(simsycl
     include/sycl/sycl.hpp
@@ -173,14 +162,16 @@ target_include_directories(simsycl PUBLIC
 )
 # Compile with -FPIC to make sure our `inline constexpr` variables work when used in a shared library
 set_target_properties(simsycl PROPERTIES POSITION_INDEPENDENT_CODE ON)
-set_simsycl_target_options(simsycl)
+set_simsycl_target_options(simsycl ALL_WARNINGS)
 
 add_executable(main src/test/main.cc)
-target_link_libraries(main simsycl)
-set_simsycl_target_options(main)
+add_sycl_to_target(TARGET main SIMSYCL_ALL_WARNINGS)
 
 enable_testing()
 add_subdirectory(test)
+
+# examples/CMakeLists.txt must support installed SimSYCL as well, so we disable its find_package from here
+set(CMAKE_DISABLE_FIND_PACKAGE_SimSYCL TRUE)
 add_subdirectory(examples)
 
 include(CMakePackageConfigHelpers)
@@ -219,5 +210,6 @@ configure_file(
 install(FILES
   "${CMAKE_CURRENT_BINARY_DIR}/simsycl-config.cmake"
   "${CMAKE_CURRENT_BINARY_DIR}/simsycl-config-version.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/AddToTarget.cmake"
   DESTINATION lib/cmake/SimSYCL
 )
