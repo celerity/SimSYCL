@@ -24,8 +24,8 @@ add_executable(tests
   vec_tests.cc
 )
 
-target_link_libraries(tests PRIVATE Catch2::Catch2WithMain simsycl)
-set_simsycl_target_options(tests)
+add_sycl_to_target(TARGET tests SIMSYCL_ALL_WARNINGS)
+target_link_libraries(tests PRIVATE Catch2::Catch2WithMain)
 
 list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
 include(CTest)
@@ -36,8 +36,8 @@ catch_discover_tests(tests)
 
 function(add_check_test check_name check_mode)
   add_executable(test_check_${check_name} check_tests.cc)
-  set_simsycl_target_options(test_check_${check_name})
-  target_link_libraries(test_check_${check_name} PRIVATE Catch2::Catch2WithMain simsycl)
+  add_sycl_to_target(TARGET test_check_${check_name} SIMSYCL_ALL_WARNINGS)
+  target_link_libraries(test_check_${check_name} PRIVATE Catch2::Catch2WithMain)
   target_compile_definitions(test_check_${check_name} PRIVATE SIMSYCL_CHECK_MODE=${check_mode})
   catch_discover_tests(test_check_${check_name})
 endfunction()
