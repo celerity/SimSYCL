@@ -18,8 +18,8 @@ struct queue_state {
 
     queue_state(const sycl::device &device, const sycl::context &context, const sycl::async_handler &async_handler)
         : device(device), context(context), async_handler(async_handler) {
-        const auto devices = context.get_devices();
-        SIMSYCL_CHECK_MSG(std::find(devices.begin(), devices.end(), device) != devices.end(),
+        SIMSYCL_CHECK_MSG(
+            [ds = context.get_devices()](auto &d) { return std::find(ds.begin(), ds.end(), d) != ds.end(); }(device),
             "queue::queue(): selected device is not in provided context");
     }
 
