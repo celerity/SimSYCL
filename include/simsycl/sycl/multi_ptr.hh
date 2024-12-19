@@ -91,12 +91,14 @@ class multi_ptr {
         requires(Space == access::address_space::generic_space && AS != access::address_space::constant_space)
     multi_ptr &operator=(const multi_ptr<value_type, AS, IsDecorated> &other) {
         m_ptr = other.m_ptr;
+        return *this;
     }
 
     template<access::address_space AS, access::decorated IsDecorated>
         requires(Space == access::address_space::generic_space && AS != access::address_space::constant_space)
     multi_ptr &operator=(multi_ptr<value_type, AS, IsDecorated> &&other) {
         m_ptr = other.m_ptr;
+        return *this;
     }
 
     reference operator[](std::ptrdiff_t i) const { return m_ptr[i]; }
@@ -411,8 +413,14 @@ class SIMSYCL_DETAIL_DEPRECATED_IN_SYCL multi_ptr<ElementType, Space, access::de
     // Assignment and access operators
     multi_ptr &operator=(const multi_ptr &) = default;
     multi_ptr &operator=(multi_ptr &&) = default;
-    multi_ptr &operator=(pointer_t ptr) { m_ptr = ptr; }
-    multi_ptr &operator=(std::nullptr_t /* nullptr */) { m_ptr = nullptr; }
+    multi_ptr &operator=(pointer_t ptr) {
+        m_ptr = ptr;
+        return *this;
+    }
+    multi_ptr &operator=(std::nullptr_t /* nullptr */) {
+        m_ptr = nullptr;
+        return *this;
+    }
 
     ElementType *operator->() const { return m_ptr; }
 
@@ -556,8 +564,14 @@ class SIMSYCL_DETAIL_DEPRECATED_IN_SYCL
     // Assignment operators
     multi_ptr &operator=(const multi_ptr &) = default;
     multi_ptr &operator=(multi_ptr &&) = default;
-    multi_ptr &operator=(pointer_t ptr) { m_ptr = ptr; }
-    multi_ptr &operator=(std::nullptr_t /* nullptr */) { m_ptr = nullptr; }
+    multi_ptr &operator=(pointer_t ptr) {
+        m_ptr = ptr;
+        return *this;
+    }
+    multi_ptr &operator=(std::nullptr_t /* nullptr */) {
+        m_ptr = nullptr;
+        return *this;
+    }
 
     template<typename ElementType, int Dimensions, access_mode Mode, access::placeholder IsPlaceholder>
         requires(Space == access::address_space::global_space || Space == access::address_space::generic_space)
