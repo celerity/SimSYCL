@@ -1,4 +1,7 @@
-add_executable(matmul matmul.cc)
+cmake_minimum_required(VERSION 3.13)
+project(matmul LANGUAGES CXX)
 
-target_link_libraries(matmul PRIVATE simsycl)
-set_simsycl_target_options(matmul)
+find_package(SimSYCL)
+
+add_executable(matmul matmul.cc)
+add_sycl_to_target(TARGET matmul SIMSYCL_ALL_WARNINGS)
