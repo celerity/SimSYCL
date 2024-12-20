@@ -105,7 +105,7 @@ using std::round;
 
 template<detail::GenFloat T>
 auto rsqrt(T x) {
-    return detail::component_wise_op(x, [](auto x) { return static_cast<decltype(x)>(1.0) / sqrt(x); });
+    return detail::component_wise_op(x, [](auto v) { return static_cast<decltype(v)>(1.0) / sqrt(v); });
 }
 
 using std::sin;
@@ -308,7 +308,13 @@ using std::min;
 // TODO rotate
 // TODO sub_sat
 // TODO upsample
-// TODO popcount
+
+template<detail::GenInt T>
+auto popcount(T x) {
+    return detail::component_wise_op(
+        x, [](auto v) { return std::popcount(static_cast<std::make_unsigned_t<decltype(v)>>(v)); });
+}
+
 // TODO mad24
 // TODO mul24
 
