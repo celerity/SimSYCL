@@ -8,7 +8,11 @@ namespace simsycl::sycl {
 //       the standard requires pass-by-value, but I'm not sure if this is visible to the user
 
 // TODO cross
-// TODO dot
+
+template<detail::GeoFloat T1, detail::GeoFloat T2>
+auto dot(const T1 &f, const T2 &g) {
+    return detail::sum(detail::to_matching_vec<T1>(f) * detail::to_matching_vec<T2>(g));
+}
 
 template<detail::GeoFloat T>
 auto length(const T &f) {
@@ -20,7 +24,11 @@ auto distance(const T1 &p0, const T2 &p1) {
     return length(p1 - p0);
 }
 
-// TODO normalize
+template<detail::GeoFloat T>
+auto normalize(const T &f) {
+    return detail::to_matching_vec<T>(f) / detail::to_matching_vec<T>(length(f));
+}
+
 // TODO fast_distance
 // TODO fast_length
 // TODO fast_normalize
