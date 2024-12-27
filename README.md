@@ -1,9 +1,8 @@
 <p align="center">
-<img src="resources/logo.png" alt="SimSYCL">
+<img src="resources/logo.svg" width="500px" alt="SimSYCL">
+<br/>
 <i>“Technically correct is the best kind of correct”</i><br/>&nbsp;
 </p>
-
-# What and why is this?
 
 SimSYCL is a single-threaded, synchronous, library-only implementation of the SYCL 2020 specification. It enables you to test your SYCL applications against simulated hardware of different characteristics and discover bugs with its extensive verification capabilities.
 
@@ -11,7 +10,7 @@ SimSYCL is in a very early stage of development - try it at your own risk!
 
 ## Requirements
 
-SimSYCL requires the Boost `context` libary.
+SimSYCL requires CMake, a C++20 compiler and the Boost `context` libary to be installed.
 
 ## Supported Platforms
 
@@ -24,6 +23,55 @@ The following platform and compiler combinations are currently tested in CI:
 
 Other platforms and compilers should also work, as long as they have sufficient C++20 support.
 Note that Clang versions prior to 17 do not currently work due to their incomplete CTAD support.
+
+## Installing SimSYCL
+
+To build SimSYCL and install it next to the source directory, run e.g.:
+
+```sh
+cmake -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=$(pwd)-install
+cmake --build build --target install
+```
+
+### Build Options
+
+These can be set on the CMake command line via `-DOPTION=VALUE`.
+
+| option | values | effect |
+|---|---|---|
+| `SIMSYCL_ANNOTATE_SYCL_DEPRECATIONS` | `OFF`,`ON` | Mark deprecated SYCL APIs with `[[deprecated]]` (default `ON`) |
+| `SIMSYCL_ENABLE_ASAN`| `OFF`,`ON` | Build SimSYCL and the user code with AddressSanitizer (default `OFF`) |
+| `SIMSYCL_CHECK_MODE` | `SIMSYCL_CHECK_{NONE,LOG,THROW,ABORT}` | How to report verification errors (default `ABORT`) |
+
+## Using SimSYCL
+
+To get started, simply copy the `examples` folder to a separate location and edit its files as you see fit. To build against SimSYCL installed as above:
+
+```sh
+cmake -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=/path/where/you/installed/SimSYCL
+cmake --build build
+```
+
+### Environment Variables
+
+These are available to all SimSYCL applications.
+
+| variable | values | effect |
+|---|---|---|
+| `SIMSYCL_SYSTEM` | `system.json` | Simulate the system defined in `system.json` |
+| `SIMSYCL_SCHEDULE` | `rr`, `shuffle`, `shuffle:<seed>` | Choose a schedule for work item order in kernels |
+
+### System Definition Files
+
+Systems are defined by listing all devices, platforms and their runtime properties in a JSON file.
+As a starting point, you can export the built-in system definition via
+```c++
+simsycl::write_system_config("system.json", simsycl::builtin_system);
+```
+and then use your (modified) system definition via
+```sh
+SIMSYCL_SYSTEM=system.json build/matmul
+```
 
 ## Research
 
