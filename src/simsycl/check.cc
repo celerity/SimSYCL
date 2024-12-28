@@ -1,5 +1,6 @@
 #include "simsycl/detail/check.hh"
 #include "simsycl/sycl/exception.hh"
+#include "simsycl/sycl/property.hh"
 
 // TODO: use std::format/print once widely available
 #include <cassert>
@@ -49,6 +50,10 @@ void check(bool condition, const char *cond_string, std::source_location locatio
             default: assert(false && "invalid check mode");
         }
     }
+}
+
+void throw_invalid_property() {
+    throw simsycl::sycl::exception(sycl::errc::invalid, "object does not hold requested property");
 }
 
 } // namespace simsycl::detail
