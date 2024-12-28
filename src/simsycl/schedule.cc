@@ -244,7 +244,7 @@ void cooperative_for_nd_range(const sycl::device &device, const sycl::nd_range<D
                     }
 
                     const auto group_id = linear_index_to_id(group_range, group_linear_id);
-                    const auto global_id = group_id * sycl::id<Dimensions>(local_range) + local_id;
+                    const auto global_id = range.get_offset() + group_id * sycl::id<Dimensions>(local_range) + local_id;
 
                     // if sub-group range is not divisible by local range, the last sub-group will be smaller
                     const auto sub_group_local_linear_range = std::min(sub_group_max_local_linear_range,
