@@ -300,7 +300,10 @@ class accessor : public simsycl::detail::property_interface {
 
     void swap(accessor &other) { return std::swap(*this, other); }
 
-    bool is_placeholder() const { return !m_required; }
+    bool is_placeholder() const {
+        SIMSYCL_CHECK(m_required != nullptr);
+        return !*m_required;
+    }
 
     size_type byte_size() const noexcept {
         SIMSYCL_CHECK(m_buffer != nullptr);
@@ -334,6 +337,7 @@ class accessor : public simsycl::detail::property_interface {
         requires(AccessMode != access_mode::atomic)
     {
         SIMSYCL_CHECK(m_buffer != nullptr);
+        SIMSYCL_CHECK(m_required != nullptr);
         SIMSYCL_CHECK(*m_required);
         return m_buffer->data[detail::get_linear_index(m_buffer->range, index)];
     }
@@ -352,6 +356,7 @@ class accessor : public simsycl::detail::property_interface {
         requires(AccessTarget == target::device)
     {
         SIMSYCL_CHECK(m_buffer != nullptr);
+        SIMSYCL_CHECK(m_required != nullptr);
         SIMSYCL_CHECK(*m_required);
         return m_buffer->data;
     }
@@ -360,6 +365,7 @@ class accessor : public simsycl::detail::property_interface {
         requires(AccessTarget == target::host_task)
     {
         SIMSYCL_CHECK(m_buffer != nullptr);
+        SIMSYCL_CHECK(m_required != nullptr);
         SIMSYCL_CHECK(*m_required);
         return m_buffer->data;
     }
@@ -369,6 +375,7 @@ class accessor : public simsycl::detail::property_interface {
         requires(AccessTarget == target::device)
     {
         SIMSYCL_CHECK(m_buffer != nullptr);
+        SIMSYCL_CHECK(m_required != nullptr);
         SIMSYCL_CHECK(*m_required);
         return accessor_ptr<IsDecorated>(m_buffer->data);
     }
@@ -433,6 +440,7 @@ class accessor : public simsycl::detail::property_interface {
     void require() {
         SIMSYCL_CHECK(m_buffer != nullptr);
         SIMSYCL_CHECK(m_guard != nullptr);
+        SIMSYCL_CHECK(m_required != nullptr);
         m_guard->check_access_from_command_group({m_access_offset, m_access_range, AccessMode});
         *m_required = true;
     }
@@ -537,7 +545,10 @@ class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> : public simsy
 
     void swap(accessor &other) { return std::swap(*this, other); }
 
-    bool is_placeholder() const { return !m_required; }
+    bool is_placeholder() const {
+        SIMSYCL_CHECK(m_required != nullptr);
+        return !*m_required;
+    }
 
     size_type byte_size() const noexcept { return sizeof(DataT); }
 
@@ -555,6 +566,7 @@ class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> : public simsy
         requires(AccessMode != access_mode::atomic)
     {
         SIMSYCL_CHECK(m_buffer != nullptr);
+        SIMSYCL_CHECK(m_required != nullptr);
         SIMSYCL_CHECK(*m_required);
         return *m_buffer->data;
     }
@@ -563,6 +575,7 @@ class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> : public simsy
         requires(AccessMode != access_mode::atomic && AccessMode != access_mode::read)
     {
         SIMSYCL_CHECK(m_buffer != nullptr);
+        SIMSYCL_CHECK(m_required != nullptr);
         SIMSYCL_CHECK(*m_required);
         *m_buffer->data = other;
         return *this;
@@ -572,6 +585,7 @@ class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> : public simsy
         requires(AccessMode != access_mode::atomic && AccessMode != access_mode::read)
     {
         SIMSYCL_CHECK(m_buffer != nullptr);
+        SIMSYCL_CHECK(m_required != nullptr);
         SIMSYCL_CHECK(*m_required);
         *m_buffer->data = std::move(other);
         return *this;
@@ -584,6 +598,7 @@ class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> : public simsy
         requires(AccessTarget == target::device)
     {
         SIMSYCL_CHECK(m_buffer != nullptr);
+        SIMSYCL_CHECK(m_required != nullptr);
         SIMSYCL_CHECK(*m_required);
         return m_buffer->data;
     }
@@ -592,6 +607,7 @@ class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> : public simsy
         requires(AccessTarget == target::host_task)
     {
         SIMSYCL_CHECK(m_buffer != nullptr);
+        SIMSYCL_CHECK(m_required != nullptr);
         SIMSYCL_CHECK(*m_required);
         return m_buffer->data;
     }
@@ -601,6 +617,7 @@ class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> : public simsy
         requires(AccessTarget == target::device)
     {
         SIMSYCL_CHECK(m_buffer != nullptr);
+        SIMSYCL_CHECK(m_required != nullptr);
         SIMSYCL_CHECK(*m_required);
         return accessor_ptr<IsDecorated>(m_buffer->data);
     }
@@ -636,6 +653,7 @@ class accessor<DataT, 0, AccessMode, AccessTarget, IsPlaceholder> : public simsy
     void require() {
         SIMSYCL_CHECK(m_buffer != nullptr);
         SIMSYCL_CHECK(m_guard != nullptr);
+        SIMSYCL_CHECK(m_required != nullptr);
         m_guard->check_access_from_command_group({0, 1, AccessMode});
         *m_required = true;
     }
@@ -1142,7 +1160,10 @@ class accessor<DataT, Dimensions, AccessMode, target::constant_buffer, IsPlaceho
 
     friend bool operator==(const accessor &lhs, const accessor &rhs) = default;
 
-    bool is_placeholder() const { return !*m_required; }
+    bool is_placeholder() const {
+        SIMSYCL_CHECK(m_required != nullptr);
+        return !*m_required;
+    }
 
     size_t get_size() const noexcept { return get_count() * sizeof(DataT); }
 
@@ -1220,6 +1241,7 @@ class accessor<DataT, Dimensions, AccessMode, target::constant_buffer, IsPlaceho
     void require() {
         SIMSYCL_CHECK(m_buffer != nullptr);
         SIMSYCL_CHECK(m_guard != nullptr);
+        SIMSYCL_CHECK(m_required != nullptr);
         m_guard->check_access_from_command_group({m_access_offset, m_access_range, AccessMode});
         *m_required = true;
     }
@@ -1255,7 +1277,10 @@ class accessor<DataT, 0, AccessMode, target::constant_buffer, IsPlaceholder> fin
 
     friend bool operator==(const accessor &lhs, const accessor &rhs) = default;
 
-    bool is_placeholder() const { return !m_required; }
+    bool is_placeholder() const {
+        SIMSYCL_CHECK(m_required != nullptr);
+        return !*m_required;
+    }
 
     size_t get_size() const noexcept { return sizeof(DataT); }
 
@@ -1263,12 +1288,14 @@ class accessor<DataT, 0, AccessMode, target::constant_buffer, IsPlaceholder> fin
 
     operator reference() const {
         SIMSYCL_CHECK(m_buffer != nullptr);
+        SIMSYCL_CHECK(m_required != nullptr);
         SIMSYCL_CHECK(*m_required);
         return *m_buffer->data;
     }
 
     global_ptr<DataT> get_pointer() const noexcept {
         SIMSYCL_CHECK(m_buffer != nullptr);
+        SIMSYCL_CHECK(m_required != nullptr);
         SIMSYCL_CHECK(*m_required);
         return m_buffer->data;
     }
@@ -1287,6 +1314,7 @@ class accessor<DataT, 0, AccessMode, target::constant_buffer, IsPlaceholder> fin
     void require() {
         SIMSYCL_CHECK(m_buffer != nullptr);
         SIMSYCL_CHECK(m_guard != nullptr);
+        SIMSYCL_CHECK(m_required != nullptr);
         m_guard->check_access_from_command_group({0, 1, AccessMode});
         *m_required = true;
     }
