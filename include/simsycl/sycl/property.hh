@@ -12,7 +12,10 @@ namespace simsycl::detail {
 
 class property_interface;
 
-}
+// outlined into check.cc to avoid cyclic include property.hh -> exception.hh -> context.hh -> property.hh
+[[noreturn]] void throw_invalid_property();
+
+} // namespace simsycl::detail
 
 namespace simsycl::sycl {
 
@@ -46,7 +49,7 @@ class property_list {
     Property get_property() const {
         const auto iter = std::find_if(m_properties.begin(), m_properties.end(),
             [](const std::any &prop) { return prop.type() == typeid(Property); });
-        SIMSYCL_CHECK(iter != m_properties.end());
+        if(iter == m_properties.end()) { detail::throw_invalid_property(); }
         return std::any_cast<Property>(*iter);
     }
 
@@ -101,7 +104,7 @@ class property_interface {
     Property get_property() const {
         const auto iter = std::find_if(m_properties.begin(), m_properties.end(),
             [](const std::any &prop) { return prop.type() == typeid(Property); });
-        SIMSYCL_CHECK(iter != m_properties.end());
+        if(iter == m_properties.end()) { detail::throw_invalid_property(); }
         return std::any_cast<Property>(*iter);
     }
 
