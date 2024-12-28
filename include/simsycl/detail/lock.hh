@@ -7,6 +7,9 @@
 
 namespace simsycl::detail {
 
+/// SimSYCL can be used from multiple threads simultaneously, but will serialize all actual SYCL work as well as access
+/// to structures with reference semantics using the (singleton) system lock. It is safe to lock recursively from within
+/// a single thread.
 class system_lock {
   public:
     system_lock();
@@ -18,6 +21,8 @@ class system_lock {
     std::lock_guard<std::recursive_mutex> m_lock;
 };
 
+/// Mutable state that is potentially shared between threads should be wrapped in a `shared_value` to ensure it can only
+/// be accessed when a `system_lock` is in scope.
 template<typename T>
 class shared_value {
   public:

@@ -12,10 +12,15 @@ namespace simsycl {
 
 class cooperative_schedule;
 
+/// Identifier for `sycl::platform`s within a `system_config`.
 using platform_id = std::string;
-using device_id = std::string;
-using system_id = std::string;
 
+/// Identifier for `sycl::device`s within a `system_config`.
+using device_id = std::string;
+
+/// Configuration for a single `sycl::device`.
+///
+/// All data members will be reflected in the `sycl::info::device` properties of the created device.
 struct device_config {
     sycl::info::device_type device_type{};
     uint32_t vendor_id{};
@@ -97,6 +102,9 @@ struct device_config {
     sycl::info::partition_affinity_domain partition_type_affinity_domain{};
 };
 
+/// Configuration for a single `sycl::platform`.
+///
+/// All data members will be reflected in the `sycl::info::platform` properties of the created platform.
 struct platform_config {
     std::string profile{};
     std::string version{};
@@ -105,20 +113,44 @@ struct platform_config {
     std::vector<std::string> extensions{};
 };
 
+/// Configuration for the entire system simulated by SimSYCL.
 struct system_config {
+    /// All platforms returned by `sycl::platform::get_platforms()`, in order.
+    ///
+    /// The `platform_id` is only relevant as a reference within this struct.
     std::unordered_map<platform_id, platform_config> platforms{};
+
+    /// All devices returned by `sycl::device::get_devices()`, in order.
+    ///
+    /// The `device_id` is only relevant as a reference within this struct.
     std::unordered_map<device_id, device_config> devices{};
 };
 
+/// Configuration of the builtin platform as returned through `sycl::platform::get_platforms()` by default.
 extern const platform_config builtin_platform;
+
+/// Configuration of the builtin device as returned through `sycl::device::get_devices()` by default.
 extern const device_config builtin_device;
+
+/// Default system configuration when not overriden by the environment.
 extern const system_config builtin_system;
 
+/// Return the system configuration specified by the environment via `SIMSYCL_SYSTEM=system.json`, or `builtin_system`
+/// as a fallback.
 const system_config &get_default_system_config();
+
+/// Read a `system_config` from a JSON file.
 system_config read_system_config(const std::string &path_to_json_file);
+
+/// Write a `system_config` to a JSON file.
 void write_system_config(const std::string &path_to_json_file, const system_config &config);
+
+/// Replace the active `system_config` so that all future calls to device and platform selection functions return
+/// members of this configuration.
 void configure_system(const system_config &system);
 
+/// Return the schedule for threads of a kernel specified by the environment via `SIMSYCL_SCHEDULE`, or a
+/// `round_robin_schedule` as a fallback.
 std::shared_ptr<const cooperative_schedule> get_default_cooperative_schedule();
 
 } // namespace simsycl
