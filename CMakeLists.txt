@@ -28,7 +28,7 @@ if(CMAKE_GENERATOR STREQUAL "Ninja")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=always")
 endif()
 
-find_package(Boost 1.70 COMPONENTS context REQUIRED)
+find_package(Boost 1.70 CONFIG COMPONENTS context REQUIRED)
 
 include(FetchContent)
 

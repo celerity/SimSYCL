@@ -14,7 +14,7 @@ set(SIMSYCL_LIBRARY SimSYCL::simsycl)
 set(SIMSYCL_ORIGINAL_CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}")
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${SIMSYCL_CMAKE_DIR}")
 
-find_dependency(Boost 1.70 COMPONENTS context REQUIRED)
+find_dependency(Boost 1.70 CONFIG COMPONENTS context REQUIRED)
 find_dependency(nlohmann_json)
 find_dependency(libenvpp)
 
