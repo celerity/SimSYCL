@@ -80,6 +80,7 @@ jobs:
         -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
         -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        -DCMAKE_POLICY_DEFAULT_CMP0144=NEW
         -S ${{ github.workspace }}
         -DCMAKE_INSTALL_PREFIX=${{ steps.strings.outputs.install-dir }}
 
@@ -95,6 +96,7 @@ jobs:
         -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
         -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        -DCMAKE_POLICY_DEFAULT_CMP0144=NEW
         -S ${{ github.workspace }}/examples
         -DCMAKE_PREFIX_PATH=${{ steps.strings.outputs.install-dir }}
 
