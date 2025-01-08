@@ -6,7 +6,11 @@
 
 SimSYCL is a single-threaded, synchronous, library-only implementation of the SYCL 2020 specification. It enables you to test your SYCL applications against simulated hardware of different characteristics and discover bugs with its extensive verification capabilities.
 
-SimSYCL is in a very early stage of development - try it at your own risk!
+## Implementation progress
+
+SimSYCL is still under development, but it already passes a large portion of the [SYCL Conformance Test Suite](https://github.com/KhronosGroup/SYCL-CTS):
+
+![SYCL spec conformance by CTS test suites passed](resources/cts_state.svg)
 
 ## Requirements
 
