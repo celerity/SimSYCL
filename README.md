@@ -41,7 +41,7 @@ These can be set on the CMake command line via `-DOPTION=VALUE`.
 |---|---|---|
 | `SIMSYCL_ANNOTATE_SYCL_DEPRECATIONS` | `OFF`,`ON` | Mark deprecated SYCL APIs with `[[deprecated]]` (default `ON`) |
 | `SIMSYCL_ENABLE_ASAN`| `OFF`,`ON` | Build SimSYCL and the user code with AddressSanitizer (default `OFF`) |
-| `SIMSYCL_CHECK_MODE` | `SIMSYCL_CHECK_{NONE,LOG,THROW,ABORT}` | How to report verification errors (default `ABORT`) |
+| `SIMSYCL_CHECK_MODE` | `NONE`,`LOG`,`THROW`,`ABORT` | How to report verification errors (default `ABORT`) |
 
 ## Using SimSYCL
 
