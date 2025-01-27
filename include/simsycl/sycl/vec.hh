@@ -299,10 +299,10 @@ class swizzled_vec {
     }
 
 #define SIMSYCL_DETAIL_DEFINE_1D_SWIZZLE(req, comp)                                                                    \
-    auto comp() const                                                                                                  \
+    ReferenceDataT &comp() const                                                                                       \
         requires(req && num_elements > sycl::elem::comp)                                                               \
     {                                                                                                                  \
-        return detail::swizzled_vec<ReferenceDataT, indices[sycl::elem::comp]>(m_elems);                               \
+        return m_elems[indices[sycl::elem::comp]];                                                                     \
     }
 
 #define SIMSYCL_DETAIL_DEFINE_2D_SWIZZLE(req, comp1, comp2)                                                            \
@@ -607,15 +607,15 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
     }
 
 #define SIMSYCL_DETAIL_DEFINE_1D_SWIZZLE(req, comp)                                                                    \
-    auto comp()                                                                                                        \
+    DataT &comp()                                                                                                      \
         requires(req && num_elements > elem::comp)                                                                     \
     {                                                                                                                  \
-        return detail::swizzled_vec<DataT, elem::comp>(m_elems);                                                       \
+        return m_elems[elem::comp];                                                                                    \
     }                                                                                                                  \
-    auto comp() const                                                                                                  \
+    const DataT &comp() const                                                                                          \
         requires(req && num_elements > elem::comp)                                                                     \
     {                                                                                                                  \
-        return detail::swizzled_vec<const DataT, elem::comp>(m_elems);                                                 \
+        return m_elems[elem::comp];                                                                                    \
     }
 
 #define SIMSYCL_DETAIL_DEFINE_2D_SWIZZLE(req, comp1, comp2)                                                            \
