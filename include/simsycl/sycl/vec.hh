@@ -7,6 +7,7 @@
 #include "../detail/check.hh"
 #include "../detail/utils.hh"
 
+#include <concepts>
 #include <cstdint>
 #include <cstdlib>
 #include <type_traits>
@@ -234,8 +235,9 @@ class swizzled_vec {
     swizzled_vec &operator=(const swizzled_vec &) = delete;
     swizzled_vec &operator=(swizzled_vec &&) = delete;
 
-    swizzled_vec &operator=(const value_type &rhs)
-        requires(allow_assign)
+    template<typename T>
+    swizzled_vec &operator=(const T &rhs)
+        requires(allow_assign && std::convertible_to<T, value_type>)
     {
         for(size_t i = 0; i < num_elements; ++i) { m_elems[indices[i]] = rhs; }
         return *this;
@@ -540,7 +542,10 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
     vec(const vec &) = default;
     vec &operator=(const vec &rhs) = default;
 
-    vec &operator=(const DataT &rhs) {
+    template<typename T>
+    vec &operator=(const T &rhs)
+        requires(std::convertible_to<T, DataT>)
+    {
         for(int i = 0; i < NumElements; ++i) { m_elems[i] = rhs; }
         return *this;
     }
@@ -755,15 +760,17 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
         for(int i = 0; i < NumElements; ++i) { result.m_elems[i] = lhs.m_elems[i] op rhs.m_elems[i]; }                 \
         return result;                                                                                                 \
     }                                                                                                                  \
-    friend vec operator op(const vec &lhs, const DataT &rhs)                                                           \
-        requires(enable_if)                                                                                            \
+    template<typename T>                                                                                               \
+    friend vec operator op(const vec &lhs, const T &rhs)                                                               \
+        requires(enable_if && std::convertible_to<T, DataT>)                                                           \
     {                                                                                                                  \
         vec result;                                                                                                    \
         for(int i = 0; i < NumElements; ++i) { result.m_elems[i] = lhs.m_elems[i] op rhs; }                            \
         return result;                                                                                                 \
     }                                                                                                                  \
-    friend vec operator op(const DataT &lhs, const vec &rhs)                                                           \
-        requires(enable_if)                                                                                            \
+    template<typename T>                                                                                               \
+    friend vec operator op(const T &lhs, const vec &rhs)                                                               \
+        requires(enable_if && std::convertible_to<T, DataT>)                                                           \
     {                                                                                                                  \
         vec result;                                                                                                    \
         for(int i = 0; i < NumElements; ++i) { result.m_elems[i] = lhs op rhs.m_elems[i]; }                            \
@@ -797,8 +804,9 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
         for(int i = 0; i < NumElements; ++i) { lhs.m_elems[i] op rhs.m_elems[rhs.indices[i]]; }                        \
         return lhs;                                                                                                    \
     }                                                                                                                  \
-    friend vec &operator op(vec & lhs, const DataT & rhs)                                                              \
-        requires(enable_if)                                                                                            \
+    template<typename T>                                                                                               \
+    friend vec &operator op(vec & lhs, const T & rhs)                                                                  \
+        requires(enable_if && std::convertible_to<T, DataT>)                                                           \
     {                                                                                                                  \
         for(int i = 0; i < NumElements; ++i) { lhs.m_elems[i] op rhs; }                                                \
         return lhs;                                                                                                    \
@@ -866,12 +874,18 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
         for(int i = 0; i < NumElements; ++i) { result.m_elems[i] = lhs.m_elems[i] op rhs.m_elems[i]; }                 \
         return result;                                                                                                 \
     }                                                                                                                  \
-    friend vec<decltype(DataT {} op DataT{}), NumElements> operator op(const vec & lhs, const DataT & rhs) {           \
+    template<typename T>                                                                                               \
+    friend vec<decltype(DataT {} op DataT{}), NumElements> operator op(const vec & lhs, const T & rhs)                 \
+        requires(std::convertible_to<T, DataT>)                                                                        \
+    {                                                                                                                  \
         vec<decltype(DataT {} op DataT{}), NumElements> result;                                                        \
         for(int i = 0; i < NumElements; ++i) { result.m_elems[i] = lhs.m_elems[i] op rhs; }                            \
         return result;                                                                                                 \
     }                                                                                                                  \
-    friend vec<decltype(DataT {} op DataT{}), NumElements> operator op(const DataT & lhs, const vec & rhs) {           \
+    template<typename T>                                                                                               \
+    friend vec<decltype(DataT {} op DataT{}), NumElements> operator op(const T & lhs, const vec & rhs)                 \
+        requires(std::convertible_to<T, DataT>)                                                                        \
+    {                                                                                                                  \
         vec<decltype(DataT {} op DataT{}), NumElements> result;                                                        \
         for(int i = 0; i < NumElements; ++i) { result.m_elems[i] = lhs op rhs.m_elems[i]; }                            \
         return result;                                                                                                 \
