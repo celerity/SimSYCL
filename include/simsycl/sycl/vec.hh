@@ -69,6 +69,8 @@ template<typename T, typename DataT, int NumElements>
 concept VecCompatible
     = vec_like_num_elements<DataT, T>::value == 1 || vec_like_num_elements<DataT, T>::value == NumElements;
 
+template<typename From, typename To>
+concept explicitly_convertible_to = requires { static_cast<To>(std::declval<From>()); };
 
 template<int... Is>
 struct no_repeat_indices;
@@ -256,6 +258,13 @@ class swizzled_vec {
     }
 
     operator value_type() const
+        requires(num_elements == 1)
+    {
+        return m_elems[indices[0]];
+    }
+
+    template<detail::explicitly_convertible_to<value_type> T>
+    explicit operator T() const
         requires(num_elements == 1)
     {
         return m_elems[indices[0]];
@@ -543,6 +552,13 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
     }
 
     operator DataT() const
+        requires(NumElements == 1)
+    {
+        return m_elems[0];
+    }
+
+    template<detail::explicitly_convertible_to<DataT> T>
+    explicit operator T() const
         requires(NumElements == 1)
     {
         return m_elems[0];
