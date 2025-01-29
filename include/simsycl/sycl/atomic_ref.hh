@@ -119,11 +119,27 @@ class atomic_ref_base {
     }
 };
 
+// The spec provides an explicit list of which types are valid for atomic operations
+template<typename T>
+concept ValidAtomicIntType
+    = (std::same_as<T, int> || std::same_as<T, unsigned int> || std::same_as<T, long> || std::same_as<T, unsigned long>
+          || std::same_as<T, long long> || std::same_as<T, unsigned long long>)
+    && (sizeof(T) == 4 || sizeof(T) == 8);
+
+template<typename T>
+concept ValidAtomicFloatType = std::same_as<T, float> || std::same_as<T, double>;
+// TODO: for double we would also need to check if
+//           "the code containing this sycl::atomic_ref was submitted to a device that has sycl::aspect::atomic64"
+// that's quite challenging to implement as-is, since we would need to do this at runtime when operations are performed
+
+template<typename T>
+concept ValidAtomicType = ValidAtomicIntType<T> || ValidAtomicFloatType<T>;
+
 } // namespace simsycl::detail
 
 namespace simsycl::sycl {
 
-template<typename T, memory_order DefaultOrder, memory_scope DefaultScope,
+template<detail::ValidAtomicType T, memory_order DefaultOrder, memory_scope DefaultScope,
     access::address_space AddressSpace = access::address_space::generic_space>
 class atomic_ref : public detail::atomic_ref_base<T, DefaultOrder, DefaultScope, AddressSpace> {
   private:
@@ -135,7 +151,7 @@ class atomic_ref : public detail::atomic_ref_base<T, DefaultOrder, DefaultScope,
 };
 
 // Partial specialization for integral types
-template<std::integral Integral, memory_order DefaultOrder, memory_scope DefaultScope,
+template<detail::ValidAtomicIntType Integral, memory_order DefaultOrder, memory_scope DefaultScope,
     access::address_space AddressSpace>
 class atomic_ref<Integral, DefaultOrder, DefaultScope, AddressSpace>
     : public detail::atomic_ref_base<Integral, DefaultOrder, DefaultScope, AddressSpace> {
@@ -223,7 +239,7 @@ class atomic_ref<Integral, DefaultOrder, DefaultScope, AddressSpace>
 };
 
 // Partial specialization for floating-point types
-template<std::floating_point Floating, memory_order DefaultOrder, memory_scope DefaultScope,
+template<detail::ValidAtomicFloatType Floating, memory_order DefaultOrder, memory_scope DefaultScope,
     access::address_space AddressSpace>
 class atomic_ref<Floating, DefaultOrder, DefaultScope, AddressSpace>
     : public detail::atomic_ref_base<Floating, DefaultOrder, DefaultScope, AddressSpace> {
