@@ -7,6 +7,7 @@
 #include "../detail/check.hh"
 #include "../detail/utils.hh"
 
+#include <concepts>
 #include <cstdint>
 #include <cstdlib>
 #include <type_traits>
@@ -69,6 +70,11 @@ template<typename T, typename DataT, int NumElements>
 concept VecCompatible
     = vec_like_num_elements<DataT, T>::value == 1 || vec_like_num_elements<DataT, T>::value == NumElements;
 
+template<typename From, typename To>
+concept implicitly_convertible = requires { std::is_convertible_v<From, To>; };
+
+template<typename From, typename To>
+concept explicitly_convertible = requires { static_cast<To>(std::declval<From>()); };
 
 template<int... Is>
 struct no_repeat_indices;
@@ -229,8 +235,9 @@ class swizzled_vec {
     swizzled_vec &operator=(const swizzled_vec &) = delete;
     swizzled_vec &operator=(swizzled_vec &&) = delete;
 
-    swizzled_vec &operator=(const value_type &rhs)
-        requires(allow_assign)
+    template<typename T>
+    swizzled_vec &operator=(const T &rhs)
+        requires(allow_assign && std::convertible_to<T, value_type>)
     {
         for(size_t i = 0; i < num_elements; ++i) { m_elems[indices[i]] = rhs; }
         return *this;
@@ -257,6 +264,13 @@ class swizzled_vec {
 
     operator value_type() const
         requires(num_elements == 1)
+    {
+        return m_elems[indices[0]];
+    }
+
+    template<typename T>
+    explicit operator T() const
+        requires(num_elements == 1 && detail::explicitly_convertible<value_type, T>)
     {
         return m_elems[indices[0]];
     }
@@ -288,10 +302,10 @@ class swizzled_vec {
     }
 
 #define SIMSYCL_DETAIL_DEFINE_1D_SWIZZLE(req, comp)                                                                    \
-    auto comp() const                                                                                                  \
+    ReferenceDataT &comp() const                                                                                       \
         requires(req && num_elements > sycl::elem::comp)                                                               \
     {                                                                                                                  \
-        return detail::swizzled_vec<ReferenceDataT, indices[sycl::elem::comp]>(m_elems);                               \
+        return m_elems[indices[sycl::elem::comp]];                                                                     \
     }
 
 #define SIMSYCL_DETAIL_DEFINE_2D_SWIZZLE(req, comp1, comp2)                                                            \
@@ -515,7 +529,7 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
 
     vec() = default;
 
-    explicit constexpr vec(const DataT &arg) {
+    explicit(num_elements > 1) constexpr vec(const DataT &arg) {
         for(int i = 0; i < NumElements; ++i) { m_elems[i] = arg; }
     }
 
@@ -528,7 +542,10 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
     vec(const vec &) = default;
     vec &operator=(const vec &rhs) = default;
 
-    vec &operator=(const DataT &rhs) {
+    template<typename T>
+    vec &operator=(const T &rhs)
+        requires(std::convertible_to<T, DataT>)
+    {
         for(int i = 0; i < NumElements; ++i) { m_elems[i] = rhs; }
         return *this;
     }
@@ -544,6 +561,13 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
 
     operator DataT() const
         requires(NumElements == 1)
+    {
+        return m_elems[0];
+    }
+
+    template<typename T>
+    explicit operator T() const
+        requires(NumElements == 1 && detail::explicitly_convertible<DataT, T>)
     {
         return m_elems[0];
     }
@@ -588,15 +612,15 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
     }
 
 #define SIMSYCL_DETAIL_DEFINE_1D_SWIZZLE(req, comp)                                                                    \
-    auto comp()                                                                                                        \
+    DataT &comp()                                                                                                      \
         requires(req && num_elements > elem::comp)                                                                     \
     {                                                                                                                  \
-        return detail::swizzled_vec<DataT, elem::comp>(m_elems);                                                       \
+        return m_elems[elem::comp];                                                                                    \
     }                                                                                                                  \
-    auto comp() const                                                                                                  \
+    const DataT &comp() const                                                                                          \
         requires(req && num_elements > elem::comp)                                                                     \
     {                                                                                                                  \
-        return detail::swizzled_vec<const DataT, elem::comp>(m_elems);                                                 \
+        return m_elems[elem::comp];                                                                                    \
     }
 
 #define SIMSYCL_DETAIL_DEFINE_2D_SWIZZLE(req, comp1, comp2)                                                            \
@@ -736,15 +760,17 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
         for(int i = 0; i < NumElements; ++i) { result.m_elems[i] = lhs.m_elems[i] op rhs.m_elems[i]; }                 \
         return result;                                                                                                 \
     }                                                                                                                  \
-    friend vec operator op(const vec &lhs, const DataT &rhs)                                                           \
-        requires(enable_if)                                                                                            \
+    template<typename T>                                                                                               \
+    friend vec operator op(const vec &lhs, const T &rhs)                                                               \
+        requires(enable_if && std::convertible_to<T, DataT>)                                                           \
     {                                                                                                                  \
         vec result;                                                                                                    \
         for(int i = 0; i < NumElements; ++i) { result.m_elems[i] = lhs.m_elems[i] op rhs; }                            \
         return result;                                                                                                 \
     }                                                                                                                  \
-    friend vec operator op(const DataT &lhs, const vec &rhs)                                                           \
-        requires(enable_if)                                                                                            \
+    template<typename T>                                                                                               \
+    friend vec operator op(const T &lhs, const vec &rhs)                                                               \
+        requires(enable_if && std::convertible_to<T, DataT>)                                                           \
     {                                                                                                                  \
         vec result;                                                                                                    \
         for(int i = 0; i < NumElements; ++i) { result.m_elems[i] = lhs op rhs.m_elems[i]; }                            \
@@ -778,8 +804,9 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
         for(int i = 0; i < NumElements; ++i) { lhs.m_elems[i] op rhs.m_elems[rhs.indices[i]]; }                        \
         return lhs;                                                                                                    \
     }                                                                                                                  \
-    friend vec &operator op(vec & lhs, const DataT & rhs)                                                              \
-        requires(enable_if)                                                                                            \
+    template<typename T>                                                                                               \
+    friend vec &operator op(vec & lhs, const T & rhs)                                                                  \
+        requires(enable_if && std::convertible_to<T, DataT>)                                                           \
     {                                                                                                                  \
         for(int i = 0; i < NumElements; ++i) { lhs.m_elems[i] op rhs; }                                                \
         return lhs;                                                                                                    \
@@ -847,12 +874,18 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
         for(int i = 0; i < NumElements; ++i) { result.m_elems[i] = lhs.m_elems[i] op rhs.m_elems[i]; }                 \
         return result;                                                                                                 \
     }                                                                                                                  \
-    friend vec<decltype(DataT {} op DataT{}), NumElements> operator op(const vec & lhs, const DataT & rhs) {           \
+    template<typename T>                                                                                               \
+    friend vec<decltype(DataT {} op DataT{}), NumElements> operator op(const vec & lhs, const T & rhs)                 \
+        requires(std::convertible_to<T, DataT>)                                                                        \
+    {                                                                                                                  \
         vec<decltype(DataT {} op DataT{}), NumElements> result;                                                        \
         for(int i = 0; i < NumElements; ++i) { result.m_elems[i] = lhs.m_elems[i] op rhs; }                            \
         return result;                                                                                                 \
     }                                                                                                                  \
-    friend vec<decltype(DataT {} op DataT{}), NumElements> operator op(const DataT & lhs, const vec & rhs) {           \
+    template<typename T>                                                                                               \
+    friend vec<decltype(DataT {} op DataT{}), NumElements> operator op(const T & lhs, const vec & rhs)                 \
+        requires(std::convertible_to<T, DataT>)                                                                        \
+    {                                                                                                                  \
         vec<decltype(DataT {} op DataT{}), NumElements> result;                                                        \
         for(int i = 0; i < NumElements; ++i) { result.m_elems[i] = lhs op rhs.m_elems[i]; }                            \
         return result;                                                                                                 \
