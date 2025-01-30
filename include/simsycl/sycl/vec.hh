@@ -515,7 +515,7 @@ class alignas(detail::vec_alignment_v<DataT, NumElements>) vec {
 
     vec() = default;
 
-    explicit constexpr vec(const DataT &arg) {
+    explicit(num_elements > 1) constexpr vec(const DataT &arg) {
         for(int i = 0; i < NumElements; ++i) { m_elems[i] = arg; }
     }
 
