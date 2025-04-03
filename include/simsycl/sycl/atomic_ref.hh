@@ -119,21 +119,30 @@ class atomic_ref_base {
     }
 };
 
+// The spec requires that atomic_ref<T> is only valid for types T that are 4 or 8 bytes in size
+// (8 is only valid for devices with aspect::atomic64, but we can't check that at compile time)
+template<typename T>
+concept ValidAtomicSize = (sizeof(int) == 4 || sizeof(int) == 8);
+
 // The spec provides an explicit list of which types are valid for atomic operations
 template<typename T>
 concept ValidAtomicIntType
     = (std::same_as<T, int> || std::same_as<T, unsigned int> || std::same_as<T, long> || std::same_as<T, unsigned long>
           || std::same_as<T, long long> || std::same_as<T, unsigned long long>)
-    && (sizeof(T) == 4 || sizeof(T) == 8);
+    && ValidAtomicSize<T>;
 
 template<typename T>
-concept ValidAtomicFloatType = std::same_as<T, float> || std::same_as<T, double>;
+concept ValidAtomicFloatType = (std::same_as<T, float> || std::same_as<T, double>) && ValidAtomicSize<T>;
 // TODO: for double we would also need to check if
 //           "the code containing this sycl::atomic_ref was submitted to a device that has sycl::aspect::atomic64"
 // that's quite challenging to implement as-is, since we would need to do this at runtime when operations are performed
 
 template<typename T>
-concept ValidAtomicType = ValidAtomicIntType<T> || ValidAtomicFloatType<T>;
+concept ValidAtomicPointerType
+    = std::is_pointer_v<T> && std::is_object_v<std::remove_pointer_t<T>> && ValidAtomicSize<T>;
+
+template<typename T>
+concept ValidAtomicType = ValidAtomicIntType<T> || ValidAtomicFloatType<T> || ValidAtomicPointerType<T>;
 
 } // namespace simsycl::detail
 
