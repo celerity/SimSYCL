@@ -158,6 +158,17 @@ TEST_CASE("Vector swizzled access is available", "[vec][swizzle]") {
         vi.even() = {11, 12};
         CHECK(check_bool_vec(vi == sycl::vec<int, 4>{11, 9, 12, 10}));
     }
+
+    SECTION("1D swizzled vec return type") {
+        sycl::vec<uint8_t, 4> v4{255};
+        CHECK(std::is_same_v<decltype(v4.x()), uint8_t &>);
+        CHECK(std::is_same_v<decltype(v4.y()), uint8_t &>);
+        CHECK(std::is_same_v<decltype(v4.z()), uint8_t &>);
+        CHECK(std::is_same_v<decltype(v4.w()), uint8_t &>);
+
+        int i = (v4.x() + 1);
+        CHECK(i == 256);
+    }
 }
 
 TEST_CASE("Operations on swizzled vectors work as expected", "[vec][swizzle]") {
@@ -208,7 +219,7 @@ TEST_CASE("Operations on swizzled vectors work as expected", "[vec][swizzle]") {
         CHECK(check_bool_vec(sycl::vec<int, 2>{0, 0} < vi.xy()));
 
         CHECK(check_bool_vec(vi.zw() < 10));
-        CHECK(check_bool_vec(vi.z() == 3));
-        CHECK(check_bool_vec(4 == vi.a()));
+        CHECK((vi.z() == 3));
+        CHECK((4 == vi.a()));
     }
 }
