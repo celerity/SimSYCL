@@ -8,6 +8,7 @@
 #include "../detail/lock.hh"
 #include "../detail/reference_type.hh"
 
+#define SYCL_KHR_QUEUE_FLUSH 1
 
 namespace simsycl::sycl::property::queue {
 
@@ -88,6 +89,8 @@ class queue final : public detail::reference_type<queue, detail::queue_state>,
     context get_context() const;
 
     device get_device() const;
+
+    void khr_flush() const;
 
     bool is_in_order() const { return has_property<property::queue::in_order>(); }
 
