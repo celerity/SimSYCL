@@ -69,4 +69,6 @@ context queue::get_context() const { return state().context; }
 
 device queue::get_device() const { return state().device; }
 
+void queue::khr_flush() const {}
+
 } // namespace simsycl::sycl
