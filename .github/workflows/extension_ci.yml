@@ -1,0 +1,86 @@
+name: SimSYCL Extension CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set reusable strings
+      # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
+      id: strings
+      shell: bash
+      run: |
+        echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
+        echo "install-dir=${{ github.workspace }}/install" >> "$GITHUB_OUTPUT"
+        echo "build-ext-dir=${{ github.workspace }}/build-ext" >> "$GITHUB_OUTPUT"
+
+    - name: Install boost
+      uses: MarkusJx/install-boost@v2.4.5
+      id: install-boost
+      with:
+        boost_version: 1.81.0
+
+    - name: Configure CMake for SimSYCL (no extensions)
+      run: >
+        cmake
+        -D "BOOST_ROOT=${{ steps.install-boost.outputs.BOOST_ROOT }}"
+        -B ${{ steps.strings.outputs.build-output-dir }}
+        -DCMAKE_BUILD_TYPE=Debug
+        -DCMAKE_POLICY_DEFAULT_CMP0144=NEW
+        -S ${{ github.workspace }}
+        -DCMAKE_INSTALL_PREFIX=${{ steps.strings.outputs.install-dir }}
+        -DSIMSYCL_ENABLE_SYCL_KHR_QUEUE_FLUSH=OFF
+
+    - name: Build SimSYCL (no extensions)
+      run: >
+        cmake --build ${{ steps.strings.outputs.build-output-dir }} --parallel --target install
+
+    - name: Configure CMake for extension check program (no extensions)
+      run: >
+        cmake
+        -D "BOOST_ROOT=${{ steps.install-boost.outputs.BOOST_ROOT }}"
+        -B ${{ steps.strings.outputs.build-ext-dir }}
+        -DCMAKE_BUILD_TYPE=Debug
+        -DCMAKE_POLICY_DEFAULT_CMP0144=NEW
+        -S ${{ github.workspace }}/test/extensions
+        -DCMAKE_INSTALL_PREFIX=${{ steps.strings.outputs.install-dir }}
+
+    - name: Verify that extensions are not available
+      run: |
+        set +e
+        cmake --build ${{ steps.strings.outputs.build-ext-dir }} --target extensions_test
+        if [ $? -eq 0 ]; then
+            echo "Extensions should not be enabled, but are available."
+            exit 1
+        fi
+        exit 0
+
+    - name: Configure CMake for SimSYCL (with extensions)
+      run: >
+        cmake
+        -D "BOOST_ROOT=${{ steps.install-boost.outputs.BOOST_ROOT }}"
+        -B ${{ steps.strings.outputs.build-output-dir }}
+        -DCMAKE_BUILD_TYPE=Debug
+        -DCMAKE_POLICY_DEFAULT_CMP0144=NEW
+        -S ${{ github.workspace }}
+        -DCMAKE_INSTALL_PREFIX=${{ steps.strings.outputs.install-dir }}
+        -DSIMSYCL_ENABLE_SYCL_KHR_QUEUE_FLUSH=ON
+
+    - name: Build SimSYCL (with extensions)
+      run: >
+        cmake --build ${{ steps.strings.outputs.build-output-dir }} --parallel --target install
+
+    - name: Verify that extensions are available
+      run: |
+        cmake --build ${{ steps.strings.outputs.build-ext-dir }} --target extensions_test
+        if [ $? -ne 0 ]; then
+            echo "Extensions should be enabled, but are not available."
+            exit 1
+        fi
+        exit 0
