@@ -1,5 +1,7 @@
 #pragma once
 
+#include <simsycl/config.hh>
+
 #include "async_handler.hh"
 #include "event.hh"
 #include "handler.hh"
@@ -8,7 +10,9 @@
 #include "../detail/lock.hh"
 #include "../detail/reference_type.hh"
 
+#if SIMSYCL_ENABLE_SYCL_KHR_QUEUE_FLUSH
 #define SYCL_KHR_QUEUE_FLUSH 1
+#endif // SIMSYCL_ENABLE_SYCL_KHR_QUEUE_FLUSH
 
 namespace simsycl::sycl::property::queue {
 
@@ -90,7 +94,9 @@ class queue final : public detail::reference_type<queue, detail::queue_state>,
 
     device get_device() const;
 
-    void khr_flush() const;
+#if SIMSYCL_ENABLE_SYCL_KHR_QUEUE_FLUSH
+    void khr_flush() const { /* This is a no-op in SimSYCL due to its synchronous nature */ }
+#endif // SIMSYCL_ENABLE_SYCL_KHR_QUEUE_FLUSH
 
     bool is_in_order() const { return has_property<property::queue::in_order>(); }
 

@@ -67,6 +67,9 @@ option(SIMSYCL_ANNOTATE_SYCL_DEPRECATIONS "Wether to annotate deprecated SYCL AP
 option(SIMSYCL_ENABLE_ASAN "Whether to enable address sanitizer" OFF)
 set(SIMSYCL_CHECK_MODE "ABORT" CACHE STRING "Runtime assertion handling NONE|LOG|THROW|ABORT")
 
+# Extension options
+option(SIMSYCL_ENABLE_SYCL_KHR_QUEUE_FLUSH "Enable the SYCL_KHR_QUEUE_FLUSH extension" ON)
+
 set(CONFIG_PATH "${CMAKE_CURRENT_BINARY_DIR}/include/simsycl/config.hh")
 configure_file(
   "${PROJECT_SOURCE_DIR}/include/simsycl/config.hh.in"
