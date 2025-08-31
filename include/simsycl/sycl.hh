@@ -44,4 +44,6 @@
 #include "sycl/type_traits.hh"
 #include "sycl/usm.hh"
 #include "sycl/vec.hh"
+
+#include "sycl/khr/sub_group_queries.hh"
 // IWYU pragma: end_keep
