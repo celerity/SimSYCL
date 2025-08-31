@@ -204,7 +204,7 @@ void cooperative_for_nd_range(const sycl::device &device, const sycl::nd_range<D
 
         const auto concurrent_group_idx = concurrent_global_idx / local_linear_range;
         const auto concurrent_sub_group_idx
-            = concurrent_group_idx * sub_group_linear_range_in_group + sub_group_linear_id_in_group;
+            = (concurrent_group_idx * sub_group_linear_range_in_group) + sub_group_linear_id_in_group;
 
         auto &concurrent_nd_item = num_concurrent_nd_items[concurrent_global_idx];
 
@@ -231,7 +231,7 @@ void cooperative_for_nd_range(const sycl::device &device, const sycl::nd_range<D
                     group_linear_id += num_concurrent_groups) //
                 {
                     const auto sub_group_linear_id
-                        = group_linear_id * sub_group_linear_range_in_group + sub_group_linear_id_in_group;
+                        = (group_linear_id * sub_group_linear_range_in_group) + sub_group_linear_id_in_group;
 
                     concurrent_nd_item.instance = nd_item_instance{};
                     // the first item to arrive in this group will create the new group instance
@@ -243,17 +243,17 @@ void cooperative_for_nd_range(const sycl::device &device, const sycl::nd_range<D
                         concurrent_sub_group.instance = sub_group_instance(sub_group_linear_id);
                     }
 
+                    SIMSYCL_START_IGNORING_DEPRECATIONS;
                     const auto group_id = linear_index_to_id(group_range, group_linear_id);
-                    const auto global_id = range.get_offset() + group_id * sycl::id<Dimensions>(local_range) + local_id;
+                    const auto global_id = range.get_offset() + (group_id * sycl::id<Dimensions>(local_range)) + local_id;
 
                     // if sub-group range is not divisible by local range, the last sub-group will be smaller
                     const auto sub_group_local_linear_range = std::min(sub_group_max_local_linear_range,
-                        local_linear_range - sub_group_linear_id_in_group * sub_group_max_local_linear_range);
+                        local_linear_range - (sub_group_linear_id_in_group * sub_group_max_local_linear_range));
                     const auto sub_group_local_range = sycl::range<1>(sub_group_local_linear_range);
 
-                    SIMSYCL_START_IGNORING_DEPRECATIONS;
                     const auto global_item = detail::make_item(global_id, range.get_global_range(), range.get_offset());
-                    SIMSYCL_STOP_IGNORING_DEPRECATIONS
+                    SIMSYCL_STOP_IGNORING_DEPRECATIONS;
                     const auto local_item = detail::make_item(local_id, range.get_local_range());
                     const auto group_item = detail::make_item(group_id, range.get_group_range());
 
