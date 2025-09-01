@@ -45,5 +45,5 @@
 #include "sycl/usm.hh"
 #include "sycl/vec.hh"
 
-#include "sycl/khr/sub_group_queries.hh"
+#include "sycl/khr/work_item_queries.hh"
 // IWYU pragma: end_keep

@@ -1,14 +1,14 @@
-#include "simsycl/sycl/group.hh"
-#include "simsycl/sycl/khr/sub_group_queries.hh"
-#include "simsycl/sycl/nd_item.hh"
 
-#include <simsycl/detail/utils.hh>
-#include <simsycl/schedule.hh>
-#include <simsycl/sycl/device.hh>
-#include <simsycl/sycl/exception.hh>
-#include <simsycl/sycl/group_functions.hh>
-#include <simsycl/sycl/handler.hh>
-#include <simsycl/system.hh>
+#include "simsycl/schedule.hh"
+#include "simsycl/detail/utils.hh"
+#include "simsycl/sycl/device.hh"
+#include "simsycl/sycl/exception.hh"
+#include "simsycl/sycl/group.hh"
+#include "simsycl/sycl/group_functions.hh" // IWYU pragma: keep
+#include "simsycl/sycl/handler.hh"         // IWYU pragma: keep
+#include "simsycl/sycl/khr/work_item_queries.hh"
+#include "simsycl/sycl/nd_item.hh"
+#include "simsycl/system.hh"
 
 #include <numeric>
 #include <random>
