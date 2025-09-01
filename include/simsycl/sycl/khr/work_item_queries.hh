@@ -1,6 +1,10 @@
-#include <simsycl/sycl/group.hh>
-#include <simsycl/sycl/nd_item.hh>
-#include <simsycl/sycl/sub_group.hh>
+#include "simsycl/sycl/group.hh"
+#include "simsycl/sycl/nd_item.hh"
+#include "simsycl/sycl/sub_group.hh"
+
+#if SIMSYCL_ENABLE_SYCL_KHR_WORK_ITEM_QUERIES
+#define SYCL_KHR_WORK_ITEM_QUERIES 1
+#endif // SIMSYCL_ENABLE_SYCL_KHR_WORK_ITEM_QUERIES
 
 namespace simsycl::sycl::khr {
 

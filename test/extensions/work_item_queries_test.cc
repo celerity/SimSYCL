@@ -1,4 +1,3 @@
-#include "simsycl/sycl/queue.hh"
 #include <simsycl/sycl.hh>
 
 #include <catch2/catch_template_test_macros.hpp>
@@ -9,6 +8,12 @@
 using Catch::Matchers::ContainsSubstring;
 
 using namespace simsycl;
+
+TEST_CASE("work item queries set feature test macro", "[khr][work_item_queries]") {
+#if SIMSYCL_ENABLE_SYCL_KHR_WORK_ITEM_QUERIES
+    CHECK(SYCL_KHR_WORK_ITEM_QUERIES == 1);
+#endif // SIMSYCL_ENABLE_SYCL_KHR_WORK_ITEM_QUERIES
+}
 
 TEMPLATE_TEST_CASE_SIG(
     "work item queries are correct if supported", "[khr][work_item_queries]", ((int Dims), Dims), 1, 2, 3) {
