@@ -25,6 +25,9 @@ add_executable(tests
   extensions/work_item_queries_test.cc
 )
 
+# use throw check mode in the main test executable so we can have unit tests for error reporting
+target_compile_definitions(tests PRIVATE SIMSYCL_CHECK_MODE=SIMSYCL_CHECK_THROW)
+
 add_sycl_to_target(TARGET tests SIMSYCL_ALL_WARNINGS)
 target_link_libraries(tests PRIVATE Catch2::Catch2WithMain)
 
