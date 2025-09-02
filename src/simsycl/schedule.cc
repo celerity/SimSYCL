@@ -1,10 +1,14 @@
-#include <simsycl/detail/utils.hh>
-#include <simsycl/schedule.hh>
-#include <simsycl/sycl/device.hh>
-#include <simsycl/sycl/exception.hh>
-#include <simsycl/sycl/group_functions.hh>
-#include <simsycl/sycl/handler.hh>
-#include <simsycl/system.hh>
+
+#include "simsycl/schedule.hh"
+#include "simsycl/detail/utils.hh"
+#include "simsycl/sycl/device.hh"
+#include "simsycl/sycl/exception.hh"
+#include "simsycl/sycl/group.hh"
+#include "simsycl/sycl/group_functions.hh" // IWYU pragma: keep
+#include "simsycl/sycl/handler.hh"         // IWYU pragma: keep
+#include "simsycl/sycl/khr/work_item_queries.hh"
+#include "simsycl/sycl/nd_item.hh"
+#include "simsycl/system.hh"
 
 #include <numeric>
 #include <random>
@@ -181,6 +185,23 @@ void cooperative_for_nd_range(const sycl::device &device, const sycl::nd_range<D
     std::vector<detail::concurrent_sub_group> concurrent_sub_groups(num_concurrent_sub_groups);
     std::vector<detail::concurrent_nd_item> num_concurrent_nd_items(num_concurrent_items);
 
+#if SIMSYCL_ENABLE_SYCL_KHR_WORK_ITEM_QUERIES
+    std::vector<const sycl::nd_item<Dimensions> *> concurrent_khr_wi_query_nd_item_ptrs(num_concurrent_items, nullptr);
+
+    auto update_global_khr_wi_query_data = [&](int cc_g_idx = -1) {
+        if(cc_g_idx != -1 && concurrent_khr_wi_query_nd_item_ptrs[cc_g_idx] != nullptr) {
+            const auto nd_item = *concurrent_khr_wi_query_nd_item_ptrs[cc_g_idx];
+            sycl::khr::detail::g_khr_wi_query_this_nd_item<Dimensions> = nd_item;
+            sycl::khr::detail::g_khr_wi_query_this_group<Dimensions> = nd_item.get_group();
+            sycl::khr::detail::g_khr_wi_query_this_sub_group = nd_item.get_sub_group();
+        } else {
+            sycl::khr::detail::g_khr_wi_query_this_nd_item<Dimensions> = std::nullopt;
+            sycl::khr::detail::g_khr_wi_query_this_group<Dimensions> = std::nullopt;
+            sycl::khr::detail::g_khr_wi_query_this_sub_group = std::nullopt;
+        }
+    };
+#endif // SIMSYCL_ENABLE_SYCL_KHR_WORK_ITEM_QUERIES
+
     for(auto &cgroup : concurrent_groups) {
         cgroup.local_memory_allocations.resize(local_memory.size());
         for(size_t i = 0; i < local_memory.size(); ++i) {
@@ -220,8 +241,13 @@ void cooperative_for_nd_range(const sycl::device &device, const sycl::nd_range<D
                 group_linear_range, sub_group_linear_id_in_group, sub_group_linear_range_in_group,
                 sub_group_max_local_linear_range, sub_group_max_local_range, thread_id_in_sub_group,
                 sub_group_id_in_group, sub_group_range_in_group, &concurrent_nd_item, &concurrent_group,
-                &concurrent_sub_group, &kernel, &concurrent_items_exited, &caught_exceptions,
-                &range](boost::context::continuation &&scheduler) //
+                &concurrent_sub_group, &kernel, &concurrent_items_exited, &caught_exceptions, &range
+#if SIMSYCL_ENABLE_SYCL_KHR_WORK_ITEM_QUERIES
+                ,
+                concurrent_global_idx, &concurrent_khr_wi_query_nd_item_ptrs,
+                &update_global_khr_wi_query_data
+#endif
+        ](boost::context::continuation &&scheduler) //
             {
                 // yield immediately to allow the scheduling loop to set up local memory pointers
                 enter_kernel_fiber(std::move(scheduler));
@@ -245,7 +271,8 @@ void cooperative_for_nd_range(const sycl::device &device, const sycl::nd_range<D
 
                     SIMSYCL_START_IGNORING_DEPRECATIONS;
                     const auto group_id = linear_index_to_id(group_range, group_linear_id);
-                    const auto global_id = range.get_offset() + (group_id * sycl::id<Dimensions>(local_range)) + local_id;
+                    const auto global_id
+                        = range.get_offset() + (group_id * sycl::id<Dimensions>(local_range)) + local_id;
 
                     // if sub-group range is not divisible by local range, the last sub-group will be smaller
                     const auto sub_group_local_linear_range = std::min(sub_group_max_local_linear_range,
@@ -264,6 +291,12 @@ void cooperative_for_nd_range(const sycl::device &device, const sycl::nd_range<D
                         &concurrent_sub_group);
                     const auto nd_item
                         = detail::make_nd_item(global_item, local_item, group, sub_group, &concurrent_nd_item);
+
+#if SIMSYCL_ENABLE_SYCL_KHR_WORK_ITEM_QUERIES
+                    concurrent_khr_wi_query_nd_item_ptrs[concurrent_global_idx] = &nd_item;
+                    // adjust the globals now that the data is available, before starting the kernel
+                    update_global_khr_wi_query_data(concurrent_global_idx);
+#endif // SIMSYCL_ENABLE_SYCL_KHR_WORK_ITEM_QUERIES
 
                     try {
                         kernel(nd_item);
@@ -311,10 +344,20 @@ void cooperative_for_nd_range(const sycl::device &device, const sycl::nd_range<D
                 *local_memory[i].ptr = concurrent_groups[concurrent_group_idx].local_memory_allocations[i].get();
             }
 
+#if SIMSYCL_ENABLE_SYCL_KHR_WORK_ITEM_QUERIES
+            // adjust globals before switching fibers
+            update_global_khr_wi_query_data(concurrent_global_idx);
+#endif // SIMSYCL_ENABLE_SYCL_KHR_WORK_ITEM_QUERIES
+
             fibers[concurrent_global_idx] = fibers[concurrent_global_idx].resume();
         }
         schedule_state = schedule.update(schedule_state, order);
     }
+
+#if SIMSYCL_ENABLE_SYCL_KHR_WORK_ITEM_QUERIES
+    // reset globals
+    update_global_khr_wi_query_data();
+#endif // SIMSYCL_ENABLE_SYCL_KHR_WORK_ITEM_QUERIES
 
     // rethrow any encountered exceptions
     for(auto &exception : caught_exceptions) { std::rethrow_exception(exception); }
