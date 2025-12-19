@@ -200,7 +200,7 @@ template<typename Func>
 concept GroupOpInitFunction = std::is_invocable_r_v<std::unique_ptr<group_per_operation_data>, Func>;
 
 inline std::unique_ptr<group_per_operation_data> default_group_op_init_function() {
-    return std::unique_ptr<group_per_operation_data>();
+    return std::make_unique<group_per_operation_data>();
 }
 
 template<typename T>
