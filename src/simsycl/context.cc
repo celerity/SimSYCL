@@ -1,5 +1,6 @@
 #include "simsycl/sycl/context.hh"
 #include "simsycl/sycl/device.hh"
+#include "simsycl/sycl/exception.hh"
 #include "simsycl/sycl/info.hh"
 #include "simsycl/sycl/platform.hh"
 #include "simsycl/system.hh"
@@ -44,7 +45,9 @@ struct context_state {
 };
 
 sycl::platform get_common_platform(const std::vector<sycl::device> &devices) {
-    SIMSYCL_CHECK(!devices.empty()); // TODO throw instead
+    if(devices.empty()) {
+         throw sycl::exception(sycl::errc::invalid, "sycl::context: device list must not be empty");
+    }
     const auto common = devices[0].get_platform();
     for(size_t i = 1; i < devices.size(); ++i) { SIMSYCL_CHECK(devices[i].get_platform() == common); }
     return common;
@@ -76,6 +79,12 @@ context::context(const std::vector<device> &device_list, const property_list &pr
 
 context::context(const std::vector<device> &device_list, async_handler async_handler, const property_list &prop_list)
     : context(internal, device_list, async_handler, prop_list) {}
+
+context::context(const platform &plat, const property_list &prop_list)
+    : context(internal, plat.get_devices(), {}, prop_list) {}
+
+context::context(const platform &plat, async_handler async_handler, const property_list &prop_list)
+    : context(internal, plat.get_devices(), async_handler, prop_list) {}
 
 template<>
 platform context::get_info<info::context::platform>() const {

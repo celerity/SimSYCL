@@ -37,6 +37,11 @@ class context final : public detail::reference_type<context, detail::context_sta
     explicit context(
         const std::vector<device> &device_list, async_handler async_handler, const property_list &prop_list = {});
 
+    explicit context(const platform &plat, const property_list &prop_list = {});
+
+    explicit context(
+        const platform &plat, async_handler async_handler, const property_list &prop_list = {});
+
     backend get_backend() const noexcept { return backend::simsycl; }
 
     platform get_platform() const;
