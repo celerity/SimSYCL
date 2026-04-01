@@ -352,26 +352,26 @@ class queue final : public detail::reference_type<queue, detail::queue_state>,
         return status.end();
     }
 
-    event prefetch(void * /* ptr */, size_t /* num_bytes */) { return detail::event_state::instant(); }
+    event prefetch(const void * /* ptr */, size_t /* num_bytes */) { return detail::event_state::instant(); }
 
-    event prefetch(void * /* ptr */, size_t /* num_bytes */, event /* dep_event */) {
+    event prefetch(const void * /* ptr */, size_t /* num_bytes */, event /* dep_event */) {
         return detail::event_state::instant();
     }
 
-    event prefetch(void * /* ptr */, size_t /* num_bytes */, const std::vector<event> & /* dep_events */) {
+    event prefetch(const void * /* ptr */, size_t /* num_bytes */, const std::vector<event> & /* dep_events */) {
         return detail::event_state::instant();
     }
 
-    event mem_advise(void * /* ptr */, size_t /* num_bytes */, int /* advice */) {
+    event mem_advise(const void * /* ptr */, size_t /* num_bytes */, int /* advice */) {
         return detail::event_state::instant();
     }
 
-    event mem_advise(void * /* ptr */, size_t /* num_bytes */, int /* advice */, event /* dep_event */) {
+    event mem_advise(const void * /* ptr */, size_t /* num_bytes */, int /* advice */, event /* dep_event */) {
         return detail::event_state::instant();
     }
 
     event mem_advise(
-        void * /* ptr */, size_t /* num_bytes */, int /* advice */, const std::vector<event> & /* dep_events */) {
+        const void * /* ptr */, size_t /* num_bytes */, int /* advice */, const std::vector<event> & /* dep_events */) {
         return detail::event_state::instant();
     }
 

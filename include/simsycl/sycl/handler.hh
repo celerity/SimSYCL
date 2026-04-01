@@ -149,9 +149,9 @@ class handler {
         std::fill_n(static_cast<T *>(ptr), count, pattern);
     }
 
-    void prefetch(void * /* ptr */, size_t /* num_bytes */) {}
+    void prefetch(const void * /* ptr */, size_t /* num_bytes */) {}
 
-    void mem_advise(void * /* ptr */, size_t /* num_bytes */, int /* advice */) {}
+    void mem_advise(const void * /* ptr */, size_t /* num_bytes */, int /* advice */) {}
 
     //------ Explicit memory operation APIs
 
