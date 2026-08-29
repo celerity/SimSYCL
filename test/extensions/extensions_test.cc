@@ -11,4 +11,13 @@ int main() {
 
     // SIMSYCL_ENABLE_SYCL_KHR_QUEUE_FLUSH
     queue.khr_flush();
+
+    // SIMSYCL_ENABLE_SYCL_KHR_WORK_ITEM_QUERIES
+    queue.submit([&](sycl::handler &cgh) {
+        cgh.parallel_for(sycl::nd_range<1>(1024, 64), [=](sycl::nd_item<1>) {
+            [[maybe_unused]] const auto item = sycl::khr::this_nd_item<1>();
+            [[maybe_unused]] const auto group = sycl::khr::this_group<1>();
+            [[maybe_unused]] const auto sub_group = sycl::khr::this_sub_group();
+        });
+    });
 }

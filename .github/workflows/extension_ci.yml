@@ -36,6 +36,7 @@ jobs:
         -S ${{ github.workspace }}
         -DCMAKE_INSTALL_PREFIX=${{ steps.strings.outputs.install-dir }}
         -DSIMSYCL_ENABLE_SYCL_KHR_QUEUE_FLUSH=OFF
+        -DSIMSYCL_ENABLE_SYCL_KHR_WORK_ITEM_QUERIES=OFF
 
     - name: Build SimSYCL (no extensions)
       run: >
@@ -71,6 +72,7 @@ jobs:
         -S ${{ github.workspace }}
         -DCMAKE_INSTALL_PREFIX=${{ steps.strings.outputs.install-dir }}
         -DSIMSYCL_ENABLE_SYCL_KHR_QUEUE_FLUSH=ON
+        -DSIMSYCL_ENABLE_SYCL_KHR_WORK_ITEM_QUERIES=ON
 
     - name: Build SimSYCL (with extensions)
       run: >

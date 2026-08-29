@@ -69,6 +69,7 @@ set(SIMSYCL_CHECK_MODE "ABORT" CACHE STRING "Runtime assertion handling NONE|LOG
 
 # Extension options
 option(SIMSYCL_ENABLE_SYCL_KHR_QUEUE_FLUSH "Enable the SYCL_KHR_QUEUE_FLUSH extension" ON)
+option(SIMSYCL_ENABLE_SYCL_KHR_WORK_ITEM_QUERIES "Enable the SYCL_KHR_WORK_ITEM_QUERIES extension" ON)
 
 set(CONFIG_PATH "${CMAKE_CURRENT_BINARY_DIR}/include/simsycl/config.hh")
 configure_file(

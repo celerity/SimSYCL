@@ -27,7 +27,7 @@ struct sink {
 
 #if SIMSYCL_CHECK_MODE == SIMSYCL_CHECK_NONE
 #define SIMSYCL_CHECK_MSG(CONDITION, ...)                                                                              \
-    do { (void)(CONDITION); } while(0)
+    do { simsycl::detail::sink{CONDITION, __VA_ARGS__}; } while(0)
 #elif SIMSYCL_CHECK_MODE == SIMSYCL_CHECK_LOG || SIMSYCL_CHECK_MODE == SIMSYCL_CHECK_THROW                             \
     || SIMSYCL_CHECK_MODE == SIMSYCL_CHECK_ABORT
 #define SIMSYCL_CHECK_MSG(CONDITION, ...)                                                                              \
