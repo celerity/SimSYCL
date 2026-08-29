@@ -22,6 +22,7 @@ add_executable(tests
   simulation_tests.cc
   alloc_tests.cc
   vec_tests.cc
+  extensions/khr_group_interface_tests.cc
 )
 
 add_sycl_to_target(TARGET tests SIMSYCL_ALL_WARNINGS)
