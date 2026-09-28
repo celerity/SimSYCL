@@ -48,7 +48,9 @@ class coordinate {
         for(int d = 0; d < Dimensions; ++d) { result[d] = lhs.m_values[d] op rhs.m_values[d]; }                        \
         return result;                                                                                                 \
     }                                                                                                                  \
-    friend constexpr Interface operator op(const Interface &lhs, const size_t &rhs) {                                  \
+    template <typename Integral>                                                                                       \
+        requires(std::integral<Integral>)                                                                              \
+    friend constexpr Interface operator op(const Interface &lhs, const Integral &rhs) {                                \
         Interface result = make_interface_type();                                                                      \
         for(int d = 0; d < Dimensions; ++d) { result[d] = lhs.m_values[d] op rhs; }                                    \
         return result;                                                                                                 \
@@ -78,7 +80,9 @@ class coordinate {
         for(int d = 0; d < Dimensions; ++d) { lhs.m_values[d] op rhs.m_values[d]; }                                    \
         return lhs;                                                                                                    \
     }                                                                                                                  \
-    friend constexpr Interface &operator op(Interface & lhs, const size_t & rhs) {                                     \
+    template <typename Integral>                                                                                       \
+        requires(std::integral<Integral>)                                                                              \
+    friend constexpr Interface &operator op(Interface & lhs, const Integral & rhs) {                                   \
         for(int d = 0; d < Dimensions; ++d) { lhs.m_values[d] op rhs; }                                                \
         return lhs;                                                                                                    \
     }
@@ -97,7 +101,9 @@ class coordinate {
 #undef SIMSYCL_DETAIL_DEFINE_COORDINATE_BINARY_INPLACE_LHS_OPERATOR
 
 #define SIMSYCL_DETAIL_DEFINE_COORDINATE_BINARY_COPY_RHS_OPERATOR(op)                                                  \
-    friend constexpr Interface operator op(const size_t &lhs, const Interface &rhs) {                                  \
+    template <typename Integral>                                                                                       \
+        requires(std::integral<Integral>)                                                                              \
+    friend constexpr Interface operator op(const Integral &lhs, const Interface &rhs) {                                \
         Interface result = make_interface_type();                                                                      \
         for(int d = 0; d < Dimensions; ++d) { result[d] = lhs op rhs.m_values[d]; }                                    \
         return result;                                                                                                 \

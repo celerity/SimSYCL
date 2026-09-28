@@ -1,5 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <cstddef>
+
 #include <sycl/sycl.hpp>
 
 using namespace sycl;
@@ -27,3 +29,16 @@ TEST_CASE("Calls to the deprecated parallel_for signature are not ambiguous", "[
 }
 
 SIMSYCL_STOP_IGNORING_DEPRECATIONS
+
+TEST_CASE("Calls of operator op with integral type are not abiguous", "[ambiguity]") {
+    SECTION("size_t") {
+        [[maybe_unused]] auto multiply = [](id<1> i, size_t j) {
+            return i * j;
+	};
+    }
+    SECTION("int") {
+        [[maybe_unused]] auto multiply = [](id<1> i, int j) {
+            return i * j;
+        };
+    }
+}
